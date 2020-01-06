@@ -26,10 +26,7 @@ Component.registerHooks([
 @Component({
   components: {
     'editor': Editor,
-  },
-  // metaInfo: {
-  //   title: `${dayTitle}`
-  // }
+  }
 })
 export default class Day extends Vue {
   public text: string = '';
@@ -42,10 +39,7 @@ export default class Day extends Vue {
   };
 
   mounted() {
-    this.text = `---
-date: ${this.$route.params.id}
----
-`;
+    this.text = `---\ndate: ${this.$route.params.id}\n---\n\n`;
   }
 
   public valChanged(data: string) {
