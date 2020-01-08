@@ -1,2 +1,6 @@
 flask
-gunicorn
+flask_sqlalchemy
+flask-migrate
+flask-jwt-extended
+flask-argon2
+python-frontmatter

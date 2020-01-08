@@ -10,11 +10,34 @@ import ErrorPage from '../views/ErrorPage.vue';
 
 import Day from '../views/Day.vue';
 
+import Auth from '../views/Auth.vue';
+import Login from '../views/Login.vue';
+import Signup from '../views/Signup.vue';
+
+
 Vue.use(VueRouter);
 
 const routes = [
   {
-    path: "/",
+    path: '/auth',
+    component: Auth,
+    meta: { auth: false },
+    children: [
+      {
+        path: '',
+        alias: 'login',
+        name: 'Login',
+        component: Login
+      },
+      {
+        path: 'sign-up',
+        name: 'Sign Up',
+        component: Signup
+      }
+    ]
+  },
+  {
+    path: '/',
     component: Home,
     meta: { auth: true },
     children: [
@@ -30,24 +53,6 @@ const routes = [
       }
     ]
   },
-  // {
-  //   path: '/auth',
-  //   component: Auth,
-  //   meta: { auth: false },
-  //   children: [
-  //     {
-  //       path: '',
-  //       alias: 'login',
-  //       name: 'Login',
-  //       component: Login
-  //     },
-  //     {
-  //       path: 'create-account',
-  //       name: 'Create Account',
-  //       component: CreateAccount
-  //     }
-  //   ]
-  // },
   {
     path: '/page-not-found',
     name: '404',
@@ -67,16 +72,6 @@ const routes = [
     path: '*',
     redirect: '/page-not-found'
   }
-  // {
-  //   path: "/about",
-  //   name: "about",
-  //   // route level code-splitting
-  //   // this generates a separate chunk (about.[hash].js) for this route
-  //   // which is lazy-loaded when the route is visited.
-  //   // component: () =>
-  //   //   import(/* webpackChunkName: "about" */ "../views/About.vue")
-  //   component: About
-  // }
 
 ];
 

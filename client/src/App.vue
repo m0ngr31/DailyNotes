@@ -31,6 +31,11 @@ html, body
 <style>
 @import '~@fortawesome/fontawesome-free/css/all.css';
 
+:root {
+  --main-bg-color: #263238;
+  --main-bg-darker: #212b30;
+}
+
 .fade-enter-active, .fade-leave-active {
   transition: opacity .5s;
 }
@@ -90,5 +95,22 @@ html, body {
   color: #ddd !important;
   margin-top: auto;
   margin-bottom: auto;
+}
+
+.inputs {
+  width: 90%;
+  margin: 20px auto;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.alt-button {
+  cursor: pointer;
+}
+
+.msgs {
+  color: #eea170;
 }
 </style>

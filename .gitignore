@@ -239,3 +239,4 @@ temp/
 *.sw?
 
 run.sh
+/config
