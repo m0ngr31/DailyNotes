@@ -1,7 +1,7 @@
 <template>
   <b-datepicker
     inline
-    v-model="date"
+    v-model="calendar.date"
     indicators="bars"
     @input="changeDate"
   >
@@ -11,21 +11,24 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import parse from 'date-fns/parse';
 import format from 'date-fns/format';
+
+import CalendarInst from '../services/calendar';
 
 @Component
 export default class Calendar extends Vue {
-  public date: any = null;
+  public calendar = CalendarInst;
+  public tracker: any = null;
 
   mounted() {
-    if (this.$route.params && this.$route.params.id) {
-      try {
-        this.date = parse(this.$route.params.id, 'MM-dd-yyyy', new Date());
-      } catch (e) {
-        // Reset date
-        this.date = null;
-      }
+    this.calendar.updateDate(this.$route);
+
+    this.tracker = setInterval(() => this.calendar.getActivity(), 60000);
+  }
+
+  beforeDestroy() {
+    if (this.tracker) {
+      clearInterval(this.tracker);
     }
   }
 

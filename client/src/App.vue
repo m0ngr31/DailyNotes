@@ -3,12 +3,17 @@
 </template>
 
 <script>
-  export default {
-    name: 'App',
-    metaInfo: {
-      titleTemplate: '%s | DailyNotes'
-    }
+import {Notifications} from './services/notifications';
+
+export default {
+  name: 'App',
+  metaInfo: {
+    titleTemplate: '%s | DailyNotes'
+  },
+  mounted: function() {
+    Notifications.service = this.$buefy.toast;
   }
+}
 </script>
 
 <style lang="sass">

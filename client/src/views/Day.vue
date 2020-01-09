@@ -17,7 +17,9 @@ import Vue from 'vue';
 import Component from 'vue-class-component';
 import _ from 'lodash';
 
-import Editor from "@/components/Editor.vue";
+import CalendarInst from '../services/calendar';
+
+import Editor from '@/components/Editor.vue';
 
 Component.registerHooks([
   'metaInfo'
@@ -29,6 +31,7 @@ Component.registerHooks([
   }
 })
 export default class Day extends Vue {
+  public calendar = CalendarInst;
   public text: string = '';
   public title: string = 'Day';
 
@@ -38,8 +41,16 @@ export default class Day extends Vue {
     };
   };
 
-  mounted() {
+  async mounted() {
+    this.calendar.updateDate(this.$route);
     this.text = `---\ndate: ${this.$route.params.id}\n---\n\n`;
+
+    try {
+      const res = await this.calendar.getDate();
+      // console.log(res);
+    } catch (e) {
+      console.log(e);
+    }
   }
 
   public valChanged(data: string) {

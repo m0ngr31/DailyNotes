@@ -1,5 +1,8 @@
 import axios, {AxiosPromise} from 'axios';
+
 import {getToken, clearToken} from './user';
+import router from '../router/index';
+import {Notifications} from './notifications';
 
 axios.defaults.baseURL = '/api';
 
@@ -17,10 +20,20 @@ axios.interceptors.request.use(config => {
 });
 
 axios.interceptors.response.use(res => res, async err => {
-  if (err.response && err.response.status === 403) {
+  if (err.response && (err.response.status === 403 || err.response.status === 401 || err.response.status === 422)) {
     // Logout
     clearToken();
-    // Re-direct to login page here
+
+    try {
+      (Notifications.service as any).open({
+        duration: 5000,
+        message: 'Session expired. Logging out.',
+        position: 'is-top',
+        type: 'is-warning'
+      });
+    } catch (e) {}
+
+    router.push({ name: 'Login' });
   }
   return Promise.reject(err);
 });

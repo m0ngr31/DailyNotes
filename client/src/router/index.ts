@@ -1,6 +1,5 @@
 import Vue from "vue";
 import VueRouter from "vue-router";
-import Meta from 'vue-meta';
 
 import Home from "../views/Home.vue";
 
@@ -9,10 +8,13 @@ import UnauthorizedPage from '../views/UnauthorizedPage.vue';
 import ErrorPage from '../views/ErrorPage.vue';
 
 import Day from '../views/Day.vue';
+import HomeRedirect from '../views/HomeRedirect.vue';
 
 import Auth from '../views/Auth.vue';
 import Login from '../views/Login.vue';
 import Signup from '../views/Signup.vue';
+
+import {getToken} from '../services/user';
 
 
 Vue.use(VueRouter);
@@ -43,8 +45,8 @@ const routes = [
     children: [
       {
         path: '',
-        name: 'day',
-        component: Day
+        name: 'Home Redirect',
+        component: HomeRedirect
       },
       {
         path: ':id',
@@ -76,10 +78,23 @@ const routes = [
 ];
 
 const router = new VueRouter({
-  mode: "history",
+  mode: 'history',
   linkActiveClass: 'active',
   base: process.env.BASE_URL,
   routes
+});
+
+router.beforeEach(async (to, from, next) => {
+  const currentUser = getToken();
+  const requiresAuth = to.matched.some(record => record.meta.auth);
+
+  if (requiresAuth && !currentUser) {
+    await next({name: 'Login', query: {from: to.path}});
+  } else if (!requiresAuth && currentUser) {
+    await next({name: 'Home Redirect'});
+  } else {
+    await next();
+  }
 });
 
 export default router;

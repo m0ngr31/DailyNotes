@@ -67,13 +67,25 @@ export default class Login extends Vue {
       const res = await Requests.post('/login', {username: this.username, password: this.password});
       if (res.data && res.data.access_token) {
         setToken(res.data.access_token);
-        this.$router.push({name: 'day'});
+
+        if (this.$route.query && this.$route.query.from) {
+          this.$router.push({path: (this.$route.query as any).from});
+        } else {
+          this.$router.push({name: 'Home Redirect'});
+        }
       } else {
         throw Error('Data isn\'t right');
       }
     } catch (e) {
       console.log(e);
-      this.errMsg = 'There was an error logging in. Please try again.'
+
+      this.errMsg = 'There was an error logging in. Please try again.';
+      this.$buefy.toast.open({
+        duration: 5000,
+        message: this.errMsg,
+        position: 'is-top',
+        type: 'is-danger'
+      });
     }
 
     this.isLoading = false;
