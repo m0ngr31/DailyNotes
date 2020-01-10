@@ -1,7 +1,7 @@
 <template>
   <b-datepicker
     inline
-    v-model="calendar.date"
+    v-model="sidebar.date"
     indicators="bars"
     @input="changeDate"
   >
@@ -13,17 +13,19 @@ import Vue from 'vue';
 import Component from 'vue-class-component';
 import format from 'date-fns/format';
 
-import CalendarInst from '../services/calendar';
+import SidebarInst from '../services/sidebar';
 
 @Component
 export default class Calendar extends Vue {
-  public calendar = CalendarInst;
+  public sidebar = SidebarInst;
   public tracker: any = null;
 
   mounted() {
-    this.calendar.updateDate(this.$route);
+    this.sidebar.updateDate(this.$route);
+    this.sidebar.getActivity();
+    this.sidebar.getSidebarInfo();
 
-    this.tracker = setInterval(() => this.calendar.getActivity(), 60000);
+    this.tracker = setInterval(() => this.sidebar.getActivity(), 60000);
   }
 
   beforeDestroy() {

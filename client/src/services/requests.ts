@@ -35,6 +35,9 @@ axios.interceptors.response.use(res => res, async err => {
 
     router.push({ name: 'Login' });
   }
+
+  // TODO: Catch the JWT coming back and update it in localstorage
+
   return Promise.reject(err);
 });
 

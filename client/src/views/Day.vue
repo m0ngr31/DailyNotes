@@ -17,7 +17,8 @@ import Vue from 'vue';
 import Component from 'vue-class-component';
 import _ from 'lodash';
 
-import CalendarInst from '../services/calendar';
+import SidebarInst from '../services/sidebar';
+import {NoteService} from '../services/notes';
 
 import Editor from '@/components/Editor.vue';
 
@@ -31,7 +32,7 @@ Component.registerHooks([
   }
 })
 export default class Day extends Vue {
-  public calendar = CalendarInst;
+  public sidebar = SidebarInst;
   public text: string = '';
   public title: string = 'Day';
 
@@ -42,11 +43,12 @@ export default class Day extends Vue {
   };
 
   async mounted() {
-    this.calendar.updateDate(this.$route);
+    this.sidebar.updateDate(this.$route);
+
     this.text = `---\ndate: ${this.$route.params.id}\n---\n\n`;
 
     try {
-      const res = await this.calendar.getDate();
+      const res = await NoteService.getDate(this.$route.params.id);
       // console.log(res);
     } catch (e) {
       console.log(e);
