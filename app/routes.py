@@ -1,8 +1,8 @@
 from app import app, db, argon2
-from app.models import User
+from app.models import User, Note
 from flask import render_template, request, jsonify, abort
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
-import frontmatter
+import itertools
 
 
 @app.route('/api/sign-up', methods=['POST'])
@@ -45,38 +45,100 @@ def login():
   return jsonify(access_token=access_token), 200
 
 
-@app.route('/api/note', methods=['POST'])
+@app.route('/api/refresh_jwt', methods=['GET'])
 @jwt_required
-def get_note():
-  req = request.get_json()
+def refresh_jwt():
   username = get_jwt_identity()
 
+  if not username:
+    abort(401)
+
+  access_token = create_access_token(identity=username)
+  return jsonify(token=access_token), 200
+
+
+@app.route('/api/note', methods=['GET'])
+@jwt_required
+def get_note():
+  uuid = request.args.get('uuid')
+  
+  if not uuid:
+    abort(400)
+
+  username = get_jwt_identity()
   user = User.query.filter_by(username=username).first()
 
   if not user:
     abort(400)
 
-  print user.notes
+  note = user.notes.filter_by(uuid=uuid).first()
 
-  access_token = create_access_token(identity=username)
-  return jsonify(access_token=access_token), 200
+  if not note:
+    abort(400)
+
+  return jsonify(note=note.serialize), 200
 
 
-@app.route('/api/activity', methods=['POST'])
+@app.route('/api/date', methods=['GET'])
 @jwt_required
-def month_activity():
-  req = request.get_json()
+def get_date():
+  date = request.args.get('date')
+
+  if not date:
+    abort(400)
+
   username = get_jwt_identity()
+  user = User.query.filter_by(username=username).first()
 
-  # print req
+  if not user:
+    abort(400)
 
-  # data = req.get('data', '')
+  ret_note = {
+    'title': date,
+    'data': '---\ndate: {}\n---\n\n'.format(date),
+    'is_date': True,
+    'user_id': user.uuid
+  }
 
-  # parsed = frontmatter.loads(data)
-  # print(parsed)
+  note = user.notes.filter_by(title=date).first()
+  
+  if note:
+    ret_note = note.serialize
 
-  access_token = create_access_token(identity=username)
-  return jsonify(access_token=access_token), 200
+  return jsonify(day=ret_note), 200
+
+
+@app.route('/api/events', methods=['GET'])
+@jwt_required
+def cal_events():
+  username = get_jwt_identity()
+  user = User.query.filter_by(username=username).first()
+
+  if not user:
+    abort(400)
+
+  # TODO: Only do current month or something
+  notes = user.notes.filter_by(is_date=True)
+
+  return jsonify(events=[x.date for x in notes]), 200
+
+
+@app.route('/api/sidebar', methods=['GET'])
+@jwt_required
+def sidebar_data():
+  username = get_jwt_identity()
+  user = User.query.filter_by(username=username).first()
+
+  if not user:
+    abort(400)
+
+  notes_all = user.notes.all()
+  notes = user.notes.filter_by(is_date=False)
+
+  tags = [x for x in list(set(itertools.chain(*[(item.tags or '').split(',') for item in notes_all]))) if x]
+  projects = [x for x in list(set(itertools.chain(*[(item.projects or '').split(',') for item in notes_all]))) if x]
+
+  return jsonify(tags=tags,projects=projects,notes=[note.serialize for note in notes]), 200
 
 
 @app.route('/', defaults={'path': ''})

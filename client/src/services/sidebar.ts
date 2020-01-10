@@ -4,9 +4,13 @@ import { Route } from 'vue-router';
 import _ from 'lodash';
 
 import {Requests} from './requests';
+import { INote } from './notes';
 
 class SidebarSerivce {
-  activity: any[] = [];
+  events: any[] = [];
+  tags: string[] = [];
+  projects: string[] = [];
+  notes: INote[] = [];
   calLoading: boolean = false;
   date: any = null;
   sidebarLoading: boolean = false;
@@ -32,9 +36,9 @@ class SidebarSerivce {
   }, 250, {trailing: true, leading: false});
 
   /**
-   * Get the activity indicators for the calendar
+   * Get the event indicators for the calendar
    */
-  public async getActivity(): Promise<void> {
+  public async getEvents(): Promise<void> {
     if (this.calLoading) {
       return;
     }
@@ -48,9 +52,17 @@ class SidebarSerivce {
     this.calLoading = true;
 
     try {
-      const res = await Requests.get('/activity', {
+      const res = await Requests.get('/events', {
         date: formatISO(date),
       });
+
+      if (res && res.data && res.data.events) {
+        this.events = _.map(res.data.events, event => {
+          return {
+            date: new Date(event),
+          };
+        });
+      }
     } catch (e) {}
 
     this.calLoading = false;
@@ -72,6 +84,12 @@ class SidebarSerivce {
 
     try {
       const res = await Requests.get('/sidebar');
+      
+      if (res && res.data) {
+        this.tags = res.data.tags;
+        this.projects = res.data.projects;
+        this.notes = res.data.notes;
+      }
     } catch (e) {}
 
     this.calLoading = false;

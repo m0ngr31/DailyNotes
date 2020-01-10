@@ -1,13 +1,16 @@
 from app import db
 from app.model_types import GUID
 from sqlalchemy.sql import func
+from sqlalchemy import event
 import uuid
+import frontmatter
+
 
 class User(db.Model):
   uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
   username = db.Column(db.String(64), unique=True, nullable=False)
   password_hash = db.Column(db.String(128), nullable=False)
-  notes = db.relationship('Note', backref='user')
+  notes = db.relationship('Note', lazy='dynamic')
 
   def __repr__(self):
     return '<User {}>'.format(self.uuid)
@@ -25,3 +28,44 @@ class Note(db.Model):
 
   def __repr__(self):
     return '<Note {}>'.format(self.uuid)
+
+  @property
+  def serialize(self):
+    return {
+      'uuid': self.uuid,
+      'data': self.data,
+      'title': self.title,
+      'date': self.date,
+      'is_date': self.is_date,
+    }
+
+
+def before_insert_note(mapper, connection, target):
+  tags = None
+  projects = None
+  title = None
+
+  data = frontmatter.loads(target.data)
+
+  if isinstance(data.get('tags'), list):
+    tags = ','.join(set(data.get('tags')))
+  elif isinstance(data.get('tags'), str):
+    tags = ','.join(set(map(str.strip, data['tags'].split(','))))
+
+  if isinstance(data.get('projects'), list):
+    projects = ','.join(set(data.get('projects')))
+  elif isinstance(data.get('projects'), str):
+    projects = ','.join(set(map(str.strip, data['projects'].split(','))))
+
+  if not target.title and isinstance(data.get('title'), str) and len(data.get('title')) > 0:
+    title = data.get('title')
+
+  if tags:
+    target.tags = tags
+  if projects:
+    target.projects = projects
+  if title:
+    target.title = title
+
+
+event.listen(Note, 'before_insert', before_insert_note)

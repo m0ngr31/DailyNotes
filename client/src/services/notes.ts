@@ -16,10 +16,14 @@ export const NoteService = {
 
     try {
       const res = await Requests.get('/date', {
-        date: formatISO(parse(date, 'MM-dd-yyyy', new Date())),
+        date
       });
 
-      return res.data as INote;
+      if (res.data && res.data.day) {
+        return res.data.day as INote;
+      }
+
+      throw new Error('no matching data');
     } catch (e) {
       throw new Error(e);
     }

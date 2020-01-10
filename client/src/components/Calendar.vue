@@ -3,6 +3,7 @@
     inline
     v-model="sidebar.date"
     indicators="bars"
+    :events="sidebar.events"
     @input="changeDate"
   >
   </b-datepicker>
@@ -22,10 +23,10 @@ export default class Calendar extends Vue {
 
   mounted() {
     this.sidebar.updateDate(this.$route);
-    this.sidebar.getActivity();
+    this.sidebar.getEvents();
     this.sidebar.getSidebarInfo();
 
-    this.tracker = setInterval(() => this.sidebar.getActivity(), 60000);
+    this.tracker = setInterval(() => this.sidebar.getEvents(), 60000);
   }
 
   beforeDestroy() {

@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import {Notifications} from './services/notifications';
+import {SharedBuefy} from './services/sharedBuefy';
 
 export default {
   name: 'App',
@@ -11,7 +11,7 @@ export default {
     titleTemplate: '%s | DailyNotes'
   },
   mounted: function() {
-    Notifications.service = this.$buefy.toast;
+    SharedBuefy.notifications = this.$buefy.toast;
   }
 }
 </script>
@@ -22,6 +22,8 @@ export default {
 @import '~bulmaswatch/minty/_overrides';
 
 $app-background: #263238
+$loading-background: $app-background
+$loading-background-legacy: $app-background
 
 $datepicker-background-color: darken($app-background, 2.5%)
 $datepicker-shadow: none

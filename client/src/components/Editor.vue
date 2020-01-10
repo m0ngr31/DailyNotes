@@ -5,8 +5,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import Component from 'vue-class-component';
+import { Vue, Component, Watch } from 'vue-property-decorator';
 import * as CodeMirror from 'codemirror';
 import _ from 'lodash';
 
@@ -31,7 +30,7 @@ export default class Editor extends Vue {
   public editor!: CodeMirror.Editor;
   public value!: string;
 
-  config: CodeMirror.EditorConfiguration = {
+  public config: CodeMirror.EditorConfiguration = {
     tabSize: 4,
     lineNumbers: false,
     mode: {
@@ -56,6 +55,15 @@ export default class Editor extends Vue {
       this.$emit('valChanged', this.editor.getValue());
     }, 1000, {trailing: true, leading: false}));
 
+    this.handleValueUpdate();
+  }
+
+  @Watch('value')
+  onValueChanged() {
+    this.handleValueUpdate();
+  }
+
+  public handleValueUpdate() {
     _.defer(() => {
       this.editor.setValue(this.value || '');
       this.editor.setCursor(this.editor.lineCount(), 0);

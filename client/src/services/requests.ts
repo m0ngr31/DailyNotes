@@ -1,8 +1,8 @@
 import axios, {AxiosPromise} from 'axios';
 
-import {getToken, clearToken} from './user';
+import {getToken, clearToken, setToken} from './user';
 import router from '../router/index';
-import {Notifications} from './notifications';
+import {SharedBuefy} from './sharedBuefy';
 
 axios.defaults.baseURL = '/api';
 
@@ -19,24 +19,29 @@ axios.interceptors.request.use(config => {
   return Promise.reject(error);
 });
 
-axios.interceptors.response.use(res => res, async err => {
+axios.interceptors.response.use(res => {
+  if (res && res.data && res.data.token) {
+    setToken(res.data.token);
+  }
+  return res;
+}, async err => {
   if (err.response && (err.response.status === 403 || err.response.status === 401 || err.response.status === 422)) {
     // Logout
     clearToken();
 
     try {
-      (Notifications.service as any).open({
+      (SharedBuefy.notifications as any).open({
         duration: 5000,
         message: 'Session expired. Logging out.',
         position: 'is-top',
         type: 'is-warning'
       });
+      
+      (SharedBuefy.activeDialog as any).close();
     } catch (e) {}
 
     router.push({ name: 'Login' });
   }
-
-  // TODO: Catch the JWT coming back and update it in localstorage
 
   return Promise.reject(err);
 });
