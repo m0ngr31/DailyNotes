@@ -8,6 +8,7 @@ import UnauthorizedPage from '../views/UnauthorizedPage.vue';
 import ErrorPage from '../views/ErrorPage.vue';
 
 import Day from '../views/Day.vue';
+import Note from '../views/Note.vue';
 import HomeRedirect from '../views/HomeRedirect.vue';
 
 import Auth from '../views/Auth.vue';
@@ -49,10 +50,25 @@ const routes = [
         component: HomeRedirect
       },
       {
-        path: ':id',
+        path: 'date/:id',
         name: 'day-id',
         component: Day
-      }
+      },
+      {
+        path: 'note/:uuid',
+        name: 'note-id',
+        component: Note
+      },
+      // {
+      //   path: 'new-note',
+      //   name: 'new-note',
+      //   component: NewNote
+      // },
+      // {
+      //   path: 'search',
+      //   name: 'note-id',
+      //   component: Notes
+      // }
     ]
   },
   {

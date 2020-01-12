@@ -40,7 +40,7 @@ class Note(db.Model):
     }
 
 
-def before_insert_note(mapper, connection, target):
+def before_change_note(mapper, connection, target):
   tags = None
   projects = None
   title = None
@@ -48,18 +48,18 @@ def before_insert_note(mapper, connection, target):
   data = frontmatter.loads(target.data)
 
   if isinstance(data.get('tags'), list):
-    tags = ','.join(set(data.get('tags')))
+    tags = ','.join(set([x.replace(',', '\,') for x in data.get('tags')]))
   elif isinstance(data.get('tags'), str):
     tags = ','.join(set(map(str.strip, data['tags'].split(','))))
 
   if isinstance(data.get('projects'), list):
-    projects = ','.join(set(data.get('projects')))
+    projects = ','.join(set([x.replace(',', '\,') for x in data.get('projects')]))
   elif isinstance(data.get('projects'), str):
     projects = ','.join(set(map(str.strip, data['projects'].split(','))))
 
-  if not target.title and isinstance(data.get('title'), str) and len(data.get('title')) > 0:
+  if isinstance(data.get('title'), str) and len(data.get('title')) > 0:
     title = data.get('title')
-
+  
   if tags:
     target.tags = tags
   if projects:
@@ -68,4 +68,5 @@ def before_insert_note(mapper, connection, target):
     target.title = title
 
 
-event.listen(Note, 'before_insert', before_insert_note)
+event.listen(Note, 'before_insert', before_change_note)
+event.listen(Note, 'before_update', before_change_note)

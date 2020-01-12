@@ -3,6 +3,7 @@ from app.models import User, Note
 from flask import render_template, request, jsonify, abort
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 import itertools
+import re
 
 
 @app.route('/api/sign-up', methods=['POST'])
@@ -16,7 +17,7 @@ def sign_up():
 
   password_hash = argon2.generate_password_hash(password)
 
-  new_user = User(username=username, password_hash=password_hash)
+  new_user = User(username=username.lower(), password_hash=password_hash)
   db.session.add(new_user)
   db.session.commit()
 
@@ -33,7 +34,7 @@ def login():
   if not username or not password:
     abort(400)
 
-  user = User.query.filter_by(username=username).first()
+  user = User.query.filter_by(username=username.lower()).first()
 
   if not user:
     return jsonify({"msg": "Bad username or password"}), 401
@@ -43,6 +44,101 @@ def login():
 
   access_token = create_access_token(identity=username)
   return jsonify(access_token=access_token), 200
+
+
+@app.route('/api/save_day', methods=['PUT'])
+@jwt_required
+def save_day():
+  req = request.get_json()
+  title = req.get('title')
+  data = req.get('data', '')
+
+  if not title:
+    abort(400)
+
+  username = get_jwt_identity()
+
+  if not username:
+    abort(401)
+
+  user = User.query.filter_by(username=username.lower()).first()
+
+  if not user:
+    abort(400)
+
+  note = user.notes.filter_by(title=title).first()
+
+  if not note:
+    note = Note(user_id=user.uuid, title=title, data=data, is_date=True)
+  else:
+    note.data = data
+
+  db.session.add(note)
+  db.session.flush()
+  db.session.commit()
+
+  return jsonify(note=note.serialize), 200
+
+
+@app.route('/api/save_note', methods=['PUT'])
+@jwt_required
+def save_note():
+  req = request.get_json()
+  uuid = req.get('uuid')
+  data = req.get('data', '')
+
+  if not uuid:
+    abort(400)
+
+  username = get_jwt_identity()
+
+  if not username:
+    abort(401)
+
+  user = User.query.filter_by(username=username.lower()).first()
+
+  if not user:
+    abort(400)
+
+  note = user.notes.filter_by(uuid=uuid).first()
+
+  if not note:
+    abort(400)
+
+  note.data = data
+
+  db.session.add(note)
+  db.session.flush()
+  db.session.commit()
+
+  return jsonify(note=note.serialize), 200
+
+
+@app.route('/api/delete_note/<uuid>', methods=['DELETE'])
+@jwt_required
+def delete_note(uuid):
+  if not uuid:
+    abort(400)
+
+  username = get_jwt_identity()
+
+  if not username:
+    abort(401)
+
+  user = User.query.filter_by(username=username.lower()).first()
+
+  if not user:
+    abort(400)
+
+  note = user.notes.filter_by(uuid=uuid).first()
+
+  if not note:
+    abort(400)
+
+  db.session.delete(note)
+  db.session.commit()
+
+  return jsonify({}), 200  
 
 
 @app.route('/api/refresh_jwt', methods=['GET'])
@@ -66,7 +162,7 @@ def get_note():
     abort(400)
 
   username = get_jwt_identity()
-  user = User.query.filter_by(username=username).first()
+  user = User.query.filter_by(username=username.lower()).first()
 
   if not user:
     abort(400)
@@ -88,19 +184,19 @@ def get_date():
     abort(400)
 
   username = get_jwt_identity()
-  user = User.query.filter_by(username=username).first()
+  user = User.query.filter_by(username=username.lower()).first()
 
   if not user:
     abort(400)
 
   ret_note = {
     'title': date,
-    'data': '---\ndate: {}\n---\n\n'.format(date),
+    'data': '---\ntags:\nprojects:\n---\n\n',
     'is_date': True,
     'user_id': user.uuid
   }
 
-  note = user.notes.filter_by(title=date).first()
+  note = user.notes.filter_by(title=date, is_date=True).first()
   
   if note:
     ret_note = note.serialize
@@ -112,7 +208,7 @@ def get_date():
 @jwt_required
 def cal_events():
   username = get_jwt_identity()
-  user = User.query.filter_by(username=username).first()
+  user = User.query.filter_by(username=username.lower()).first()
 
   if not user:
     abort(400)
@@ -120,25 +216,41 @@ def cal_events():
   # TODO: Only do current month or something
   notes = user.notes.filter_by(is_date=True)
 
-  return jsonify(events=[x.date for x in notes]), 200
+  return jsonify(events=[x.title for x in notes]), 200
 
 
 @app.route('/api/sidebar', methods=['GET'])
 @jwt_required
 def sidebar_data():
   username = get_jwt_identity()
-  user = User.query.filter_by(username=username).first()
+  user = User.query.filter_by(username=username.lower()).first()
 
   if not user:
     abort(400)
 
-  notes_all = user.notes.all()
-  notes = user.notes.filter_by(is_date=False)
+  notes_all = sorted(user.notes.all(), key=lambda note: note.title.lower())
 
-  tags = [x for x in list(set(itertools.chain(*[(item.tags or '').split(',') for item in notes_all]))) if x]
-  projects = [x for x in list(set(itertools.chain(*[(item.projects or '').split(',') for item in notes_all]))) if x]
+  tags = []
+  projects = []
+  notes = []
 
-  return jsonify(tags=tags,projects=projects,notes=[note.serialize for note in notes]), 200
+  for note in notes_all:
+    note_tags = re.split(r'(?<!\\),', (note.tags or ''))
+    note_projects = re.split(r'(?<!\\),', (note.projects or ''))
+
+    tags.extend(note_tags)
+    projects.extend(note_projects)
+
+    if not note.is_date:
+      notes.append({
+        'title': note.title,
+        'uuid': note.uuid,
+      })
+
+    tags = sorted([x.replace('\,', ',') for x in list(set(tags)) if x], key=lambda name: name.lower())
+    projects = sorted([x.replace('\,', ',') for x in list(set(projects)) if x], key=lambda name: name.lower())
+
+  return jsonify(tags=tags,projects=projects,notes=notes), 200
 
 
 @app.route('/', defaults={'path': ''})

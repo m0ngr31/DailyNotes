@@ -11,6 +11,18 @@ import _ from 'lodash';
 
 // Modes
 import 'codemirror/mode/gfm/gfm.js';
+import 'codemirror/mode/clike/clike.js';
+import 'codemirror/mode/css/css.js';
+import 'codemirror/mode/go/go.js';
+import 'codemirror/mode/lua/lua.js';
+import 'codemirror/mode/php/php.js';
+import 'codemirror/mode/perl/perl.js';
+import 'codemirror/mode/r/r.js';
+import 'codemirror/mode/ruby/ruby.js';
+import 'codemirror/mode/rust/rust.js';
+import 'codemirror/mode/sass/sass.js';
+import 'codemirror/mode/vb/vb.js';
+import 'codemirror/mode/vbscript/vbscript.js';
 import 'codemirror/mode/htmlmixed/htmlmixed.js';
 import 'codemirror/mode/shell/shell.js';
 import 'codemirror/mode/python/python.js';
@@ -53,7 +65,7 @@ export default class Editor extends Vue {
 
     this.editor.on('changes', _.throttle(() => {
       this.$emit('valChanged', this.editor.getValue());
-    }, 1000, {trailing: true, leading: false}));
+    }, 500, {trailing: true, leading: false}));
 
     this.handleValueUpdate();
   }

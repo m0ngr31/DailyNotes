@@ -1,12 +1,14 @@
 import parse from 'date-fns/parse';
 import formatISO from 'date-fns/formatISO';
-import { Route } from 'vue-router';
+import {Route} from 'vue-router';
 import _ from 'lodash';
 
 import {Requests} from './requests';
-import { INote } from './notes';
+
+import {INote} from '../interfaces';
 
 class SidebarSerivce {
+  hide: boolean = false;
   events: any[] = [];
   tags: string[] = [];
   projects: string[] = [];
@@ -59,7 +61,7 @@ class SidebarSerivce {
       if (res && res.data && res.data.events) {
         this.events = _.map(res.data.events, event => {
           return {
-            date: new Date(event),
+            date: parse(event, 'MM-dd-yyyy', new Date()),
           };
         });
       }
@@ -92,7 +94,7 @@ class SidebarSerivce {
       }
     } catch (e) {}
 
-    this.calLoading = false;
+    this.sidebarLoading = false;
   }
 }
 

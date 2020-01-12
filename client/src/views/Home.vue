@@ -1,40 +1,62 @@
 <template>
-  <div class="columns no-overflow no-margin">
-    <div class="column sidebar">
-      <div class="columns light-white center-columns">
+  <div class="columns no-overflow no-margin is-mobile">
+    <div class="column sidebar is-6-mobile is-6-tablet is-two-fifths-desktop is-4-widescreen is-3-fullhd" v-show="!sidebar.hide">
+      <div class="columns light-white center-columns text-center">
         <div class="column">
           <b-icon
             icon="book-open"
-            size="is-large"
+            size="is-medium"
             style="margin-top: .8em"
           >
           </b-icon>
-        </div>
-        <div class="column is-four-fifths">
-          <span class="fa-3x">DailyNotes</span>
         </div>
       </div>
       <Calendar />
       <Tags />
     </div>
-    <div class="column is-four-fifths no-padding">
+    <div class="column no-padding main-area">
       <router-view :key="$route.path"></router-view>
     </div>
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from 'vue';
+import Component from 'vue-class-component';
+
 import Calendar from "@/components/Calendar.vue";
 import Tags from "@/components/Tags.vue";
 
-export default {
-  name: "home",
+import {updateJWT} from '../services/user';
+
+import SidebarInst from '../services/sidebar';
+
+const MINUTES = 60;
+const SECONDS = 60;
+const HOUR = MINUTES * SECONDS * 1000; // MS in an hour
+
+@Component({
   components: {
     Calendar,
-    Tags
+    Tags,
   },
   metaInfo: {
     title: 'Home',
+  }
+})
+export default class Admin extends Vue {
+  public auth_timer: any = null;
+  public sidebar = SidebarInst;
+
+  mounted() {
+    // Get new JWT every hour
+    this.auth_timer = setInterval(() => updateJWT(), HOUR);
+  }
+
+  beforeDestroy() {
+    if (this.auth_timer) {
+      clearInterval(this.auth_timer);
+    }
   }
 };
 </script>
@@ -61,5 +83,9 @@ export default {
   overflow-y: auto;
   height: 100vh;
   overflow-x: hidden;
+}
+
+.main-area {
+  background-color: var(--main-bg-color);
 }
 </style>

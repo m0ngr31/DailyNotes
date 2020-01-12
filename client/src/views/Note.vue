@@ -38,19 +38,18 @@ Component.registerHooks([
     Header,
   }
 })
-export default class Day extends Vue {
+export default class Note extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
   public modifiedText : string = '';
-  public title: string = 'Day';
-  public day!: INote;
+  public title: string = 'Note';
+  public note!: INote;
   public isLoading: boolean = false;
   public headerOptions: IHeaderOptions = {
-    showDateNavs: true,
-    showDelete: false,
+    showDelete: true,
     title: '',
     saveDisabled: true,
-    saveFn: () => this.saveDay(),
+    saveFn: () => this.saveNote(),
     deleteFn: () => this.deleteNote(),
   }
 
@@ -60,55 +59,31 @@ export default class Day extends Vue {
     };
   };
 
-  mounted() {
-    const date = parse(this.$route.params.id, 'MM-dd-yyyy', new Date());
-    if (!isValid(date)) {
-      this.$router.push({name: 'Home Redirect'});
-      return;
-    }
-
-    this.sidebar.updateDate(this.$route);
-    this.getDayData();
-
-    this.headerOptions.title = format(date, 'EEE. MMM dd, yyyy');
-  }
-
-  public async getDayData() {
-    if (this.isLoading) {
-      return;
-    }
-
+  async mounted() {
     this.isLoading = true;
 
     try {
-      const res = await NoteService.getDate(this.$route.params.id);
-      this.day = res;
-      this.text = this.day.data || '';
+      this.note = await NoteService.getNote(this.$route.params.uuid);
+      this.text = this.note.data;
 
-      this.headerOptions.showDelete = !!this.day.uuid;
+      this.headerOptions.title = this.note.title;
+      this.title = this.note.title;
     } catch (e) {
-      SharedBuefy.openConfirmDialog({
-        message: 'Failed to fetch the selected date. Would you like to start fresh or try again?',
-        onConfirm: () => this.getDayData(),
-        onCancel: () => this.setDefaultText(),
-        confirmText: 'Try again',
-        cancelText: 'Start Fresh'
-      });
+      this.$router.push({name: 'Home Redirect'});
     }
 
     this.isLoading = false;
   }
 
-  public async saveDay() {
-    const updatedDay = Object.assign(this.day, {data: this.modifiedText});
+  public async saveNote() {
+    const updatedNote = Object.assign(this.note, {data: this.modifiedText});
     try {
-      const res = await NoteService.saveDay(updatedDay);
+      this.note = await NoteService.saveNote(updatedNote);
       this.text = this.modifiedText;
-      this.day.uuid = res.uuid;
+      this.headerOptions.title = this.note.title;
 
       // Update the indicators
       this.valChanged(this.text);
-      this.sidebar.getEvents();
       this.sidebar.getSidebarInfo();
     } catch(e) {
       this.$buefy.toast.open({
@@ -118,17 +93,11 @@ export default class Day extends Vue {
         type: 'is-danger'
       });
     }
-
-    this.headerOptions.showDelete = !!this.day.uuid;
   }
 
   public async deleteNote() {
-    if (!this.day.uuid) {
-      return;
-    }
-
     try {
-      await NoteService.deleteNote(this.day.uuid);
+      await NoteService.deleteNote(this.note.uuid);
       this.sidebar.getEvents();
       this.$router.push({name: 'Home Redirect'});
     } catch(e) {
@@ -141,26 +110,14 @@ export default class Day extends Vue {
     }
   }
 
-  public setDefaultText() {
-    this.text = `---\ntags:\nprojects:\n---\n\n`;
-
-    this.day = {
-      data: this.text,
-      title: this.$route.params.id,
-      uuid: null
-    };
-
-    this.headerOptions.showDelete = false;
-  }
-
   public valChanged(data: string) {
     this.modifiedText = data;
 
     if (this.modifiedText !== this.text) {
-      this.title = '* Day';
+      this.title = `* ${this.note.title}`;
       this.headerOptions.saveDisabled = false;
     } else {
-      this.title = 'Day';
+      this.title = this.note.title;
       this.headerOptions.saveDisabled = true;
     }
   }

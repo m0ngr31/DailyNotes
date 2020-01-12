@@ -19,15 +19,13 @@ axios.interceptors.request.use(config => {
   return Promise.reject(error);
 });
 
-axios.interceptors.response.use(res => {
-  if (res && res.data && res.data.token) {
-    setToken(res.data.token);
-  }
-  return res;
-}, async err => {
+axios.interceptors.response.use(res => res, async err => {
   if (err.response && (err.response.status === 403 || err.response.status === 401 || err.response.status === 422)) {
     // Logout
     clearToken();
+
+    // Preventing dialogs from firing
+    SharedBuefy.preventDialog = true;
 
     try {
       (SharedBuefy.notifications as any).open({
@@ -36,12 +34,19 @@ axios.interceptors.response.use(res => {
         position: 'is-top',
         type: 'is-warning'
       });
-      
+    } catch(e) {}
+
+    try {
       (SharedBuefy.activeDialog as any).close();
-    } catch (e) {}
+    } catch(e) {}
 
     router.push({ name: 'Login' });
   }
+
+  // Prevent dialogs from firing on network errors caused by expired JWTs
+  setTimeout(() => {
+    SharedBuefy.preventDialog = false;
+  }, 1000);
 
   return Promise.reject(err);
 });
@@ -57,5 +62,9 @@ export const Requests = {
 
   put: (url: string, data: any): AxiosPromise => {
     return axios.put(url, data);
+  },
+
+  delete: (url: string): AxiosPromise => {
+    return axios.delete(url);
   }
 };

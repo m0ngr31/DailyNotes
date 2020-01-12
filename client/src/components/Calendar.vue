@@ -19,20 +19,11 @@ import SidebarInst from '../services/sidebar';
 @Component
 export default class Calendar extends Vue {
   public sidebar = SidebarInst;
-  public tracker: any = null;
 
   mounted() {
     this.sidebar.updateDate(this.$route);
     this.sidebar.getEvents();
-    this.sidebar.getSidebarInfo();
-
-    this.tracker = setInterval(() => this.sidebar.getEvents(), 60000);
-  }
-
-  beforeDestroy() {
-    if (this.tracker) {
-      clearInterval(this.tracker);
-    }
+    this.sidebar.getSidebarInfo(true);
   }
 
   public changeDate(value: any) {

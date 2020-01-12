@@ -1,7 +1,6 @@
-import formatISO from 'date-fns/formatISO';
-import parse from 'date-fns/parse';
-
 import {Requests} from './requests';
+
+import {INote} from '../interfaces';
 
 export const NoteService = {
   /**
@@ -44,7 +43,7 @@ export const NoteService = {
         uuid,
       });
 
-      return res.data as INote;
+      return res.data.note as INote;
     } catch (e) {
       throw new Error(e);
     }
@@ -62,11 +61,31 @@ export const NoteService = {
       throw new Error(e);
     }
   },
-};
 
-export interface INote {
-  uuid?: string;
-  data: string;
-  title?: string;
-  is_date?: boolean;
-}
+  /**
+   * Save an individual date
+   * 
+   * @param noteData INote object
+   */
+  saveDay: async (noteData: INote): Promise<INote> => {
+    const res = await Requests.put('/save_day', noteData);
+    return res.data.note;
+  },
+
+  /**
+   * Save an individual note
+   * 
+   * @param noteData INote object
+   */
+  saveNote: async (noteData: INote): Promise<INote> => {
+    const res = await Requests.put('/save_note', noteData);
+    return res.data.note;
+  },
+
+  /**
+   * Delete an individual note
+   */
+  deleteNote: async (uuid: string): Promise<void> => {
+    await Requests.delete(`/delete_note/${uuid}`);
+  }
+};

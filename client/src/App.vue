@@ -12,6 +12,7 @@ export default {
   },
   mounted: function() {
     SharedBuefy.notifications = this.$buefy.toast;
+    SharedBuefy.dialog = this.$buefy.dialog;
   }
 }
 </script>
@@ -59,7 +60,7 @@ html, body
 }
 
 html, body {
-  height: 100%;
+  height: 100vh;
   overflow-y: hidden;
   font-family: 'Fira Code', monospace;
   font-family: 'Montserrat', sans-serif;
@@ -73,6 +74,7 @@ html, body {
 .light-white {
   color: #ddd;
 }
+
 .full-height {
   height: 100%;
 }
@@ -119,5 +121,22 @@ html, body {
 
 .msgs {
   color: #eea170;
+}
+
+.light-white > .loading-wrapper > .loading-overlay .loading-background {
+  background-color: var(--main-bg-darker);
+}
+
+.header-loading {
+  position: relative;
+  height: 2em;
+  width: 2em;
+}
+
+.header-loading > .loading-overlay .loading-icon::after {
+  width: 1em !important;
+  height: 1em !important;
+  top: calc(50% - .5em) !important;
+  left: calc(50% - .5em) !important;
 }
 </style>
