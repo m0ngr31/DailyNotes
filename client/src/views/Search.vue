@@ -22,42 +22,7 @@
         </b-notification>
       </div>
       <masonry
-        :cols="{default: 4, 1000: 3, 700: 2, 400: 1}"
-        :gutter="10"
-        class="mt-25"
-      >
-        <NoteCard v-for="note in sidebar.filteredNotes" :key="note.uuid" :note="note"></NoteCard>
-      </masonry>
-      <masonry
-        :cols="{default: 4, 1000: 3, 700: 2, 400: 1}"
-        :gutter="10"
-        class="mt-25"
-      >
-        <NoteCard v-for="note in sidebar.filteredNotes" :key="note.uuid" :note="note"></NoteCard>
-      </masonry>
-      <masonry
-        :cols="{default: 4, 1000: 3, 700: 2, 400: 1}"
-        :gutter="10"
-        class="mt-25"
-      >
-        <NoteCard v-for="note in sidebar.filteredNotes" :key="note.uuid" :note="note"></NoteCard>
-      </masonry>
-      <masonry
-        :cols="{default: 4, 1000: 3, 700: 2, 400: 1}"
-        :gutter="10"
-        class="mt-25"
-      >
-        <NoteCard v-for="note in sidebar.filteredNotes" :key="note.uuid" :note="note"></NoteCard>
-      </masonry>
-      <masonry
-        :cols="{default: 4, 1000: 3, 700: 2, 400: 1}"
-        :gutter="10"
-        class="mt-25"
-      >
-        <NoteCard v-for="note in sidebar.filteredNotes" :key="note.uuid" :note="note"></NoteCard>
-      </masonry>
-      <masonry
-        :cols="{default: 4, 1000: 3, 700: 2, 400: 1}"
+        :cols="{default: 4, 1250: 3, 1000: 2, 750: 1}"
         :gutter="10"
         class="mt-25"
       >

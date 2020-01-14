@@ -2,7 +2,8 @@
   <div class="note-card" @click="goToNote">
     <h1>{{ parsedTitle }}</h1>
 
-    <span class="fa-1x mt-15" v-if="note.tags.length">Tags</span>
+    <br />
+    <span class="fa-1x" v-if="note.tags.length">Tags</span>
     <b-taglist class="tag-margin">
       <b-tag :ellipsis="true" v-for="tag of note.tags" v-bind:key="tag" type="is-info">{{tag}}</b-tag>
     </b-taglist>
@@ -67,7 +68,7 @@ export default class NoteCard extends Vue {
   padding: 1em;
   border-radius: 10px;
   cursor: pointer;
-  transition: all 100ms ease-in-out;
+  margin-bottom: 1em;
 }
 
 .note-card:hover {
@@ -80,9 +81,5 @@ export default class NoteCard extends Vue {
 
 .tag-margin {
   margin-top: 10px;
-}
-
-.mt-15 {
-  margin-top: 15px;
 }
 </style>
