@@ -64,6 +64,12 @@ export default class Day extends Vue {
     const date = parse(this.$route.params.id, 'MM-dd-yyyy', new Date());
     if (!isValid(date)) {
       this.$router.push({name: 'Home Redirect'});
+      this.$buefy.toast.open({
+        duration: 5000,
+        message: 'There was an retrieving that date. Redirecting to today.',
+        position: 'is-top',
+        type: 'is-danger'
+      });
       return;
     }
 

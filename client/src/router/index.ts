@@ -18,6 +18,7 @@ import Login from '../views/Login.vue';
 import Signup from '../views/Signup.vue';
 
 import {getToken} from '../services/user';
+import SidebarInst from '../services/sidebar';
 
 
 Vue.use(VueRouter);
@@ -111,6 +112,10 @@ router.beforeEach(async (to, from, next) => {
   } else if (!requiresAuth && currentUser) {
     await next({name: 'Home Redirect'});
   } else {
+    if (requiresAuth && to.name !== 'day-id') {
+      SidebarInst.date = null;
+    }
+
     await next();
   }
 });
