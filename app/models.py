@@ -4,6 +4,7 @@ from sqlalchemy.sql import func
 from sqlalchemy import event
 import uuid
 import frontmatter
+import re
 
 
 class User(db.Model):
@@ -39,10 +40,22 @@ class Note(db.Model):
       'is_date': self.is_date,
     }
 
+  @property
+  def serialize_full(self):
+    return {
+      'uuid': self.uuid,
+      'data': self.data,
+      'title': self.title,
+      'date': self.date,
+      'is_date': self.is_date,
+      'tags': [x.replace('\,', ',') for x in list(set(re.split(r'(?<!\\),', (self.tags or '')))) if x],
+      'projects': [x.replace('\,', ',') for x in list(set(re.split(r'(?<!\\),', (self.projects or '')))) if x],
+    }
+
 
 def before_change_note(mapper, connection, target):
-  tags = None
-  projects = None
+  tags = ''
+  projects = ''
   title = None
 
   data = frontmatter.loads(target.data)
@@ -60,10 +73,9 @@ def before_change_note(mapper, connection, target):
   if isinstance(data.get('title'), str) and len(data.get('title')) > 0:
     title = data.get('title')
   
-  if tags:
-    target.tags = tags
-  if projects:
-    target.projects = projects
+  target.tags = tags
+  target.projects = projects
+
   if title:
     target.title = title
 

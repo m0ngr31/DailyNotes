@@ -5,17 +5,23 @@ import _ from 'lodash';
 
 import {Requests} from './requests';
 
+import router from '../router';
+
 import {INote} from '../interfaces';
 
 class SidebarSerivce {
-  hide: boolean = false;
-  events: any[] = [];
-  tags: string[] = [];
-  projects: string[] = [];
-  notes: INote[] = [];
-  calLoading: boolean = false;
-  date: any = null;
-  sidebarLoading: boolean = false;
+  public hide: boolean = false;
+  public events: any[] = [];
+  public tags: string[] = [];
+  public projects: string[] = [];
+  public notes: INote[] = [];
+  public allNotes: INote[] = [];
+  public calLoading: boolean = false;
+  public date: any = null;
+  public sidebarLoading: boolean = false;
+  public selectedSearch: string = '';
+  public searchString: any = '';
+  public filteredNotes: any[] = [];
 
   /**
    * Updates the active date on the calendar picker. This is throttled
@@ -91,10 +97,43 @@ class SidebarSerivce {
         this.tags = res.data.tags;
         this.projects = res.data.projects;
         this.notes = res.data.notes;
+        this.allNotes = res.data.notes_all;
+      }
+
+      if (this.selectedSearch && this.searchString) {
+        this.searchNotes();
       }
     } catch (e) {}
 
     this.sidebarLoading = false;
+  }
+
+  public searchNotes() {
+    this.filteredNotes = _.filter(this.allNotes, (note: INote) => {
+      if (this.selectedSearch === 'tag') {
+        if (!note.tags) {
+          return false;
+        }
+
+        return _.findIndex(note.tags, tag => tag ===this.searchString) > -1;
+      } else if (this.selectedSearch === 'project') {
+        if (!note.projects) {
+          return false;
+        }
+
+        return _.findIndex(note.projects, project => project ===this.searchString) > -1;
+      } else if (this.selectedSearch === 'search') {
+        if (!note.data || !note.title) {
+          return false;
+        }
+
+        return note.data.indexOf(this.searchString) > -1 || note.title.indexOf(this.searchString) > -1;
+      }
+
+      return false;
+    });
+
+    router.push({name: 'search', query: {[this.selectedSearch]: this.searchString}});
   }
 }
 

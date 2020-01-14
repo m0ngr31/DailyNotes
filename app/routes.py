@@ -80,6 +80,34 @@ def save_day():
   return jsonify(note=note.serialize), 200
 
 
+@app.route('/api/create_note', methods=['POST'])
+@jwt_required
+def create_note():
+  req = request.get_json()
+  data = req.get('data', '')
+
+  if not data:
+    abort(400)
+
+  username = get_jwt_identity()
+
+  if not username:
+    abort(401)
+
+  user = User.query.filter_by(username=username.lower()).first()
+
+  if not user:
+    abort(400)
+
+  note = Note(user_id=user.uuid, data=data)
+
+  db.session.add(note)
+  db.session.flush()
+  db.session.commit()
+
+  return jsonify(note=note.serialize), 200
+
+
 @app.route('/api/save_note', methods=['PUT'])
 @jwt_required
 def save_note():
@@ -228,18 +256,27 @@ def sidebar_data():
   if not user:
     abort(400)
 
-  notes_all = sorted(user.notes.all(), key=lambda note: note.title.lower())
+  notes_all = user.notes.all()
 
   tags = []
   projects = []
   notes = []
+  all_notes = []
 
   for note in notes_all:
-    note_tags = re.split(r'(?<!\\),', (note.tags or ''))
-    note_projects = re.split(r'(?<!\\),', (note.projects or ''))
+    serialized_note = note.serialize_full
 
-    tags.extend(note_tags)
-    projects.extend(note_projects)
+    tags.extend(serialized_note['tags'])
+    projects.extend(serialized_note['projects'])
+
+    all_notes.append({
+      'title': note.title,
+      'uuid': note.uuid,
+      'data': note.data,
+      'is_date': note.is_date,
+      'tags': serialized_note['tags'],
+      'projects': serialized_note['projects'],
+    })
 
     if not note.is_date:
       notes.append({
@@ -247,10 +284,11 @@ def sidebar_data():
         'uuid': note.uuid,
       })
 
-    tags = sorted([x.replace('\,', ',') for x in list(set(tags)) if x], key=lambda name: name.lower())
-    projects = sorted([x.replace('\,', ',') for x in list(set(projects)) if x], key=lambda name: name.lower())
+  notes = sorted(notes, key=lambda note: note['title'].lower())
+  tags = sorted([x for x in list(set(tags))], key=lambda name: name.lower())
+  projects = sorted([x for x in list(set(projects))], key=lambda name: name.lower())
 
-  return jsonify(tags=tags,projects=projects,notes=notes), 200
+  return jsonify(tags=tags,projects=projects,notes=notes,notes_all=all_notes), 200
 
 
 @app.route('/', defaults={'path': ''})

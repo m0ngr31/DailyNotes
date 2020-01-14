@@ -66,8 +66,8 @@ export default class Note extends Vue {
       this.note = await NoteService.getNote(this.$route.params.uuid);
       this.text = this.note.data;
 
-      this.headerOptions.title = this.note.title;
-      this.title = this.note.title;
+      this.headerOptions.title = this.note.title || '';
+      this.title = this.note.title || '';
     } catch (e) {
       this.$router.push({name: 'Home Redirect'});
     }
@@ -80,7 +80,7 @@ export default class Note extends Vue {
     try {
       this.note = await NoteService.saveNote(updatedNote);
       this.text = this.modifiedText;
-      this.headerOptions.title = this.note.title;
+      this.headerOptions.title = this.note.title || '';
 
       // Update the indicators
       this.valChanged(this.text);
@@ -96,9 +96,13 @@ export default class Note extends Vue {
   }
 
   public async deleteNote() {
+    if (!this.note.uuid) {
+      return;
+    }
+
     try {
       await NoteService.deleteNote(this.note.uuid);
-      this.sidebar.getEvents();
+      this.sidebar.getSidebarInfo();
       this.$router.push({name: 'Home Redirect'});
     } catch(e) {
       this.$buefy.toast.open({
@@ -117,7 +121,7 @@ export default class Note extends Vue {
       this.title = `* ${this.note.title}`;
       this.headerOptions.saveDisabled = false;
     } else {
-      this.title = this.note.title;
+      this.title = this.note.title || '';
       this.headerOptions.saveDisabled = true;
     }
   }

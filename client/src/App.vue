@@ -139,4 +139,9 @@ html, body {
   top: calc(50% - .5em) !important;
   left: calc(50% - .5em) !important;
 }
+
+.notification.is-dark {
+  background-color: var(--main-bg-color);
+  color: #ddd;
+}
 </style>

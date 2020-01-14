@@ -26,6 +26,7 @@ import 'codemirror/mode/vbscript/vbscript.js';
 import 'codemirror/mode/htmlmixed/htmlmixed.js';
 import 'codemirror/mode/shell/shell.js';
 import 'codemirror/mode/python/python.js';
+import 'codemirror/mode/javascript/javascript.js';
 import 'codemirror/mode/yaml-frontmatter/yaml-frontmatter.js';
 import 'codemirror/mode/sql/sql.js';
 

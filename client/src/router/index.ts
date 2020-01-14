@@ -9,6 +9,8 @@ import ErrorPage from '../views/ErrorPage.vue';
 
 import Day from '../views/Day.vue';
 import Note from '../views/Note.vue';
+import NewNote from '../views/NewNote.vue';
+import Search from '../views/Search.vue';
 import HomeRedirect from '../views/HomeRedirect.vue';
 
 import Auth from '../views/Auth.vue';
@@ -59,16 +61,16 @@ const routes = [
         name: 'note-id',
         component: Note
       },
-      // {
-      //   path: 'new-note',
-      //   name: 'new-note',
-      //   component: NewNote
-      // },
-      // {
-      //   path: 'search',
-      //   name: 'note-id',
-      //   component: Notes
-      // }
+      {
+        path: 'new-note',
+        name: 'new-note',
+        component: NewNote
+      },
+      {
+        path: 'search',
+        name: 'search',
+        component: Search
+      }
     ]
   },
   {

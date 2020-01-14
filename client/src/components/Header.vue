@@ -17,9 +17,11 @@
           </b-icon>
         </div>
         <div class="level-item alt-button" v-if="!options.hideCreate">
-          <b-tooltip label="Create new note" position="is-bottom">
-            <b-icon icon="plus"></b-icon>
-          </b-tooltip>
+          <div @click="newNote()">
+            <b-tooltip label="Create new note" position="is-bottom">
+              <b-icon icon="plus"></b-icon>
+            </b-tooltip>
+          </div>
         </div>
       </div>
       <div class="level-item has-text-primary">
@@ -38,6 +40,7 @@
           </div>
         </div>
         <div
+          v-show="options.saveFn"
           class="level-item alt-button"
           v-bind:class="{ 'save-disabled': options.saveDisabled }"
           @click="save()"
@@ -100,6 +103,10 @@ export default class Header extends Vue {
 
   public toggleSidebar(show = false) {
     this.sidebar.hide = show;
+  }
+
+  public newNote() {
+    this.$router.push({name: 'new-note'});
   }
 
   public prevDay() {
@@ -172,6 +179,7 @@ export default class Header extends Vue {
 .header-title {
   margin-left: 1em;
   margin-right: 1em;
+  font-weight: bold;
 }
 
 .save-disabled {

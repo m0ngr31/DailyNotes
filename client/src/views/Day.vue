@@ -42,7 +42,7 @@ export default class Day extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
   public modifiedText : string = '';
-  public title: string = 'Day';
+  public title: string = '';
   public day!: INote;
   public isLoading: boolean = false;
   public headerOptions: IHeaderOptions = {
@@ -71,6 +71,7 @@ export default class Day extends Vue {
     this.getDayData();
 
     this.headerOptions.title = format(date, 'EEE. MMM dd, yyyy');
+    this.title = this.headerOptions.title;
   }
 
   public async getDayData() {
@@ -157,10 +158,10 @@ export default class Day extends Vue {
     this.modifiedText = data;
 
     if (this.modifiedText !== this.text) {
-      this.title = '* Day';
+      this.title = `* ${this.headerOptions.title}`;
       this.headerOptions.saveDisabled = false;
     } else {
-      this.title = 'Day';
+      this.title = this.headerOptions.title;
       this.headerOptions.saveDisabled = true;
     }
   }

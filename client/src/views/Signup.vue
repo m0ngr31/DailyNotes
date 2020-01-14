@@ -3,13 +3,13 @@
     <div class="msgs">{{errMsg}}</div>
     <div class="inputs">
       <b-field :type="usernameErr ? 'is-danger' : ''" :message="usernameErr">
-        <b-input placeholder="Username" size="is-medium" icon="user" v-model="username"></b-input>
+        <b-input placeholder="Username" size="is-medium" icon="user" v-model="username" @keyup.native.enter="signup"></b-input>
       </b-field>
       <b-field :type="passwordErr ? 'is-danger' : ''" :message="passwordErr">
-        <b-input placeholder="Password" type="password" password-reveal size="is-medium" icon="key" v-model="password"></b-input>
+        <b-input placeholder="Password" type="password" password-reveal size="is-medium" icon="key" v-model="password" @keyup.native.enter="signup"></b-input>
       </b-field>
       <b-field :type="passConfirmErr ? 'is-danger' : ''" :message="passConfirmErr">
-        <b-input placeholder="Confirm Password" type="password" password-reveal size="is-medium" icon="key" v-model="passwordConfirm"></b-input>
+        <b-input placeholder="Confirm Password" type="password" password-reveal size="is-medium" icon="key" v-model="passwordConfirm" @keyup.native.enter="signup"></b-input>
       </b-field>
       <b-button type="is-primary" size="is-medium" expanded class="mt-20" @click="signup" :loading="isLoading">Sign Up</b-button>
       <h1 class="mt-20 alt-button" @click="login">Login</h1>

@@ -13,4 +13,6 @@ export interface INote {
   data: string;
   title?: string;
   is_date?: boolean;
+  tags?: string;
+  projects?: string;
 }

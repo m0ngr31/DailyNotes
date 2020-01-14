@@ -18,6 +18,7 @@
     "lodash": "^4.17.15",
     "vue": "^2.6.10",
     "vue-class-component": "^7.0.2",
+    "vue-masonry-css": "^1.0.3",
     "vue-meta": "^2.3.1",
     "vue-property-decorator": "^8.3.0",
     "vue-router": "^3.1.3"

@@ -49,6 +49,11 @@ export const NoteService = {
     }
   },
 
+  createNote: async (noteData: INote): Promise<INote> => {
+    const res = await Requests.post('/create_note', noteData);
+    return res.data.note;
+  },
+
   /**
    * Get a list of all the notes
    */
