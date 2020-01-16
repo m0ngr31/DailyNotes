@@ -137,6 +137,7 @@ export default class Day extends Vue {
     try {
       await NoteService.deleteNote(this.day.uuid);
       this.sidebar.getEvents();
+      this.sidebar.getSidebarInfo();
       this.$router.push({name: 'Home Redirect'});
     } catch(e) {
       this.$buefy.toast.open({

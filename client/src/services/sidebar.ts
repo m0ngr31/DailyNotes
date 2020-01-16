@@ -100,7 +100,7 @@ class SidebarSerivce {
         this.allNotes = res.data.notes_all;
       }
 
-      if (this.selectedSearch && this.searchString) {
+      if (this.selectedSearch.length && this.searchString.length) {
         this.searchNotes();
       }
     } catch (e) {}

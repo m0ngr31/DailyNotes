@@ -76,7 +76,7 @@ def before_change_note(mapper, connection, target):
   target.tags = tags
   target.projects = projects
 
-  if title:
+  if title and not target.is_date:
     target.title = title
 
 

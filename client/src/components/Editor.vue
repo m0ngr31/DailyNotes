@@ -91,13 +91,14 @@ export default class Editor extends Vue {
 @import '~codemirror/theme/material.css';
 
 .CodeMirror {
-  padding: 10px 0px 0px 20px;
-  height: 100vh;
+  padding: 10px 0px 10px 20px;
+  height: 100%;
   font-family: 'Fira Code', monospace;
 }
 
 .editor {
   background-color: #263238;
+  height: 100%;
 }
 
 .cm-strong { font-size: 140%; }

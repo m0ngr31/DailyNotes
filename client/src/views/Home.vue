@@ -1,5 +1,5 @@
 <template>
-  <div class="columns no-overflow no-margin is-mobile">
+  <div class="columns no-margin is-mobile full-height">
     <div class="column sidebar is-6-mobile is-6-tablet is-two-fifths-desktop is-4-widescreen is-3-fullhd" v-show="!sidebar.hide">
       <div class="columns light-white center-columns text-center">
         <div class="column">
@@ -62,10 +62,6 @@ export default class Admin extends Vue {
 </script>
 
 <style scoped>
-.no-overflow {
-  overflow: hidden;
-}
-
 .no-margin {
   margin: 0px;
 }
@@ -81,11 +77,16 @@ export default class Admin extends Vue {
 
 .sidebar {
   overflow-y: auto;
-  height: 100vh;
   overflow-x: hidden;
+}
+
+.full-height {
+  height: 100vh;
 }
 
 .main-area {
   background-color: var(--main-bg-color);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 </style>

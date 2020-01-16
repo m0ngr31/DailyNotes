@@ -60,8 +60,7 @@ html, body
 }
 
 html, body {
-  height: 100vh;
-  overflow-y: hidden;
+  overflow: hidden;
   font-family: 'Fira Code', monospace;
   font-family: 'Montserrat', sans-serif;
 }

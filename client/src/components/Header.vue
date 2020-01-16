@@ -1,5 +1,5 @@
 <template>
-  <div class="full-width light-white">
+  <div class="header-wrapper light-white">
     <div class="main-header level is-mobile">
       <div class="level-left">
         <div class="level-item alt-button" @click="toggleSidebar(true)">
@@ -165,9 +165,10 @@ export default class Header extends Vue {
 </script>
 
 <style scoped>
-.full-width {
+.header-wrapper {
   width: 100%;
   padding: 10px 20px 0px 20px;
+  border-bottom: 2px solid var(--main-bg-darker);
 }
 
 .main-header {

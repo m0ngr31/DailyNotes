@@ -115,6 +115,11 @@ router.beforeEach(async (to, from, next) => {
     if (requiresAuth && to.name !== 'day-id') {
       SidebarInst.date = null;
     }
+    
+    if (requiresAuth && to.name !== 'search') {
+      SidebarInst.searchString = '';
+      SidebarInst.selectedSearch = '';
+    }
 
     await next();
   }

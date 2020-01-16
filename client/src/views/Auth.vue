@@ -31,6 +31,10 @@
 </style>
 
 <style scoped>
+.full-height {
+  height: 100vh;
+}
+
 .wrapper {
   min-height: 100px;
   border-color: white;
