@@ -3,7 +3,7 @@
 ./verify_env.py
 
 if test -f "./config/.env"; then
-  source ./config/.env
+  . ./config/.env
 fi
 
 export FLASK_APP=server.py
