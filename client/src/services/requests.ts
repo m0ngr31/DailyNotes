@@ -27,6 +27,8 @@ axios.interceptors.response.use(res => res, async err => {
     // Preventing dialogs from firing
     SharedBuefy.preventDialog = true;
 
+    console.log(router);
+
     try {
       (SharedBuefy.notifications as any).open({
         duration: 5000,

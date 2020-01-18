@@ -1,29 +1,25 @@
 FROM nikolaik/python-nodejs:python3.8-nodejs12-alpine
 
 RUN mkdir /app
-
 WORKDIR /app
 
-VOLUME ["/config"]
-
 COPY . .
+
+RUN apk add build-base libffi-dev
 
 RUN \
   cd /app && \
   pip install gunicorn && \
-  pip install -r requirements.txt
+  pip install -r requirements.txt && \
+  chmod +x run.sh && \
+  chmod +x verify_env.py
 
 RUN \
-  cd /app/app && \
+  cd /app/client && \
   rm -rf node_modules && \
   npm install node-sass && \
   npm install && \
   npm run build
 
-RUN \
-  rm -rf /app/config && \
-  ln -s /config /app/config
-
 EXPOSE 5000
-
-ENTRYPOINT ["gunicorn", "server:app", "0.0.0.0:5000"]
+ENTRYPOINT "./run.sh"

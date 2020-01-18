@@ -238,5 +238,4 @@ temp/
 *.sln
 *.sw?
 
-run.sh
 /config
