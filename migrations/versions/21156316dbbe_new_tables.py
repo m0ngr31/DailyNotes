@@ -1,4 +1,4 @@
-"""newtables
+"""New tables
 
 Revision ID: 21156316dbbe
 Revises: 9ca5901af374
