@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if test -f "./config/.env"; then
+  . ./config/.env
+fi
+
 ./verify_env.py
 
 if test -f "./config/.env"; then
