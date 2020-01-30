@@ -48,6 +48,7 @@ class Meta(db.Model):
   user_id = db.Column(GUID, db.ForeignKey('user.uuid'), nullable=False)
   note_id = db.Column(GUID, db.ForeignKey('note.uuid'), nullable=False)
   name_encrypted = db.Column('name', db.String)
+  name_compare = db.Column(db.String)
   kind = db.Column(db.String)
 
   @hybrid_property
@@ -138,7 +139,6 @@ def before_change_note(mapper, connection, target):
 def after_change_note(mapper, connection, target):
   tags = []
   projects = []
-  # tasks = []
 
   data = frontmatter.loads(target.text)
 
@@ -152,7 +152,7 @@ def after_change_note(mapper, connection, target):
   elif isinstance(data.get('projects'), str):
     projects = list(set(map(str.strip, data['projects'].split(','))))
 
-  # Parse out tasks here #
+  tasks = re.findall("- \[[x| ]\] (.*)", data.content)
 
   existing_tags = []
   existing_projects = []
@@ -206,8 +206,52 @@ def after_change_note(mapper, connection, target):
       'project'
     )
 
+  for task in existing_tasks:
+    if task.name not in tasks:
+      connection.execute(
+        'DELETE FROM meta WHERE uuid = ?',
+        '{}'.format(task.uuid).replace('-', '')
+      )
+    else:
+      task.remove(task.name)
+
+  for task in tasks:
+    encrypted_task = aes_encrypt(task)
+
+    connection.execute(
+      'INSERT INTO meta (uuid, user_id, note_id, name, name_compare, kind) VALUES (?, ?, ?, ?, ?, ?)',
+      '{}'.format(uuid.uuid4()).replace('-', ''),
+      '{}'.format(target.user_id).replace('-', ''),
+      '{}'.format(target.uuid).replace('-', ''),
+      encrypted_task,
+      encrypted_task,
+      'task'
+    )
+
+def before_update_task(mapper, connection, target):
+  if target.kind != 'task':
+    return
+
+  if target.name_encrypted == target.name_compare:
+    return
+
+  note = Note.query.get(target.note_id)
+
+  if not note:
+    return
+
+  note_data = aes_encrypt(note.text.replace(aes_decrypt(target.name_compare), target.name))
+
+  connection.execute(
+    'UPDATE note SET data = ?',
+    note_data,
+  )
+
+  target.name_compare = target.name_encrypted
+
 
 event.listen(Note, 'before_insert', before_change_note)
 event.listen(Note, 'before_update', before_change_note)
 event.listen(Note, 'after_insert', after_change_note)
 event.listen(Note, 'after_update', after_change_note)
+event.listen(Meta, 'before_update', before_update_task)

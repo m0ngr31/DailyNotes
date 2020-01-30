@@ -1,8 +1,8 @@
 """Meta Table
 
-Revision ID: ba1754afe110
+Revision ID: 7bd1ee1840ca
 Revises: 9ca5901af374
-Create Date: 2020-01-29 23:02:35.360745
+Create Date: 2020-01-30 01:13:40.069188
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import app.model_types
 
 
 # revision identifiers, used by Alembic.
-revision = 'ba1754afe110'
+revision = '7bd1ee1840ca'
 down_revision = '9ca5901af374'
 branch_labels = None
 depends_on = None
@@ -24,6 +24,7 @@ def upgrade():
     sa.Column('user_id', app.model_types.GUID(), nullable=False),
     sa.Column('note_id', app.model_types.GUID(), nullable=False),
     sa.Column('name', sa.String(), nullable=True),
+    sa.Column('name_compare', sa.String(), nullable=True),
     sa.Column('kind', sa.String(), nullable=True),
     sa.ForeignKeyConstraint(['note_id'], ['note.uuid'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.uuid'], ),
