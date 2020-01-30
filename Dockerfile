@@ -12,7 +12,8 @@ RUN \
   pip install gunicorn && \
   pip install -r requirements.txt && \
   chmod +x run.sh && \
-  chmod +x verify_env.py
+  chmod +x verify_env.py && \
+  chmod +x verify_data_migrations.py
 
 RUN \
   cd /app/client && \

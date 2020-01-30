@@ -1,7 +1,7 @@
 from app import app, db
 from app.model_types import GUID
 from sqlalchemy.sql import func
-from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method, Comparator
 from sqlalchemy import event
 from Crypto.Cipher import AES
 import binascii
@@ -12,6 +12,11 @@ import re
 
 key = app.config['DB_ENCRYPTION_KEY']
 
+
+class EncryptComparator(Comparator):
+  def __eq__(self, other):
+    print aes_encrypt(other)
+    return func.lower(self.__clause_element__()) == func.lower(aes_encrypt(other))
 
 def aes_encrypt(data):
   cipher = AES.new(key)
@@ -32,43 +37,33 @@ class User(db.Model):
   username = db.Column(db.String(64), unique=True, nullable=False)
   password_hash = db.Column(db.String(128), nullable=False)
   notes = db.relationship('Note', lazy='dynamic', cascade='all, delete, delete-orphan')
-  tags = db.relationship('Tag', lazy='dynamic', cascade='all, delete, delete-orphan')
-  projects = db.relationship('Project', lazy='dynamic', cascade='all, delete, delete-orphan')
-  tasks = db.relationship('Task', lazy='dynamic', cascade='all, delete, delete-orphan')
+  meta = db.relationship('Meta', lazy='dynamic', cascade='all, delete, delete-orphan')
 
   def __repr__(self):
     return '<User {}>'.format(self.uuid)
 
 
-class Tag(db.Model):
+class Meta(db.Model):
   uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
   user_id = db.Column(GUID, db.ForeignKey('user.uuid'), nullable=False)
   note_id = db.Column(GUID, db.ForeignKey('note.uuid'), nullable=False)
-  name = db.Column(db.String)
+  name_encrypted = db.Column('name', db.String)
+  kind = db.Column(db.String)
+
+  @hybrid_property
+  def name(self):
+    return aes_decrypt(self.name_encrypted)
+
+  @name.setter
+  def name(self, value):
+    self.name_encrypted = aes_encrypt(value)
+
+  @name.comparator
+  def name(cls):
+    return EncryptComparator(cls.name_encrypted)
 
   def __repr__(self):
-    return '<Tag {}>'.format(self.uuid)
-
-
-class Project(db.Model):
-  uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
-  user_id = db.Column(GUID, db.ForeignKey('user.uuid'), nullable=False)
-  note_id = db.Column(GUID, db.ForeignKey('note.uuid'), nullable=False)
-  name = db.Column(db.String)
-
-  def __repr__(self):
-    return '<Project {}>'.format(self.uuid)
-
-
-class Task(db.Model):
-  uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
-  user_id = db.Column(GUID, db.ForeignKey('user.uuid'), nullable=False)
-  note_id = db.Column(GUID, db.ForeignKey('note.uuid'), nullable=False)
-  name = db.Column(db.String)
-  swimlane = db.Column(db.String)
-
-  def __repr__(self):
-    return '<Task {}>'.format(self.uuid)
+    return '<Meta {}>'.format(self.uuid)
 
 
 class Note(db.Model):
@@ -78,9 +73,7 @@ class Note(db.Model):
   title = db.Column(db.String(128), nullable=False, unique=True)
   date = db.Column(db.DateTime(timezone=True), server_default=func.now())
   is_date = db.Column(db.Boolean, default=False)
-  tags = db.relationship('Tag', lazy='dynamic', cascade='all, delete, delete-orphan')
-  projects = db.relationship('Project', lazy='dynamic', cascade='all, delete, delete-orphan')
-  tasks = db.relationship('Task', lazy='dynamic', cascade='all, delete, delete-orphan')
+  meta = db.relationship('Meta', lazy='dynamic', cascade='all, delete, delete-orphan')
 
   @hybrid_property
   def text(self):
@@ -89,6 +82,18 @@ class Note(db.Model):
   @text.setter
   def text(self, value):
     self.data = aes_encrypt(value)
+
+  @hybrid_property
+  def name(self):
+    return aes_decrypt(self.title)
+
+  @name.setter
+  def name(self, value):
+    self.title = aes_encrypt(value)
+
+  @name.comparator
+  def name(cls):
+    return EncryptComparator(cls.title)
 
   def __repr__(self):
     return '<Note {}>'.format(self.uuid)
@@ -126,7 +131,7 @@ def before_change_note(mapper, connection, target):
     title = data.get('title')
 
   if title and not target.is_date:
-    target.title = title
+    target.name = title
 
 
 # Handle changes to tasks, projects, and tags
@@ -149,14 +154,24 @@ def after_change_note(mapper, connection, target):
 
   # Parse out tasks here #
 
-  existing_tags = Tag.query.filter_by(note_id=target.uuid).all()
-  existing_projects = Project.query.filter_by(note_id=target.uuid).all()
-  # existing_tasks = Task.query.filter_by(note_id=target.uuid).all()
+  existing_tags = []
+  existing_projects = []
+  existing_tasks = []
+
+  metas = Meta.query.filter_by(note_id=target.uuid).all()
+
+  for meta in metas:
+    if meta.kind is 'tag':
+      existing_tags.append(meta)
+    elif meta.kind is 'project':
+      existing_projects.append(meta)
+    elif meta.kind is 'task':
+      existing_tasks.append(meta)
 
   for tag in existing_tags:
     if tag.name not in tags:
       connection.execute(
-        'DELETE FROM tag WHERE uuid = (?)',
+        'DELETE FROM meta WHERE uuid = ?',
         '{}'.format(tag.uuid).replace('-', '')
       )
     else:
@@ -164,17 +179,18 @@ def after_change_note(mapper, connection, target):
 
   for tag in tags:
     connection.execute(
-      'INSERT INTO tag (uuid, user_id, note_id, name) VALUES (?, ?, ?, ?)',
+      'INSERT INTO meta (uuid, user_id, note_id, name, kind) VALUES (?, ?, ?, ?, ?)',
       '{}'.format(uuid.uuid4()).replace('-', ''),
       '{}'.format(target.user_id).replace('-', ''),
       '{}'.format(target.uuid).replace('-', ''),
-      tag
+      aes_encrypt(tag),
+      'tag'
     )
 
   for project in existing_projects:
     if project.name not in projects:
       connection.execute(
-        'DELETE FROM project WHERE uuid = (?)',
+        'DELETE FROM meta WHERE uuid = ?',
         '{}'.format(project.uuid).replace('-', '')
       )
     else:
@@ -182,11 +198,12 @@ def after_change_note(mapper, connection, target):
 
   for project in projects:
     connection.execute(
-      'INSERT INTO project (uuid, user_id, note_id, name) VALUES (?, ?, ?, ?)',
+      'INSERT INTO meta (uuid, user_id, note_id, name, kind) VALUES (?, ?, ?, ?, ?)',
       '{}'.format(uuid.uuid4()).replace('-', ''),
       '{}'.format(target.user_id).replace('-', ''),
       '{}'.format(target.uuid).replace('-', ''),
-      project
+      aes_encrypt(project),
+      'project'
     )
 
 

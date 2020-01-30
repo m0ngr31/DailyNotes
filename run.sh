@@ -14,4 +14,6 @@ export FLASK_APP=server.py
 
 flask db upgrade
 
+./verify_data_migrations.py
+
 exec gunicorn server:app -b 0.0.0.0:5000
