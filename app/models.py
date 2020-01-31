@@ -15,7 +15,6 @@ key = app.config['DB_ENCRYPTION_KEY']
 
 class EncryptComparator(Comparator):
   def __eq__(self, other):
-    print aes_encrypt(other)
     return func.lower(self.__clause_element__()) == func.lower(aes_encrypt(other))
 
 def aes_encrypt(data):
@@ -66,6 +65,14 @@ class Meta(db.Model):
   def __repr__(self):
     return '<Meta {}>'.format(self.uuid)
 
+  @property
+  def serialize(self):
+    return {
+      'uuid': self.uuid,
+      'name': self.name,
+      'kind': self.kind,
+    }
+
 
 class Note(db.Model):
   uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
@@ -103,22 +110,10 @@ class Note(db.Model):
   def serialize(self):
     return {
       'uuid': self.uuid,
-      'data': self.data,
-      'title': self.title,
+      'data': self.text,
+      'title': self.name,
       'date': self.date,
       'is_date': self.is_date,
-    }
-
-  @property
-  def serialize_full(self):
-    return {
-      'uuid': self.uuid,
-      'data': self.data,
-      'title': self.title,
-      'date': self.date,
-      'is_date': self.is_date,
-      'tags': [x.replace('\,', ',') for x in list(set(re.split(r'(?<!\\),', (self.tags or '')))) if x],
-      'projects': [x.replace('\,', ',') for x in list(set(re.split(r'(?<!\\),', (self.projects or '')))) if x],
     }
 
 

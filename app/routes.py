@@ -1,5 +1,5 @@
 from app import app, db, argon2
-from app.models import User, Note
+from app.models import User, Note, Meta
 from flask import render_template, request, jsonify, abort
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 import itertools
@@ -66,12 +66,12 @@ def save_day():
   if not user:
     abort(400)
 
-  note = user.notes.filter_by(title=title).first()
+  note = user.notes.filter_by(name=title).first()
 
   if not note:
-    note = Note(user_id=user.uuid, title=title, data=data, is_date=True)
+    note = Note(user_id=user.uuid, name=title, text=data, is_date=True)
   else:
-    note.data = data
+    note.text = data
 
   db.session.add(note)
   db.session.flush()
@@ -99,7 +99,7 @@ def create_note():
   if not user:
     abort(400)
 
-  note = Note(user_id=user.uuid, data=data)
+  note = Note(user_id=user.uuid, text=data)
 
   db.session.add(note)
   db.session.flush()
@@ -133,7 +133,7 @@ def save_note():
   if not note:
     abort(400)
 
-  note.data = data
+  note.text = data
 
   db.session.add(note)
   db.session.flush()
@@ -224,7 +224,7 @@ def get_date():
     'user_id': user.uuid
   }
 
-  note = user.notes.filter_by(title=date, is_date=True).first()
+  note = user.notes.filter_by(name=date, is_date=True).first()
   
   if note:
     ret_note = note.serialize
@@ -242,9 +242,9 @@ def cal_events():
     abort(400)
 
   # TODO: Only do current month or something
-  notes = user.notes.filter_by(is_date=True)
+  notes = user.notes.filter_by(is_date=True).all()
 
-  return jsonify(events=[x.title for x in notes]), 200
+  return jsonify(events=[x.name for x in notes]), 200
 
 
 @app.route('/api/sidebar', methods=['GET'])
@@ -256,39 +256,70 @@ def sidebar_data():
   if not user:
     abort(400)
 
-  notes_all = user.notes.all()
+  notes = sorted([a.serialize for a in user.notes.filter_by(is_date=False).all()], key=lambda note: note['title'].lower())
+  tags = sorted(set([a.name for a in user.meta.filter_by(kind="tag").all()]), key=lambda s: s.lower())
+  projects = sorted(set([a.name for a in user.meta.filter_by(kind="project").all()]), key=lambda s: s.lower())
+  tasks = [a.name for a in user.meta.filter_by(kind="task").all()]
 
-  tags = []
-  projects = []
+  return jsonify(tags=tags,projects=projects,notes=notes), 200
+  
+  
+@app.route('/api/search', methods=['POST'])
+@jwt_required
+def search():
+  req = request.get_json()
+  selected_search = req.get('selected', '')
+  search_string = req.get('search', '')
+
+  if not selected_search or not search_string or not len(search_string) > 0:
+    abort(400)
+
+  if selected_search not in ['project', 'tag', 'search']:
+    abort(400)
+
+  username = get_jwt_identity()
+
+  if not username:
+    abort(401)
+
+  user = User.query.filter_by(username=username.lower()).first()
+
+  if not user:
+    abort(400)
+
+  matched_notes = []
+
+  if selected_search == 'project':
+    all_projects = user.meta.filter_by(kind="project").all()
+    
+    for project in all_projects:
+      if search_string.lower() in project.name.lower():
+        matched_notes.append(project.note_id)
+
+  elif selected_search == 'tag':
+    all_tags = user.meta.filter_by(kind="tag").all()
+    
+    for tag in all_tags:
+      if search_string.lower() in tag.name.lower():
+        matched_notes.append(tag.note_id)
+
+  elif selected_search == 'search':
+    all_notes = user.notes.all()
+
+    for note in all_notes:
+      if search_string.lower() in note.text.lower():
+        matched_notes.append(note.uuid)
+
+  filtered_notes = Note.query.filter(Note.uuid.in_(matched_notes)).all()
   notes = []
-  all_notes = []
 
-  for note in notes_all:
-    serialized_note = note.serialize_full
+  for note in filtered_notes:
+    cleaned_note = note.serialize
+    cleaned_note['tags'] = sorted(set([x.name for x in note.meta.filter_by(kind="tag").all()]), key=lambda s: s.lower())
+    cleaned_note['projects'] = sorted(set([x.name for x in note.meta.filter_by(kind="project").all()]), key=lambda s: s.lower())
+    notes.append(cleaned_note)
 
-    tags.extend(serialized_note['tags'])
-    projects.extend(serialized_note['projects'])
-
-    all_notes.append({
-      'title': note.title,
-      'uuid': note.uuid,
-      'data': note.data,
-      'is_date': note.is_date,
-      'tags': serialized_note['tags'],
-      'projects': serialized_note['projects'],
-    })
-
-    if not note.is_date:
-      notes.append({
-        'title': note.title,
-        'uuid': note.uuid,
-      })
-
-  notes = sorted(notes, key=lambda note: note['title'].lower())
-  tags = sorted([x for x in list(set(tags))], key=lambda name: name.lower())
-  projects = sorted([x for x in list(set(projects))], key=lambda name: name.lower())
-
-  return jsonify(tags=tags,projects=projects,notes=notes,notes_all=all_notes), 200
+  return jsonify(notes=notes), 200
 
 
 @app.route('/', defaults={'path': ''})

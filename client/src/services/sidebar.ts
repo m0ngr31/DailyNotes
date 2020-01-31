@@ -19,6 +19,7 @@ class SidebarSerivce {
   public calLoading: boolean = false;
   public date: any = null;
   public sidebarLoading: boolean = false;
+  public searchLoading: boolean = false;
   public selectedSearch: string = '';
   public searchString: any = '';
   public filteredNotes: any[] = [];
@@ -108,30 +109,25 @@ class SidebarSerivce {
     this.sidebarLoading = false;
   }
 
-  public searchNotes() {
-    this.filteredNotes = _.filter(this.allNotes, (note: INote) => {
-      if (this.selectedSearch === 'tag') {
-        if (!note.tags) {
-          return false;
-        }
+  public async searchNotes() {
+    if (this.searchLoading) {
+      return;
+    }
 
-        return _.findIndex(note.tags, tag => tag ===this.searchString) > -1;
-      } else if (this.selectedSearch === 'project') {
-        if (!note.projects) {
-          return false;
-        }
+    this.searchLoading = true;
 
-        return _.findIndex(note.projects, project => project ===this.searchString) > -1;
-      } else if (this.selectedSearch === 'search') {
-        if (!note.data || !note.title) {
-          return false;
-        }
+    try {
+      const res = await Requests.post('/search', {
+        selected: this.selectedSearch,
+        search: this.searchString,
+      });
 
-        return note.data.indexOf(this.searchString) > -1 || note.title.indexOf(this.searchString) > -1;
+      if (res && res.data) {
+        this.filteredNotes = res.data.notes || [];
       }
+    } catch (e) {}
 
-      return false;
-    });
+    this.searchLoading = false;
 
     router.push({name: 'search', query: {[this.selectedSearch]: this.searchString}});
   }
