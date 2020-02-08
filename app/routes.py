@@ -108,6 +108,40 @@ def create_note():
   return jsonify(note=note.serialize), 200
 
 
+@app.route('/api/save_task', methods=['PUT'])
+@jwt_required
+def save_task():
+  req = request.get_json()
+  uuid = req.get('uuid')
+  name = req.get('name')
+
+  if not uuid or not name:
+    abort(400)
+
+  username = get_jwt_identity()
+
+  if not username:
+    abort(401)
+
+  user = User.query.filter_by(username=username.lower()).first()
+
+  if not user:
+    abort(400)
+
+  task = user.meta.filter_by(uuid=uuid).first()
+
+  if not task:
+    abort(400)
+
+  task.name = name
+
+  db.session.add(task)
+  db.session.flush()
+  db.session.commit()
+
+  return jsonify({}), 200  
+
+
 @app.route('/api/save_note', methods=['PUT'])
 @jwt_required
 def save_note():
@@ -259,9 +293,9 @@ def sidebar_data():
   notes = sorted([a.serialize for a in user.notes.filter_by(is_date=False).all()], key=lambda note: note['title'].lower())
   tags = sorted(set([a.name for a in user.meta.filter_by(kind="tag").all()]), key=lambda s: s.lower())
   projects = sorted(set([a.name for a in user.meta.filter_by(kind="project").all()]), key=lambda s: s.lower())
-  tasks = [a.name for a in user.meta.filter_by(kind="task").all()]
+  tasks = sorted([a.serialize for a in user.meta.filter_by(kind="task").all()], key=lambda task: task['note_id'])
 
-  return jsonify(tags=tags,projects=projects,notes=notes), 200
+  return jsonify(tags=tags,projects=projects,notes=notes,tasks=tasks), 200
   
   
 @app.route('/api/search', methods=['POST'])

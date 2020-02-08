@@ -27,16 +27,16 @@ axios.interceptors.response.use(res => res, async err => {
     // Preventing dialogs from firing
     SharedBuefy.preventDialog = true;
 
-    console.log(router);
-
-    try {
-      (SharedBuefy.notifications as any).open({
-        duration: 5000,
-        message: 'Session expired. Logging out.',
-        position: 'is-top',
-        type: 'is-warning'
-      });
-    } catch(e) {}
+    if (router.currentRoute.path.indexOf('/auth') !== 0) {
+      try {
+        (SharedBuefy.notifications as any).open({
+          duration: 5000,
+          message: 'Session expired. Logging out.',
+          position: 'is-top',
+          type: 'is-warning'
+        });
+      } catch(e) {}
+    }
 
     try {
       (SharedBuefy.activeDialog as any).close();

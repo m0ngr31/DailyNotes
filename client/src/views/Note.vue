@@ -73,6 +73,25 @@ export default class Note extends Vue {
     }
 
     this.isLoading = false;
+    
+    this.$root.$on('taskUpdated', (data: any) => {
+      const {note_id, task, completed} = data;
+
+      if (note_id !== this.note.uuid) {
+        return;
+      }
+
+      let original = task;
+
+      if (!completed) {
+        original = original.replace('- [ ]', '- [x]');
+      } else {
+        original = original.replace('- [x]', '- [ ]');
+      }
+
+      this.text = this.text.replace(original, task);
+      this.modifiedText = this.modifiedText.replace(original, task);
+    });
   }
 
   public async saveNote() {

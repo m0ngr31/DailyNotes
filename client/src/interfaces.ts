@@ -16,3 +16,9 @@ export interface INote {
   tags?: string;
   projects?: string;
 }
+
+export interface IMeta {
+  uuid: string;
+  name: string;
+  note_id: string;
+}

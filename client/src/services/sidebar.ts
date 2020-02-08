@@ -7,15 +7,15 @@ import {Requests} from './requests';
 
 import router from '../router';
 
-import {INote} from '../interfaces';
+import {INote, IMeta} from '../interfaces';
 
 class SidebarSerivce {
   public hide: boolean = false;
   public events: any[] = [];
   public tags: string[] = [];
+  public tasks: IMeta[] = [];
   public projects: string[] = [];
   public notes: INote[] = [];
-  public allNotes: INote[] = [];
   public calLoading: boolean = false;
   public date: any = null;
   public sidebarLoading: boolean = false;
@@ -96,9 +96,9 @@ class SidebarSerivce {
       
       if (res && res.data) {
         this.tags = res.data.tags;
+        this.tasks = res.data.tasks;
         this.projects = res.data.projects;
         this.notes = res.data.notes;
-        this.allNotes = res.data.notes_all;
       }
 
       if (this.selectedSearch.length && this.searchString.length) {
@@ -130,6 +130,13 @@ class SidebarSerivce {
     this.searchLoading = false;
 
     router.push({name: 'search', query: {[this.selectedSearch]: this.searchString}});
+  }
+
+  public async saveTaskProgress(name: string, uuid: string) {
+    try {
+      await Requests.put('/save_task', {name, uuid});
+      this.getSidebarInfo();
+    } catch (e) {}
   }
 }
 

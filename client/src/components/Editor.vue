@@ -46,6 +46,7 @@ export default class Editor extends Vue {
   public config: CodeMirror.EditorConfiguration = {
     tabSize: 4,
     lineNumbers: false,
+    lineWrapping: true,
     mode: {
       name: "yaml-frontmatter",
       tokenTypeOverrides: {

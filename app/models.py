@@ -71,6 +71,7 @@ class Meta(db.Model):
       'uuid': self.uuid,
       'name': self.name,
       'kind': self.kind,
+      'note_id': self.note_id,
     }
 
 
@@ -147,7 +148,7 @@ def after_change_note(mapper, connection, target):
   elif isinstance(data.get('projects'), str):
     projects = list(set(map(str.strip, data['projects'].split(','))))
 
-  tasks = re.findall("- \[[x| ]\] (.*)", data.content)
+  tasks = re.findall("- \[[x| ]\] .*$", data.content, re.MULTILINE)
 
   existing_tags = []
   existing_projects = []
@@ -238,8 +239,9 @@ def before_update_task(mapper, connection, target):
   note_data = aes_encrypt(note.text.replace(aes_decrypt(target.name_compare), target.name))
 
   connection.execute(
-    'UPDATE note SET data = ?',
+    'UPDATE note SET data = ? WHERE uuid = ?',
     note_data,
+    '{}'.format(note.uuid).replace('-', '')
   )
 
   target.name_compare = target.name_encrypted
