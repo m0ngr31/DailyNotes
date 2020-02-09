@@ -239,3 +239,5 @@ temp/
 *.sw?
 
 /config
+test.sh
+test.py

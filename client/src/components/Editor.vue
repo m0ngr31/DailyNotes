@@ -44,8 +44,9 @@ export default class Editor extends Vue {
   public value!: string;
 
   public config: CodeMirror.EditorConfiguration = {
-    tabSize: 4,
+    tabSize: 2,
     lineNumbers: false,
+    lineWrapping: true,
     mode: {
       name: "yaml-frontmatter",
       tokenTypeOverrides: {
@@ -56,7 +57,8 @@ export default class Editor extends Vue {
     autofocus: true,
     autoCloseBrackets: true,
     extraKeys: {
-      "Enter": "newlineAndIndentContinueMarkdownList"
+      'Enter': 'newlineAndIndentContinueMarkdownList',
+      'Ctrl-S': () => this.save(),
     },
   };
 
@@ -69,6 +71,10 @@ export default class Editor extends Vue {
     }, 500, {trailing: true, leading: false}));
 
     this.handleValueUpdate();
+  }
+
+  save() {
+    this.$emit('saveShortcut');
   }
 
   @Watch('value')
