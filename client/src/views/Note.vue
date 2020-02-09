@@ -1,7 +1,7 @@
 <template>
   <div>
     <Header :options="headerOptions"></Header>
-    <Editor v-if="!isLoading" v-bind:value="text" v-on:valChanged="valChanged"></Editor>
+    <Editor v-if="!isLoading" v-bind:value="text" v-on:valChanged="valChanged" v-on:saveShortcut="saveNote"></Editor>
     <div v-else class="loading-wrapper">
       <b-loading :is-full-page="false" :active="isLoading"></b-loading>
     </div>
