@@ -1,7 +1,7 @@
 <template>
   <div>
     <Header :options="headerOptions"></Header>
-    <Editor v-if="!isLoading" v-bind:value="text" v-on:valChanged="valChanged"></Editor>
+    <Editor v-if="!isLoading" v-bind:value="text" v-on:valChanged="valChanged" v-on:saveShortcut="saveNote"></Editor>
     <div v-else class="loading-wrapper">
       <b-loading :is-full-page="false" :active="isLoading"></b-loading>
     </div>
@@ -73,6 +73,25 @@ export default class Note extends Vue {
     }
 
     this.isLoading = false;
+    
+    this.$root.$on('taskUpdated', (data: any) => {
+      const {note_id, task, completed} = data;
+
+      if (note_id !== this.note.uuid) {
+        return;
+      }
+
+      let original = task;
+
+      if (!completed) {
+        original = original.replace('- [ ]', '- [x]');
+      } else {
+        original = original.replace('- [x]', '- [ ]');
+      }
+
+      this.text = this.text.replace(original, task);
+      this.modifiedText = this.modifiedText.replace(original, task);
+    });
   }
 
   public async saveNote() {

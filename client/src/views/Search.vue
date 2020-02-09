@@ -10,24 +10,29 @@
         </b-select>
         <b-input placeholder="Searcy query" v-model="sidebar.searchString" expanded @keyup.native.enter="sidebar.searchNotes"></b-input>
         <p class="control">
-          <button class="button is-success" type="button" @click="sidebar.searchNotes">Search</button>
+          <button class="button is-success" type="button" @click="sidebar.searchNotes()">Search</button>
         </p>
       </b-field>
-      <div v-if="!sidebar.filteredNotes.length" class="mt-25">
-        <b-notification
-          type="is-dark"
-          :closable="false"
+      <div v-if="!sidebar.searchLoading">
+        <div v-if="!sidebar.filteredNotes.length" class="mt-25">
+          <b-notification
+            type="is-dark"
+            :closable="false"
+          >
+            There are no notes that match that query.
+          </b-notification>
+        </div>
+        <masonry
+          :cols="{default: 4, 1250: 3, 1000: 2, 750: 1}"
+          :gutter="10"
+          class="mt-25"
         >
-          There are no notes that match that query.
-        </b-notification>
+          <NoteCard v-for="note in sidebar.filteredNotes" :key="note.uuid" :note="note"></NoteCard>
+        </masonry>
       </div>
-      <masonry
-        :cols="{default: 4, 1250: 3, 1000: 2, 750: 1}"
-        :gutter="10"
-        class="mt-25"
-      >
-        <NoteCard v-for="note in sidebar.filteredNotes" :key="note.uuid" :note="note"></NoteCard>
-      </masonry>
+      <div v-else class="loading-wrapper">
+        <b-loading :is-full-page="false" :active="sidebar.searchLoading"></b-loading>
+      </div>
     </div>
   </div>
 </template>
@@ -106,5 +111,11 @@ export default class Search extends Vue {
 
 .mt-25 {
   margin-top: 25px;
+}
+
+.loading-wrapper {
+  width: 100%;
+  height: 50vh;
+  position: relative;
 }
 </style>
