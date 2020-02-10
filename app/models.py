@@ -218,7 +218,7 @@ def after_change_note(mapper, connection, target):
         '{}'.format(task.uuid).replace('-', '')
       )
     else:
-      task.remove(task.name)
+      tasks.remove(task.name)
 
   for task in tasks:
     encrypted_task = aes_encrypt(task)
