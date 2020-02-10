@@ -69,7 +69,7 @@ class Meta(db.Model):
   def serialize(self):
     return {
       'uuid': self.uuid,
-      'name': self.name,
+      'name': self.name.decode('ascii'),
       'kind': self.kind,
       'note_id': self.note_id,
     }
@@ -111,8 +111,8 @@ class Note(db.Model):
   def serialize(self):
     return {
       'uuid': self.uuid,
-      'data': self.text,
-      'title': self.name,
+      'data': self.text.decode('ascii'),
+      'title': self.name.decode('ascii'),
       'date': self.date,
       'is_date': self.is_date,
     }
@@ -157,11 +157,11 @@ def after_change_note(mapper, connection, target):
   metas = Meta.query.filter_by(note_id=target.uuid).all()
 
   for meta in metas:
-    if meta.kind is 'tag':
+    if meta.kind == 'tag':
       existing_tags.append(meta)
-    elif meta.kind is 'project':
+    elif meta.kind == 'project':
       existing_projects.append(meta)
-    elif meta.kind is 'task':
+    elif meta.kind == 'task':
       existing_tasks.append(meta)
 
   for tag in existing_tags:
