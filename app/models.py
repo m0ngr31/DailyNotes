@@ -52,7 +52,10 @@ class Meta(db.Model):
 
   @hybrid_property
   def name(self):
-    return aes_decrypt(self.name_encrypted)
+    try:
+      return aes_decrypt(self.name_encrypted).decode('ascii')
+    except:
+      return aes_decrypt(self.name_encrypted)
 
   @name.setter
   def name(self, value):
@@ -69,7 +72,7 @@ class Meta(db.Model):
   def serialize(self):
     return {
       'uuid': self.uuid,
-      'name': self.name.decode('ascii'),
+      'name': self.name,
       'kind': self.kind,
       'note_id': self.note_id,
     }
@@ -86,7 +89,10 @@ class Note(db.Model):
 
   @hybrid_property
   def text(self):
-    return aes_decrypt(self.data)
+    try:
+      return aes_decrypt(self.data).decode('ascii')
+    except:
+      return aes_decrypt(self.data)
 
   @text.setter
   def text(self, value):
@@ -94,7 +100,10 @@ class Note(db.Model):
 
   @hybrid_property
   def name(self):
-    return aes_decrypt(self.title)
+    try:
+      return aes_decrypt(self.title).decode('ascii')
+    except:
+      return aes_decrypt(self.title)
 
   @name.setter
   def name(self, value):
@@ -111,8 +120,8 @@ class Note(db.Model):
   def serialize(self):
     return {
       'uuid': self.uuid,
-      'data': self.text.decode('ascii'),
-      'title': self.name.decode('ascii'),
+      'data': self.text,
+      'title': self.name,
       'date': self.date,
       'is_date': self.is_date,
     }
