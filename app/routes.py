@@ -278,7 +278,7 @@ def cal_events():
   # TODO: Only do current month or something
   notes = user.notes.filter_by(is_date=True).all()
 
-  return jsonify(events=[x.name for x in notes]), 200
+  return jsonify(events=[x.name.decode('ascii') for x in notes]), 200
 
 
 @app.route('/api/sidebar', methods=['GET'])
@@ -291,8 +291,8 @@ def sidebar_data():
     abort(400)
 
   notes = sorted([a.serialize for a in user.notes.filter_by(is_date=False).all()], key=lambda note: note['title'].lower())
-  tags = sorted(set([a.name for a in user.meta.filter_by(kind="tag").all()]), key=lambda s: s.lower())
-  projects = sorted(set([a.name for a in user.meta.filter_by(kind="project").all()]), key=lambda s: s.lower())
+  tags = sorted(set([a.name.decode('ascii') for a in user.meta.filter_by(kind="tag").all()]), key=lambda s: s.lower())
+  projects = sorted(set([a.name.decode('ascii') for a in user.meta.filter_by(kind="project").all()]), key=lambda s: s.lower())
   tasks = sorted([a.serialize for a in user.meta.filter_by(kind="task").all()], key=lambda task: task['note_id'])
 
   return jsonify(tags=tags,projects=projects,notes=notes,tasks=tasks), 200
