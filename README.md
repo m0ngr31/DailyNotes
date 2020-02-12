@@ -22,7 +22,15 @@ The recommended way of running is to pull the image from [Docker Hub](https://hu
 #### Volumes
 | Volume Name | Description |
 |---|---|
-| config | Used to store DB and environment variables. This is not needed if you pass in all of the above environment variables. |
+| /app/config | Used to store DB and environment variables. This is not needed if you pass in all of the above environment variables. |
+
+
+#### Docker Run
+By default, the easiest way to get running is:
+
+```bash
+docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
+```
 
 ## Development setup
 
