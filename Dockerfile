@@ -18,7 +18,7 @@ RUN \
 RUN \
   cd /app/client && \
   npm install node-sass && \
-  npm install && \
+  npm ci && \
   npm run build
 
 EXPOSE 5000
