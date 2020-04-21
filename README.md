@@ -1,4 +1,4 @@
-# DailyNotes: Keep track of notes and tasks in Markdown
+# DailyNotes: Daily tasks and notes in Markdown
 
 <p align="center">
   <!-- Font-Awesome book-open -->
@@ -7,7 +7,37 @@
   </svg>
 </p>
 
-Current version: **1.0-beta2**
+Current version: **1.0-beta3**
+
+## About
+The idea for this app came from using my Hobonichi Techo planner every morning to write down what I needed to accomplish that day & using it for scratching down random thoughts and notes as the day went on. The closest thing I've seen to an app for replacing this system is Noteplan, but I don't use a Mac or an iOS device, and it's not self-hostable, so I decided to write my own.
+
+Since I had the need for keeping track of to-dos throughout the day, regular Markdown didn't work for me since it doesn't natively support tasks. So as an alternative I'm using Github Flavored Markdown (GFM). I really wanted it to feel like an actual text editor and not just a textbox, so I decided to use CodeMirror to handle all the input. Fira Code is used to provide font ligatures. Some other nice features include code highlighting, text/code folding, and a task list where you can toggle the status of any task from any date or note.
+
+## Roadmap
+I'd like to try add include at least of some the following features to get to a final v1.0 release:
+
+ - CalDAV support
+ - HTML preview (instead of just markdown)
+ - Kanban board for tasks (and new syntax to attach meta info like swimlane and project for each task)
+ - Nested tagging
+
+
+## In Action
+Here is some screenshots of what it looks like:
+
+Main editor:
+
+![](https://i.imgur.com/WEZff9a.png)
+
+Search page:
+
+![](https://i.imgur.com/JKqHlhT.png)
+
+
+Task list:
+
+![](https://i.imgur.com/TSHboCT.png)
 
 ## Running
 The recommended way of running is to pull the image from [Docker Hub](https://hub.docker.com/r/m0ngr31/dailynotes).

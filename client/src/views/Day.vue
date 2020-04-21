@@ -27,6 +27,8 @@ import Header from '@/components/Header.vue';
 
 import {IHeaderOptions} from '../interfaces';
 
+import {newDay} from '../services/consts';
+
 
 Component.registerHooks([
   'metaInfo'
@@ -169,7 +171,7 @@ export default class Day extends Vue {
   }
 
   public setDefaultText() {
-    this.text = `---\ntags:\nprojects:\n---\n\n`;
+    this.text = newDay;
 
     this.day = {
       data: this.text,
