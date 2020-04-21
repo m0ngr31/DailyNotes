@@ -7,7 +7,7 @@
   </svg>
 </p>
 
-Current version: **1.0-beta1**
+Current version: **1.0-beta2**
 
 ## Running
 The recommended way of running is to pull the image from [Docker Hub](https://hub.docker.com/r/m0ngr31/dailynotes).
@@ -43,7 +43,7 @@ You need Python (works on 2 and 3) and Node >= 8 installed
 ```bash
 pip install -r requirements.txt
 cd client
-npm install
+npm ci
 ```
 
 ### Creating the environment
