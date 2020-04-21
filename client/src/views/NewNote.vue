@@ -1,7 +1,7 @@
 <template>
   <div>
     <Header :options="headerOptions"></Header>
-    <Editor v-bind:value="text" v-on:valChanged="valChanged"></Editor>
+    <Editor v-bind:value="text" v-on:valChanged="valChanged" v-on:saveShortcut="saveNote"></Editor>
   </div>
 </template>
 
@@ -11,6 +11,7 @@ import Component from 'vue-class-component';
 
 import SidebarInst from '../services/sidebar';
 import {NoteService} from '../services/notes';
+import {newNote} from '../services/consts';
 
 import {INote} from '../interfaces';
 
@@ -33,7 +34,7 @@ Component.registerHooks([
 export default class NewNote extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
-  public modifiedText : string = '';
+  public modifiedText: string = '';
   public title: string = 'New Note';
   public note!: INote;
   public headerOptions: IHeaderOptions = {
@@ -49,7 +50,7 @@ export default class NewNote extends Vue {
   };
 
   mounted() {
-    this.text = `---\ntitle:\ntags:\nprojects:\n---\n\n`;
+    this.text = newNote;
 
     this.note = {
       data: this.text,

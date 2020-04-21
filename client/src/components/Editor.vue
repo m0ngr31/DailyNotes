@@ -1,5 +1,5 @@
 <template>
-  <div class="editor">
+  <div class="editor" @click="prevent($event)">
     <textarea ref="editor"></textarea>
   </div>
 </template>
@@ -33,6 +33,9 @@ import 'codemirror/mode/sql/sql.js';
 // Addons
 import 'codemirror/addon/edit/continuelist.js';
 import 'codemirror/addon/edit/closebrackets.js';
+
+import {newNote, newDay} from '../services/consts';
+import eventHub from '../services/eventHub';
 
 @Component({
   props: {
@@ -70,11 +73,32 @@ export default class Editor extends Vue {
       this.$emit('valChanged', this.editor.getValue());
     }, 500, {trailing: true, leading: false}));
 
-    this.handleValueUpdate();
+    this.handleValueUpdate(true);
+  }
+
+  created() {
+    eventHub.$on('focusEditor', this.focus);
+  }
+
+  beforeDestroy() {
+    eventHub.$off('focusEditor', this.focus);
+  }
+
+  prevent($event: any) {
+    $event.stopPropagation();
   }
 
   save() {
     this.$emit('saveShortcut');
+  }
+
+  focus() {
+    _.defer(() => {
+      if (!this.editor.state.focused) {
+        this.editor.setCursor(this.editor.lineCount(), 0);
+        this.editor.focus();
+      }
+    });
   }
 
   @Watch('value')
@@ -82,10 +106,28 @@ export default class Editor extends Vue {
     this.handleValueUpdate();
   }
 
-  public handleValueUpdate() {
+  public handleValueUpdate(firstMount?: boolean) {
     _.defer(() => {
+      const cursor = this.editor.getCursor();
+
       this.editor.setValue(this.value || '');
-      this.editor.setCursor(this.editor.lineCount(), 0);
+
+      if (this.value === newNote) {
+        this.editor.setCursor(1, 7)
+        return;
+      }
+
+      if (this.value === newDay) {
+        this.editor.setCursor(1, 6)
+        return;
+      }
+
+      if (firstMount) {
+        this.editor.setCursor(this.editor.lineCount(), 0);
+        return
+      }
+
+      this.editor.setCursor(cursor);
     });
   }
 }

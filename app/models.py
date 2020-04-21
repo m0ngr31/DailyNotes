@@ -245,7 +245,7 @@ def before_update_task(mapper, connection, target):
   if not note:
     return
 
-  note_data = aes_encrypt(note.text.replace(aes_decrypt(target.name_compare), target.name))
+  note_data = aes_encrypt(note.text.replace(aes_decrypt(target.name_compare).decode('utf-8'), target.name))
 
   connection.execute(
     'UPDATE note SET data = ? WHERE uuid = ?',

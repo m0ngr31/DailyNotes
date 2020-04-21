@@ -93,7 +93,7 @@ class SidebarSerivce {
 
     try {
       const res = await Requests.get('/sidebar');
-      
+
       if (res && res.data) {
         this.tags = res.data.tags;
         this.tasks = res.data.tasks;
@@ -129,7 +129,7 @@ class SidebarSerivce {
 
     this.searchLoading = false;
 
-    router.push({name: 'search', query: {[this.selectedSearch]: this.searchString}});
+    router.push({name: 'search', query: {[this.selectedSearch]: this.searchString}}).catch(err => {});
   }
 
   public async saveTaskProgress(name: string, uuid: string) {

@@ -14,7 +14,7 @@
       <Calendar />
       <Tags />
     </div>
-    <div class="column no-padding main-area">
+    <div class="column no-padding main-area" @click="focusEditor">
       <router-view :key="$route.path"></router-view>
     </div>
   </div>
@@ -30,6 +30,7 @@ import Tags from "@/components/Tags.vue";
 import {updateJWT} from '../services/user';
 
 import SidebarInst from '../services/sidebar';
+import eventHub from '../services/eventHub';
 
 const MINUTES = 60;
 const SECONDS = 60;
@@ -58,7 +59,11 @@ export default class Admin extends Vue {
       clearInterval(this.auth_timer);
     }
   }
-};
+
+  focusEditor() {
+    eventHub.$emit('focusEditor');
+  }
+}
 </script>
 
 <style scoped>

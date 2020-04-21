@@ -1,5 +1,5 @@
 <template>
-  <div class="header-wrapper light-white">
+  <div class="header-wrapper light-white" @click="prevent($event)">
     <div class="main-header level is-mobile">
       <div class="level-left">
         <div class="level-item alt-button" @click="toggleSidebar(true)">
@@ -121,7 +121,11 @@ export default class Header extends Vue {
   }
 
   public newNote() {
-    this.$router.push({name: 'new-note'});
+    this.$router.push({name: 'new-note'}).catch(err => {});
+  }
+
+  public prevent($event: any) {
+    $event.stopPropagation();
   }
 
   public prevDay() {
