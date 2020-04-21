@@ -253,7 +253,7 @@ def get_date():
 
   ret_note = {
     'title': date,
-    'data': '---\ntags:\nprojects:\n---\n\n',
+    'data': '---\ntags: \nprojects: \n---\n\n',
     'is_date': True,
     'user_id': user.uuid
   }

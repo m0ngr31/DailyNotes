@@ -143,4 +143,8 @@ html, body {
   background-color: var(--main-bg-color);
   color: #ddd;
 }
+
+.CodeMirror-vscrollbar {
+  overflow-y: auto;
+}
 </style>

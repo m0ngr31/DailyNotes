@@ -11,6 +11,7 @@ app = Flask(__name__,
   static_folder = "../dist/static",
   template_folder = "../dist"
 )
+
 app.config.from_object(Config)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)

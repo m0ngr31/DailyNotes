@@ -45,7 +45,7 @@ export default class Tags extends Vue {
   }
 
   public goToSearch(searchType: string, tag: string) {
-    router.push({name: 'search', query: {[searchType]: tag}});
+    router.push({name: 'search', query: {[searchType]: tag}}).catch(err => {});
   }
 }
 </script>
