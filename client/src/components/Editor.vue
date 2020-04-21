@@ -22,6 +22,7 @@ import 'codemirror/mode/ruby/ruby.js';
 import 'codemirror/mode/rust/rust.js';
 import 'codemirror/mode/sass/sass.js';
 import 'codemirror/mode/vb/vb.js';
+import 'codemirror/mode/xml/xml.js';
 import 'codemirror/mode/vbscript/vbscript.js';
 import 'codemirror/mode/htmlmixed/htmlmixed.js';
 import 'codemirror/mode/shell/shell.js';
@@ -33,6 +34,15 @@ import 'codemirror/mode/sql/sql.js';
 // Addons
 import 'codemirror/addon/edit/continuelist.js';
 import 'codemirror/addon/edit/closebrackets.js';
+
+// Folding
+import 'codemirror/addon/fold/foldcode.js';
+import 'codemirror/addon/fold/foldgutter.js';
+import 'codemirror/addon/fold/brace-fold.js';
+import 'codemirror/addon/fold/xml-fold.js';
+import 'codemirror/addon/fold/indent-fold.js';
+import 'codemirror/addon/fold/markdown-fold.js';
+import 'codemirror/addon/fold/comment-fold.js';
 
 import {newNote, newDay} from '../services/consts';
 import eventHub from '../services/eventHub';
@@ -56,6 +66,8 @@ export default class Editor extends Vue {
         emoji: "emoji"
       }
     },
+    foldGutter: true,
+    gutters: ['CodeMirror-foldgutter'],
     theme: 'material',
     autofocus: true,
     autoCloseBrackets: true,
@@ -137,6 +149,7 @@ export default class Editor extends Vue {
 /* CSS Imports */
 @import '~codemirror/lib/codemirror.css';
 @import '~codemirror/theme/material.css';
+@import '~codemirror/addon/fold/foldgutter.css';
 
 .CodeMirror {
   padding: 10px 0px 10px 20px;
