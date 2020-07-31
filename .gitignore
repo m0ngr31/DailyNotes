@@ -241,3 +241,6 @@ temp/
 /config
 test.sh
 test.py
+
+# Docker volume
+/dailynotes-volume
