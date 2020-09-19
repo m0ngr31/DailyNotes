@@ -1,5 +1,5 @@
 from app import app, db, argon2
-from app.models import User, Note, Meta
+from app.models import User, Note, Meta, aes_encrypt, aes_encrypt_old
 from flask import render_template, request, jsonify, abort
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 import itertools
@@ -66,8 +66,13 @@ def save_day():
   if not user:
     abort(400)
 
-  note = user.notes.filter_by(name=title).first()
+  enc_date = aes_encrypt(title)
+  note = user.notes.filter_by(title=enc_date).first()
 
+  if not Note:
+    # Check old encryption
+    enc_date = aes_encrypt_old(title)
+    note = user.notes.filter_by(title=enc_date).first()
   if not note:
     note = Note(user_id=user.uuid, name=title, text=data, is_date=True)
   else:
@@ -139,7 +144,7 @@ def save_task():
   db.session.flush()
   db.session.commit()
 
-  return jsonify({}), 200  
+  return jsonify({}), 200
 
 
 @app.route('/api/save_note', methods=['PUT'])
@@ -200,7 +205,7 @@ def delete_note(uuid):
   db.session.delete(note)
   db.session.commit()
 
-  return jsonify({}), 200  
+  return jsonify({}), 200
 
 
 @app.route('/api/refresh_jwt', methods=['GET'])
@@ -219,7 +224,7 @@ def refresh_jwt():
 @jwt_required
 def get_note():
   uuid = request.args.get('uuid')
-  
+
   if not uuid:
     abort(400)
 
@@ -258,8 +263,14 @@ def get_date():
     'user_id': user.uuid
   }
 
-  note = user.notes.filter_by(name=date, is_date=True).first()
-  
+  date_enc = aes_encrypt(date)
+  note = user.notes.filter_by(title=date_enc, is_date=True).first()
+
+  if not note:
+    # Check old encryption
+    date_enc = aes_encrypt_old(date)
+    note = user.notes.filter_by(title=date_enc, is_date=True).first()
+
   if note:
     ret_note = note.serialize
 
@@ -296,8 +307,8 @@ def sidebar_data():
   tasks = sorted([a.serialize for a in user.meta.filter_by(kind="task").all()], key=lambda task: task['note_id'])
 
   return jsonify(tags=tags,projects=projects,notes=notes,tasks=tasks), 200
-  
-  
+
+
 @app.route('/api/search', methods=['POST'])
 @jwt_required
 def search():
@@ -325,14 +336,14 @@ def search():
 
   if selected_search == 'project':
     all_projects = user.meta.filter_by(kind="project").all()
-    
+
     for project in all_projects:
       if search_string.lower() in project.name.lower():
         matched_notes.append(project.note_id)
 
   elif selected_search == 'tag':
     all_tags = user.meta.filter_by(kind="tag").all()
-    
+
     for tag in all_tags:
       if search_string.lower() in tag.name.lower():
         matched_notes.append(tag.note_id)
