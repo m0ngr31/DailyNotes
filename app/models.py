@@ -3,6 +3,7 @@ from app.model_types import GUID
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method, Comparator
 from sqlalchemy import event
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from Crypto.Cipher import AES
 import binascii
 import uuid
@@ -13,19 +14,34 @@ import re
 key = app.config['DB_ENCRYPTION_KEY']
 
 
-class EncryptComparator(Comparator):
-  def __eq__(self, other):
-    return func.lower(self.__clause_element__()) == func.lower(aes_encrypt(other))
-
 def aes_encrypt(data):
+  cipher = AES.new(key, AES.MODE_CFB, key[::-1])
+  return cipher.encrypt(data)
+
+def aes_encrypt_old(data):
   cipher = AES.new(key)
   data = data + (" " * (16 - (len(data) % 16)))
   return binascii.hexlify(cipher.encrypt(data))
 
 def aes_decrypt(data):
+  # From a new object
+  if type(data) is InstrumentedAttribute:
+    return ''
+
+  cipher = AES.new(key, AES.MODE_CFB, key[::-1])
+
+  decrypted = cipher.decrypt(data)
+
+  try:
+    return decrypted.decode('utf-8')
+  except:
+    # Data is in old encryption or it is unencrypted
+    return aes_decrypt_old(data)
+
+def aes_decrypt_old(data):
   try:
     cipher = AES.new(key)
-    return cipher.decrypt(binascii.unhexlify(data)).rstrip()
+    return cipher.decrypt(binascii.unhexlify(data)).rstrip().decode('ascii')
   except:
     # If data is not encrypted, just return it
     return data
@@ -52,18 +68,11 @@ class Meta(db.Model):
 
   @hybrid_property
   def name(self):
-    try:
-      return aes_decrypt(self.name_encrypted).decode('ascii')
-    except:
-      return aes_decrypt(self.name_encrypted)
+    return aes_decrypt(self.name_encrypted)
 
   @name.setter
   def name(self, value):
     self.name_encrypted = aes_encrypt(value)
-
-  @name.comparator
-  def name(cls):
-    return EncryptComparator(cls.name_encrypted)
 
   def __repr__(self):
     return '<Meta {}>'.format(self.uuid)
@@ -89,10 +98,7 @@ class Note(db.Model):
 
   @hybrid_property
   def text(self):
-    try:
-      return aes_decrypt(self.data).decode('ascii')
-    except:
-      return aes_decrypt(self.data)
+    return aes_decrypt(self.data)
 
   @text.setter
   def text(self, value):
@@ -100,18 +106,11 @@ class Note(db.Model):
 
   @hybrid_property
   def name(self):
-    try:
-      return aes_decrypt(self.title).decode('ascii')
-    except:
-      return aes_decrypt(self.title)
+   return aes_decrypt(self.title)
 
   @name.setter
   def name(self, value):
     self.title = aes_encrypt(value)
-
-  @name.comparator
-  def name(cls):
-    return EncryptComparator(cls.title)
 
   def __repr__(self):
     return '<Note {}>'.format(self.uuid)
@@ -245,7 +244,7 @@ def before_update_task(mapper, connection, target):
   if not note:
     return
 
-  note_data = aes_encrypt(note.text.replace(aes_decrypt(target.name_compare).decode('utf-8'), target.name))
+  note_data = aes_encrypt(note.text.replace(aes_decrypt(target.name_compare), target.name))
 
   connection.execute(
     'UPDATE note SET data = ? WHERE uuid = ?',
