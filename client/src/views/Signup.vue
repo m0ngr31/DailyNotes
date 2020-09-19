@@ -24,6 +24,7 @@ import Component from 'vue-class-component';
 import {Requests} from '../services/requests';
 import {setToken} from '../services/user';
 
+declare var process: any;
 
 @Component({
   metaInfo: {
@@ -43,6 +44,14 @@ export default class Signup extends Vue {
   public errMsg: string = '';
 
   public isLoading: boolean = false;
+
+  public hideSignup = process.env.VUE_APP_PREVENT_SIGNUPS ? true : false;
+
+  mounted() {
+    if (this.hideSignup) {
+      this.$router.push({name: 'Login'});
+    }
+  }
 
   public login() {
     this.$router.push({name: 'Login'});

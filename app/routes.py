@@ -8,6 +8,9 @@ import re
 
 @app.route('/api/sign-up', methods=['POST'])
 def sign_up():
+  if app.config['PREVENT_SIGNUPS']:
+    abort(400)
+
   req = request.get_json()
   username = req.get('username')
   password = req.get('password')

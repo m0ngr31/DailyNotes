@@ -1,6 +1,8 @@
 var webpack = require('webpack');
 var path = require('path');
 
+process.env.VUE_APP_PREVENT_SIGNUPS = process.env.PREVENT_SIGNUPS ? true : '';
+
 module.exports = {
   lintOnSave: false,
   outputDir: path.resolve(__dirname, '../dist'),

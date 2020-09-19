@@ -9,7 +9,7 @@
         <b-input placeholder="Password" type="password" password-reveal size="is-medium" icon="key" v-model="password" @keyup.native.enter="login"></b-input>
       </b-field>
       <b-button type="is-primary" size="is-medium" expanded class="mt-20" @click="login" :loading="isLoading">Login</b-button>
-      <h1 class="mt-20 alt-button" @click="signup">Sign Up</h1>
+      <h1 class="mt-20 alt-button" @click="signup" v-if="!hideSignup">Sign Up</h1>
     </div>
   </div>
 </template>
@@ -21,6 +21,7 @@ import Component from 'vue-class-component';
 import {Requests} from '../services/requests';
 import {setToken} from '../services/user';
 
+declare var process: any;
 
 @Component({
   metaInfo: {
@@ -37,6 +38,8 @@ export default class Login extends Vue {
   public errMsg: string = '';
 
   public isLoading: boolean = false;
+
+  public hideSignup = process.env.VUE_APP_PREVENT_SIGNUPS ? true : false;
 
   public signup() {
     this.$router.push({name: 'Sign Up'});
