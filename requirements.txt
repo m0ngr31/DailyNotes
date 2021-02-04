@@ -4,4 +4,4 @@ flask-migrate
 flask-jwt-extended
 flask-argon2
 python-frontmatter
-pycrypto
+pycryptodome
