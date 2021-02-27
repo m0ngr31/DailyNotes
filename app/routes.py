@@ -2,8 +2,6 @@ from app import app, db, argon2
 from app.models import User, Note, Meta, aes_encrypt, aes_encrypt_old
 from flask import render_template, request, jsonify, abort
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
-import itertools
-import re
 
 
 @app.route('/api/sign-up', methods=['POST'])
