@@ -48,7 +48,7 @@ def login():
 
 
 @app.route('/api/save_day', methods=['PUT'])
-@jwt_required
+@jwt_required()
 def save_day():
   req = request.get_json()
   title = req.get('title')
@@ -87,7 +87,7 @@ def save_day():
 
 
 @app.route('/api/create_note', methods=['POST'])
-@jwt_required
+@jwt_required()
 def create_note():
   req = request.get_json()
   data = req.get('data', '')
@@ -115,7 +115,7 @@ def create_note():
 
 
 @app.route('/api/save_task', methods=['PUT'])
-@jwt_required
+@jwt_required()
 def save_task():
   req = request.get_json()
   uuid = req.get('uuid')
@@ -149,7 +149,7 @@ def save_task():
 
 
 @app.route('/api/save_note', methods=['PUT'])
-@jwt_required
+@jwt_required()
 def save_note():
   req = request.get_json()
   uuid = req.get('uuid')
@@ -183,7 +183,7 @@ def save_note():
 
 
 @app.route('/api/delete_note/<uuid>', methods=['DELETE'])
-@jwt_required
+@jwt_required()
 def delete_note(uuid):
   if not uuid:
     abort(400)
@@ -210,7 +210,7 @@ def delete_note(uuid):
 
 
 @app.route('/api/refresh_jwt', methods=['GET'])
-@jwt_required
+@jwt_required()
 def refresh_jwt():
   username = get_jwt_identity()
 
@@ -222,7 +222,7 @@ def refresh_jwt():
 
 
 @app.route('/api/note', methods=['GET'])
-@jwt_required
+@jwt_required()
 def get_note():
   uuid = request.args.get('uuid')
 
@@ -244,7 +244,7 @@ def get_note():
 
 
 @app.route('/api/date', methods=['GET'])
-@jwt_required
+@jwt_required()
 def get_date():
   date = request.args.get('date')
 
@@ -279,7 +279,7 @@ def get_date():
 
 
 @app.route('/api/events', methods=['GET'])
-@jwt_required
+@jwt_required()
 def cal_events():
   username = get_jwt_identity()
   user = User.query.filter_by(username=username.lower()).first()
@@ -294,7 +294,7 @@ def cal_events():
 
 
 @app.route('/api/sidebar', methods=['GET'])
-@jwt_required
+@jwt_required()
 def sidebar_data():
   username = get_jwt_identity()
   user = User.query.filter_by(username=username.lower()).first()
@@ -311,7 +311,7 @@ def sidebar_data():
 
 
 @app.route('/api/search', methods=['POST'])
-@jwt_required
+@jwt_required()
 def search():
   req = request.get_json()
   selected_search = req.get('selected', '')
