@@ -115,22 +115,35 @@ export default class Note extends Vue {
   }
 
   public async deleteNote() {
-    if (!this.note.uuid) {
-      return;
-    }
-
-    try {
-      await NoteService.deleteNote(this.note.uuid);
-      this.sidebar.getSidebarInfo();
-      this.$router.push({name: 'Home Redirect'});
-    } catch(e) {
-      this.$buefy.toast.open({
-        duration: 5000,
-        message: 'There was an error deleting note. Please try again.',
-        position: 'is-top',
-        type: 'is-danger'
-      });
-    }
+    this.$buefy.dialog.confirm({
+      title: 'Deleting Note',
+      message: 'Are you sure you want to <b>delete</b> this note? This action cannot be undone!',
+      confirmText: 'Delete',
+      focusOn: 'cancel',
+      type: 'is-danger',
+      hasIcon: true,
+      onConfirm: async () => {
+        if (!this.note.uuid) {
+          return;
+        }
+        try {
+          await NoteService.deleteNote(this.note.uuid);
+          this.sidebar.getSidebarInfo();
+          this.$router.push({name: 'Home Redirect'});
+        } catch(e) {
+          this.$buefy.toast.open({
+            duration: 5000,
+            message: 'There was an error deleting note. Please try again.',
+            position: 'is-top',
+            type: 'is-danger'
+          });
+        }
+        this.$buefy.toast.open({
+          duration: 2000,
+          message: 'Note deleted!'
+        });
+      }
+    })
   }
 
   public valChanged(data: string) {
