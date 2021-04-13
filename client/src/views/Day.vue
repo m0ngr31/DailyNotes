@@ -151,23 +151,36 @@ export default class Day extends Vue {
   }
 
   public async deleteNote() {
-    if (!this.day.uuid) {
-      return;
-    }
-
-    try {
-      await NoteService.deleteNote(this.day.uuid);
-      this.sidebar.getEvents();
-      this.sidebar.getSidebarInfo();
-      this.$router.push({name: 'Home Redirect'});
-    } catch(e) {
-      this.$buefy.toast.open({
-        duration: 5000,
-        message: 'There was an error deleting note. Please try again.',
-        position: 'is-top',
-        type: 'is-danger'
-      });
-    }
+    this.$buefy.dialog.confirm({
+      title: 'Deleting Daily Note',
+      message: 'Are you sure you want to <b>delete</b> this daily note? This action cannot be undone!',
+      confirmText: 'Delete',
+      focusOn: 'cancel',
+      type: 'is-danger',
+      hasIcon: true,
+      onConfirm: async () => {
+        if (!this.day.uuid) {
+          return;
+        }
+        try {
+          await NoteService.deleteNote(this.day.uuid);
+          this.sidebar.getEvents();
+          this.sidebar.getSidebarInfo();
+          this.$router.push({name: 'Home Redirect'});
+        } catch(e) {
+          this.$buefy.toast.open({
+            duration: 5000,
+            message: 'There was an error deleting note. Please try again.',
+            position: 'is-top',
+            type: 'is-danger'
+          });
+        }
+        this.$buefy.toast.open({
+          duration: 2000,
+          message: 'Daily note deleted!'
+        });
+      }
+    })
   }
 
   public setDefaultText() {
