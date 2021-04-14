@@ -11,6 +11,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
+import { Route } from "vue-router";
 import format from 'date-fns/format';
 import isValid from 'date-fns/isValid';
 import parse from 'date-fns/parse';
@@ -29,7 +30,9 @@ import {IHeaderOptions} from '../interfaces';
 
 
 Component.registerHooks([
-  'metaInfo'
+  'metaInfo',
+  'beforeRouteUpdate',
+  'beforeRouteLeave'
 ]);
 
 @Component({
@@ -42,6 +45,7 @@ export default class Note extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
   public modifiedText : string = '';
+  public unsavedChanges : boolean = false;
   public title: string = 'Note';
   public note!: INote;
   public isLoading: boolean = false;
@@ -59,6 +63,10 @@ export default class Note extends Vue {
     };
   };
 
+  created() {
+    window.addEventListener('beforeunload', this.unsavedAlert);
+  }
+
   async mounted() {
     this.isLoading = true;
 
@@ -73,7 +81,7 @@ export default class Note extends Vue {
     }
 
     this.isLoading = false;
-    
+
     this.$root.$on('taskUpdated', (data: any) => {
       const {note_id, task, completed} = data;
 
@@ -94,6 +102,26 @@ export default class Note extends Vue {
     });
   }
 
+  beforeRouteUpdate(to: Route, from: Route, next: Function) {
+    if (this.unsavedChanges) {
+      this.unsavedDialog(next);
+    } else {
+      next();
+    }
+  }
+
+  beforeRouteLeave(to: Route, from: Route, next: Function) {
+    if (this.unsavedChanges) {
+      this.unsavedDialog(next);
+    } else {
+      next();
+    }
+  }
+
+  beforeDestroy() {
+    window.removeEventListener('beforeunload', this.unsavedAlert);
+  }
+
   public async saveNote() {
     const updatedNote = Object.assign(this.note, {data: this.modifiedText});
     try {
@@ -112,6 +140,7 @@ export default class Note extends Vue {
         type: 'is-danger'
       });
     }
+    this.unsavedChanges = false;
   }
 
   public async deleteNote() {
@@ -150,12 +179,32 @@ export default class Note extends Vue {
     this.modifiedText = data;
 
     if (this.modifiedText !== this.text) {
+      this.unsavedChanges = true;
       this.title = `* ${this.note.title}`;
       this.headerOptions.saveDisabled = false;
     } else {
       this.title = this.note.title || '';
       this.headerOptions.saveDisabled = true;
     }
+  }
+
+  unsavedAlert(e: Event) {
+    if (this.unsavedChanges) {
+      // Attempt to modify event will trigger Chrome/Firefox alert msg
+      e.returnValue = true;
+    }
+  }
+
+  async unsavedDialog(next: Function) {
+    this.$buefy.dialog.confirm({
+      title: "Unsaved Content",
+      message: "Are you sure you want to discard the unsaved content?",
+      confirmText: "Discard",
+      type: "is-warning",
+      hasIcon: true,
+      onConfirm: () => next(),
+      onCancel: () => next(false)
+    });
   }
 }
 </script>

@@ -8,6 +8,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
+import { Route } from "vue-router";
 
 import SidebarInst from '../services/sidebar';
 import {NoteService} from '../services/notes';
@@ -22,7 +23,8 @@ import {IHeaderOptions} from '../interfaces';
 
 
 Component.registerHooks([
-  'metaInfo'
+  'metaInfo',
+  'beforeRouteLeave'
 ]);
 
 @Component({
@@ -35,6 +37,7 @@ export default class NewNote extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
   public modifiedText: string = '';
+  public unsavedChanges : boolean = false;
   public title: string = 'New Note';
   public note!: INote;
   public headerOptions: IHeaderOptions = {
@@ -49,6 +52,10 @@ export default class NewNote extends Vue {
     };
   };
 
+  created() {
+    window.addEventListener('beforeunload', this.unsavedAlert);
+  }
+
   mounted() {
     this.text = newNote;
 
@@ -58,11 +65,16 @@ export default class NewNote extends Vue {
     };
   }
 
+  beforeDestroy() {
+    window.removeEventListener('beforeunload', this.unsavedAlert);
+  }
+
   public async saveNote() {
     const updatedNote = Object.assign(this.note, {data: this.modifiedText});
     try {
       const res = await NoteService.createNote(updatedNote);
       this.sidebar.getSidebarInfo();
+      this.unsavedChanges = false;
       this.$router.push({name: 'note-id', params: {uuid: (res as any).uuid}})
     } catch(e) {
       this.$buefy.toast.open({
@@ -76,15 +88,39 @@ export default class NewNote extends Vue {
     this.headerOptions.showDelete = !!this.note.uuid;
   }
 
+  beforeRouteLeave(to: Route, from: Route, next: Function) {
+    if (this.unsavedChanges) {
+      this.$buefy.dialog.confirm({
+        title: "Unsaved Content",
+        message: "Are you sure you want to discard the unsaved content?",
+        confirmText: "Discard",
+        type: "is-warning",
+        hasIcon: true,
+        onConfirm: () => next(),
+        onCancel: () => next(false)
+      });
+    } else {
+      next();
+    }
+  }
+
   public valChanged(data: string) {
     this.modifiedText = data;
 
     if (this.modifiedText !== this.text) {
       this.title = '* New Note';
       this.headerOptions.saveDisabled = false;
+      this.unsavedChanges = true;
     } else {
       this.title = 'New Note';
       this.headerOptions.saveDisabled = true;
+    }
+  }
+
+  unsavedAlert(e: Event) {
+    if (this.unsavedChanges) {
+      // Attempt to modify event will trigger Chrome/Firefox alert msg
+      e.returnValue = true;
     }
   }
 }
