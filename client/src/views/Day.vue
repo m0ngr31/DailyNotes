@@ -11,6 +11,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
+import { Route } from "vue-router";
 import format from 'date-fns/format';
 import isValid from 'date-fns/isValid';
 import parse from 'date-fns/parse';
@@ -31,7 +32,9 @@ import {newDay} from '../services/consts';
 
 
 Component.registerHooks([
-  'metaInfo'
+  'metaInfo',
+  'beforeRouteUpdate',
+  'beforeRouteLeave'
 ]);
 
 @Component({
@@ -44,6 +47,7 @@ export default class Day extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
   public modifiedText : string = '';
+  public unsavedChanges : boolean = false;
   public title: string = '';
   public day!: INote;
   public isLoading: boolean = false;
@@ -61,6 +65,10 @@ export default class Day extends Vue {
       title: this.title
     };
   };
+
+  created() {
+    window.addEventListener('beforeunload', this.unsavedAlert);
+  }
 
   mounted() {
     const date = parse(this.$route.params.id, 'MM-dd-yyyy', new Date());
@@ -99,6 +107,26 @@ export default class Day extends Vue {
       this.text = this.text.replace(original, task);
       this.modifiedText = this.modifiedText.replace(original, task);
     });
+  }
+
+  beforeRouteUpdate(to: Route, from: Route, next: Function) {
+    if (this.unsavedChanges) {
+      this.unsavedDialog(next);
+    } else {
+      next();
+    }
+  }
+
+  beforeRouteLeave(to: Route, from: Route, next: Function) {
+    if (this.unsavedChanges) {
+      this.unsavedDialog(next);
+    } else {
+      next();
+    }
+  }
+
+  beforeDestroy() {
+    window.removeEventListener('beforeunload', this.unsavedAlert);
   }
 
   public async getDayData() {
@@ -147,6 +175,7 @@ export default class Day extends Vue {
       });
     }
 
+    this.unsavedChanges = false;
     this.headerOptions.showDelete = !!this.day.uuid;
   }
 
@@ -199,12 +228,32 @@ export default class Day extends Vue {
     this.modifiedText = data;
 
     if (this.modifiedText !== this.text) {
+      this.unsavedChanges = true;
       this.title = `* ${this.headerOptions.title}`;
       this.headerOptions.saveDisabled = false;
     } else {
       this.title = this.headerOptions.title;
       this.headerOptions.saveDisabled = true;
     }
+  }
+
+  unsavedAlert(e: Event) {
+    if (this.unsavedChanges) {
+    // Attempt to modify event will trigger Chrome/Firefox alert msg
+    e.returnValue = true;
+    }
+  }
+
+  async unsavedDialog(next: Function) {
+    this.$buefy.dialog.confirm({
+      title: "Unsaved Content",
+      message: "Are you sure you want to discard the unsaved content?",
+      confirmText: "Discard",
+      type: "is-warning",
+      hasIcon: true,
+      onConfirm: () => next(),
+      onCancel: () => next(false)
+    });
   }
 }
 </script>
