@@ -35,6 +35,7 @@ export default class NewNote extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
   public modifiedText: string = '';
+  public unsavedChanges : boolean = false;
   public title: string = 'New Note';
   public note!: INote;
   public headerOptions: IHeaderOptions = {
@@ -49,6 +50,10 @@ export default class NewNote extends Vue {
     };
   };
 
+  created() {
+    window.addEventListener('beforeunload', this.unsavedAlert);
+  }
+
   mounted() {
     this.text = newNote;
 
@@ -56,6 +61,10 @@ export default class NewNote extends Vue {
       data: this.text,
       uuid: null
     };
+  }
+
+  beforeDestroy() {
+    window.removeEventListener('beforeunload', this.unsavedAlert);
   }
 
   public async saveNote() {
@@ -73,6 +82,7 @@ export default class NewNote extends Vue {
       });
     }
 
+    this.unsavedChanges = false;
     this.headerOptions.showDelete = !!this.note.uuid;
   }
 
@@ -82,9 +92,17 @@ export default class NewNote extends Vue {
     if (this.modifiedText !== this.text) {
       this.title = '* New Note';
       this.headerOptions.saveDisabled = false;
+      this.unsavedChanges = true;
     } else {
       this.title = 'New Note';
       this.headerOptions.saveDisabled = true;
+    }
+  }
+
+  unsavedAlert(e: Event) {
+    if (this.unsavedChanges) {
+      // Attempt to modify event will trigger Chrome/Firefox alert msg
+      e.returnValue = true;
     }
   }
 }
