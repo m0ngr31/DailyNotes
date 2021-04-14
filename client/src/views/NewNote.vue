@@ -8,6 +8,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
+import { Route } from "vue-router";
 
 import SidebarInst from '../services/sidebar';
 import {NoteService} from '../services/notes';
@@ -22,7 +23,8 @@ import {IHeaderOptions} from '../interfaces';
 
 
 Component.registerHooks([
-  'metaInfo'
+  'metaInfo',
+  'beforeRouteLeave'
 ]);
 
 @Component({
@@ -72,6 +74,7 @@ export default class NewNote extends Vue {
     try {
       const res = await NoteService.createNote(updatedNote);
       this.sidebar.getSidebarInfo();
+      this.unsavedChanges = false;
       this.$router.push({name: 'note-id', params: {uuid: (res as any).uuid}})
     } catch(e) {
       this.$buefy.toast.open({
@@ -82,8 +85,23 @@ export default class NewNote extends Vue {
       });
     }
 
-    this.unsavedChanges = false;
     this.headerOptions.showDelete = !!this.note.uuid;
+  }
+
+  beforeRouteLeave(to: Route, from: Route, next: Function) {
+    if (this.unsavedChanges) {
+      this.$buefy.dialog.confirm({
+        title: "Unsaved Content",
+        message: "Are you sure you want to discard the unsaved content?",
+        confirmText: "Discard",
+        type: "is-warning",
+        hasIcon: true,
+        onConfirm: () => next(),
+        onCancel: () => next(false)
+      });
+    } else {
+      next();
+    }
   }
 
   public valChanged(data: string) {
