@@ -11,6 +11,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
+import { Route } from "vue-router";
 import format from 'date-fns/format';
 import isValid from 'date-fns/isValid';
 import parse from 'date-fns/parse';
@@ -31,7 +32,9 @@ import {newDay} from '../services/consts';
 
 
 Component.registerHooks([
-  'metaInfo'
+  'metaInfo',
+  'beforeRouteUpdate',
+  'beforeRouteLeave'
 ]);
 
 @Component({
@@ -104,6 +107,22 @@ export default class Day extends Vue {
       this.text = this.text.replace(original, task);
       this.modifiedText = this.modifiedText.replace(original, task);
     });
+  }
+
+  beforeRouteUpdate(to: Route, from: Route, next: Function) {
+    if (this.unsavedChanges) {
+      this.unsavedDialog(next);
+    } else {
+      next();
+    }
+  }
+
+  beforeRouteLeave(to: Route, from: Route, next: Function) {
+    if (this.unsavedChanges) {
+      this.unsavedDialog(next);
+    } else {
+      next();
+    }
   }
 
   beforeDestroy() {
@@ -223,6 +242,18 @@ export default class Day extends Vue {
     // Attempt to modify event will trigger Chrome/Firefox alert msg
     e.returnValue = true;
     }
+  }
+
+  async unsavedDialog(next: Function) {
+    this.$buefy.dialog.confirm({
+      title: "Unsaved Content",
+      message: "Are you sure you want to discard the unsaved content?",
+      confirmText: "Discard",
+      type: "is-warning",
+      hasIcon: true,
+      onConfirm: () => next(),
+      onCancel: () => next(false)
+    });
   }
 }
 </script>
