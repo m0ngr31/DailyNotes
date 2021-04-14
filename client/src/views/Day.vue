@@ -44,6 +44,7 @@ export default class Day extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
   public modifiedText : string = '';
+  public unsavedChanges : boolean = false;
   public title: string = '';
   public day!: INote;
   public isLoading: boolean = false;
@@ -61,6 +62,10 @@ export default class Day extends Vue {
       title: this.title
     };
   };
+
+  created() {
+    window.addEventListener('beforeunload', this.unsavedAlert);
+  }
 
   mounted() {
     const date = parse(this.$route.params.id, 'MM-dd-yyyy', new Date());
@@ -99,6 +104,10 @@ export default class Day extends Vue {
       this.text = this.text.replace(original, task);
       this.modifiedText = this.modifiedText.replace(original, task);
     });
+  }
+
+  beforeDestroy() {
+    window.removeEventListener('beforeunload', this.unsavedAlert);
   }
 
   public async getDayData() {
@@ -147,6 +156,7 @@ export default class Day extends Vue {
       });
     }
 
+    this.unsavedChanges = false;
     this.headerOptions.showDelete = !!this.day.uuid;
   }
 
@@ -199,11 +209,19 @@ export default class Day extends Vue {
     this.modifiedText = data;
 
     if (this.modifiedText !== this.text) {
+      this.unsavedChanges = true;
       this.title = `* ${this.headerOptions.title}`;
       this.headerOptions.saveDisabled = false;
     } else {
       this.title = this.headerOptions.title;
       this.headerOptions.saveDisabled = true;
+    }
+  }
+
+  unsavedAlert(e: Event) {
+    if (this.unsavedChanges) {
+    // Attempt to modify event will trigger Chrome/Firefox alert msg
+    e.returnValue = true;
     }
   }
 }
