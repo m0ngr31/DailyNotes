@@ -62,9 +62,9 @@ class Meta(db.Model):
   uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
   user_id = db.Column(GUID, db.ForeignKey('user.uuid'), nullable=False)
   note_id = db.Column(GUID, db.ForeignKey('note.uuid'), nullable=False)
-  name_encrypted = db.Column('name', db.String)
-  name_compare = db.Column(db.String)
-  kind = db.Column(db.String)
+  name_encrypted = db.Column('name', db.String(512))
+  name_compare = db.Column(db.String(512))
+  kind = db.Column(db.String(128))
 
   @hybrid_property
   def name(self):
@@ -90,7 +90,7 @@ class Meta(db.Model):
 class Note(db.Model):
   uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
   user_id = db.Column(GUID, db.ForeignKey('user.uuid'), nullable=False)
-  data = db.Column(db.String)
+  data = db.Column(db.Text())
   title = db.Column(db.String(128), nullable=False)
   date = db.Column(db.DateTime(timezone=True), server_default=func.now())
   is_date = db.Column(db.Boolean, default=False)

@@ -5,3 +5,5 @@ flask-jwt-extended
 flask-argon2
 python-frontmatter
 pycrypto
+PyMySQL
+psycopg2-binary

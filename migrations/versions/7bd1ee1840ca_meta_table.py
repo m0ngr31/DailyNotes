@@ -23,9 +23,9 @@ def upgrade():
     sa.Column('uuid', app.model_types.GUID(), nullable=False),
     sa.Column('user_id', app.model_types.GUID(), nullable=False),
     sa.Column('note_id', app.model_types.GUID(), nullable=False),
-    sa.Column('name', sa.String(), nullable=True),
-    sa.Column('name_compare', sa.String(), nullable=True),
-    sa.Column('kind', sa.String(), nullable=True),
+    sa.Column('name', sa.String(128), nullable=True),
+    sa.Column('name_compare', sa.String(512), nullable=True),
+    sa.Column('kind', sa.String(128), nullable=True),
     sa.ForeignKeyConstraint(['note_id'], ['note.uuid'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.uuid'], ),
     sa.PrimaryKeyConstraint('uuid')
