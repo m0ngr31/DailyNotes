@@ -150,11 +150,13 @@ def after_change_note(mapper, connection, target):
     tags = list(set([x.replace(',', '\,') for x in data.get('tags')]))
   elif isinstance(data.get('tags'), str):
     tags = list(set(map(str.strip, data['tags'].split(','))))
+  tags = [x for x in tags if x]
 
   if isinstance(data.get('projects'), list):
     projects = list(set([x.replace(',', '\,') for x in data.get('projects')]))
   elif isinstance(data.get('projects'), str):
     projects = list(set(map(str.strip, data['projects'].split(','))))
+  projects = [x for x in projects if x]
 
   tasks = re.findall("- \[[x| ]\] .*$", data.content, re.MULTILINE)
 
