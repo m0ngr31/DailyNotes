@@ -58,6 +58,14 @@ The recommended way of running is to pull the image from [Docker Hub](https://hu
 |---|---|
 | /app/config | Used to store DB and environment variables. This is not needed if you pass in all of the above environment variables. |
 
+#### Database setup
+**MySQL**
+Set DATABASE_URI connect string as `mysql+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4`
+
+
+**PostgreSQL**
+Set DATABASE_URI connect string as `postgresql+psycopg2://user:pass@host/dbname?client_encoding=utf8`
+
 
 #### Docker Run
 By default, the easiest way to get running is:
