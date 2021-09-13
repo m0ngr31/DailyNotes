@@ -76,7 +76,7 @@ export default class Day extends Vue {
       this.$router.push({name: 'Home Redirect'});
       this.$buefy.toast.open({
         duration: 5000,
-        message: 'There was an retrieving that date. Redirecting to today.',
+        message: 'There was an error retrieving that date. Redirecting to today.',
         position: 'is-top',
         type: 'is-danger'
       });
