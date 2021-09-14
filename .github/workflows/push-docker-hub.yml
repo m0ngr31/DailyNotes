@@ -24,8 +24,10 @@ jobs:
         with:
           images: m0ngr31/dailynotes
           tags: |
-            type=edge
+            type=raw,value=latest,enable=${{ endsWith(github.ref, 'master') }}
             type=ref,event=tag
+          flavor: |
+            latest=false
       -
         name: Login to DockerHub
         if: github.event_name != 'pull_request'
@@ -41,3 +43,10 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      -
+        name: Update repo description
+        uses: peter-evans/dockerhub-description@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          repository: m0ngr31/dailynotes
