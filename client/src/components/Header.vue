@@ -131,7 +131,7 @@ export default class Header extends Vue {
     this.$router.push({name: 'new-note'}).catch(err => {});
   }
 
-  public goToSearch(searchType: string, tag: string) {
+  public goToSearch() {
     this.$router.push({name: 'search'}).catch(err => {});
   }
 

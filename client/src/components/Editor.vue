@@ -85,6 +85,10 @@ export default class Editor extends Vue {
       this.$emit('valChanged', this.editor.getValue());
     }, 500, {trailing: true, leading: false}));
 
+    this.editor.on('changes', _.debounce(() => {
+      this.$emit('saveShortcut');
+    }, 1000));
+
     this.handleValueUpdate(true);
   }
 
