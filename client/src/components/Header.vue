@@ -33,6 +33,13 @@
             </b-dropdown-item>
           </b-dropdown>
         </div>
+        <div class="level-item alt-button">
+          <div @click="goToSearch()">
+            <b-tooltip label="Search notes" position="is-bottom">
+              <b-icon icon="search"></b-icon>
+            </b-tooltip>
+          </div>
+        </div>
       </div>
       <div class="level-item has-text-primary">
         <div @click="prevDay()" class="alt-button" v-if="options.showDateNavs">
@@ -122,6 +129,10 @@ export default class Header extends Vue {
 
   public newNote() {
     this.$router.push({name: 'new-note'}).catch(err => {});
+  }
+
+  public goToSearch(searchType: string, tag: string) {
+    this.$router.push({name: 'search'}).catch(err => {});
   }
 
   public prevent($event: any) {
