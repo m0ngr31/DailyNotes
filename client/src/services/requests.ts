@@ -5,7 +5,7 @@ import router from '../router/index';
 import {SharedBuefy} from './sharedBuefy';
 
 axios.defaults.baseURL = process.env.VUE_APP_BASE_URL
-  ? process.env.VUE_APP_BASE_URL
+  ? `${process.env.VUE_APP_BASE_URL}/api`
   : '/api';
 
 axios.interceptors.request.use(config => {
