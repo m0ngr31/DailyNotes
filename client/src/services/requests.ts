@@ -70,5 +70,21 @@ export const Requests = {
 
   delete: (url: string): AxiosPromise => {
     return axios.delete(url);
+  },
+
+  download: (url: string, filename: string): void => {
+    axios({
+      url: url, // File URL Goes Here
+      method: "GET",
+      responseType: "blob"
+    }).then(res => {
+      var FILE = window.URL.createObjectURL(new Blob([res.data]));
+      var docUrl = document.createElement("a");
+      docUrl.href = FILE;
+      docUrl.setAttribute("download", filename);
+      document.body.appendChild(docUrl);
+      docUrl.click();
+      document.body.removeChild(docUrl);
+    });
   }
 };

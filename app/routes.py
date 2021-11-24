@@ -1,6 +1,7 @@
+import zipfile
 from app import app, db, argon2
 from app.models import User, Note, Meta, aes_encrypt, aes_encrypt_old
-from flask import render_template, request, jsonify, abort
+from flask import render_template, request, jsonify, abort, send_file
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 
 
@@ -394,6 +395,26 @@ def search():
   sorted_nodes = sorted(notes, key=lambda s: s['title'].lower())
 
   return jsonify(notes=sorted_nodes), 200
+
+
+@app.route('/api/export')
+@jwt_required()
+def export():
+  username = get_jwt_identity()
+  user = User.query.filter_by(username=username.lower()).first()
+
+  if not user:
+    abort(400)
+
+  zf = zipfile.ZipFile('export.zip', mode='w')
+  notes = user.notes
+  for note in notes:
+    ret_note = note.serialize
+    zf.writestr(ret_note['title'] + '.md', ret_note['data'], zipfile.ZIP_DEFLATED)
+    print(ret_note)
+  zf.close()
+
+  return send_file('../export.zip', as_attachment=True)
 
 
 @app.route('/', defaults={'path': ''})
