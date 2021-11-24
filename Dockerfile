@@ -21,8 +21,8 @@ RUN \
 
 RUN \
   cd /app/client && \
-  npm install -g node-sass && \
   npm ci && \
+  npm install node-sass && \
   npm run build
 
 USER abc
