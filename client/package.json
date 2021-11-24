@@ -18,7 +18,7 @@
     "axios": "^0.21.1",
     "buefy": "^0.8.9",
     "bulmaswatch": "^0.7.5",
-    "codemirror": "^5.50.2",
+    "codemirror": "^5.58.2",
     "date-fns": "^2.8.1",
     "lodash": "^4.17.15",
     "vue": "^2.6.10",
