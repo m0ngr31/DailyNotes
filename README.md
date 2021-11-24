@@ -17,7 +17,7 @@ Since I had the need for keeping track of to-dos throughout the day, regular Mar
 ## Roadmap
 I'd like to try add include at least of some the following features to get to a final v1.0 release:
 
- - CalDAV support
+ - iCal support
  - HTML preview (instead of just markdown)
  - Kanban board for tasks (and new syntax to attach meta info like swimlane and project for each task)
  - Nested tagging
