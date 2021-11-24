@@ -8,8 +8,8 @@ COPY . .
 RUN apk add build-base libffi-dev
 
 RUN \
-  addgroup -g 911 abc
-  adduser -u 911 -G abc abc
+  addgroup -g 911 abc && \
+  adduser -u 911 -G abc abc && \
   usermod -G users abc
 
 RUN \
