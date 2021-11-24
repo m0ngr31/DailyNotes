@@ -8,6 +8,10 @@ COPY . .
 RUN apk add build-base libffi-dev
 
 RUN \
+  useradd -u 911 -U -d /config -s /bin/false abc && \
+  usermod -G users abc
+
+RUN \
   cd /app && \
   pip install -r requirements.txt && \
   chmod +x run.sh && \
@@ -20,5 +24,6 @@ RUN \
   npm ci && \
   npm run build
 
+USER abc
 EXPOSE 5000
 ENTRYPOINT "./run.sh"
