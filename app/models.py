@@ -51,6 +51,7 @@ class User(db.Model):
   uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
   username = db.Column(db.String(64), unique=True, nullable=False)
   password_hash = db.Column(db.String(128), nullable=False)
+  auto_save = db.Column(db.Boolean, nullable=True)
   notes = db.relationship('Note', lazy='dynamic', cascade='all, delete, delete-orphan')
   meta = db.relationship('Meta', lazy='dynamic', cascade='all, delete, delete-orphan')
 

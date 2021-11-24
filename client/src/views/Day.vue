@@ -231,11 +231,20 @@ export default class Day extends Vue {
       this.unsavedChanges = true;
       this.title = `* ${this.headerOptions.title}`;
       this.headerOptions.saveDisabled = false;
+
+      if (this.sidebar.autoSave) {
+        this.autoSaveThrottle();
+      }
     } else {
       this.title = this.headerOptions.title;
       this.headerOptions.saveDisabled = true;
     }
   }
+
+  public autoSaveThrottle = _.debounce(() => this.saveDay(), 3000, {
+    leading: false,
+    trailing: true
+  });
 
   unsavedAlert(e: Event) {
     if (this.unsavedChanges) {
