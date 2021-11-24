@@ -5,11 +5,12 @@ WORKDIR /app
 
 COPY . .
 
-RUN apk add build-base libffi-dev
+RUN apk add build-base libffi-dev shadow
 
 RUN \
   addgroup -g 911 abc && \
-  adduser -D -H -u 911 -G abc abc
+  adduser -D -H -u 911 -G abc abc && \
+  usermod -G users abc
 
 RUN \
   cd /app && \
