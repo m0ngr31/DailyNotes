@@ -76,14 +76,16 @@
           </b-tooltip>
         </div>
         <div class="level-item alt-button">
-          <b-dropdown position="is-bottom-left">
-            <b-icon
-              slot="trigger"
-              icon="ellipsis-v"
-            >
-            </b-icon>
-
-            <b-dropdown-item>Settings (coming soon)</b-dropdown-item>
+          <b-dropdown position="is-bottom-left" :close-on-click="false">
+            <b-icon slot="trigger" icon="ellipsis-v"></b-icon>
+            <b-dropdown-item>
+              <b-switch
+                v-model="sidebar.autoSave"
+                @input="sidebar.toggleAutoSave"
+              >
+                {{ sidebar.autoSave ? 'Disable Auto-Save' : 'Enable Auto-Save' }}
+              </b-switch>
+            </b-dropdown-item>
             <b-dropdown-item @click="logout()">Logout</b-dropdown-item>
           </b-dropdown>
         </div>
@@ -122,6 +124,7 @@ export default class Header extends Vue {
   public sidebar = SidebarInst;
   public options!: IHeaderOptions;
   public isSaving: boolean = false;
+  public isSwitchedCustom: boolean = false;
 
   public toggleSidebar(show = false) {
     this.sidebar.hide = show;

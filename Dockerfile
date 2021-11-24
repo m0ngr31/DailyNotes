@@ -9,7 +9,6 @@ RUN apk add build-base libffi-dev
 
 RUN \
   cd /app && \
-  pip install gunicorn && \
   pip install -r requirements.txt && \
   chmod +x run.sh && \
   chmod +x verify_env.py && \

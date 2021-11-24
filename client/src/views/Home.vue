@@ -1,14 +1,22 @@
 <template>
   <div class="columns no-margin is-mobile full-height">
-    <div class="column sidebar is-6-mobile is-6-tablet is-two-fifths-desktop is-4-widescreen is-3-fullhd" v-show="!sidebar.hide">
+    <div
+      class="column sidebar is-6-mobile is-6-tablet is-two-fifths-desktop is-4-widescreen is-3-fullhd"
+      v-show="!sidebar.hide"
+    >
       <div class="columns light-white center-columns text-center">
         <div class="column">
-          <b-icon
-            icon="book-open"
-            size="is-medium"
-            style="margin-top: .8em"
-          >
-          </b-icon>
+          <b-tooltip label="Go to Today" position="is-bottom">
+            <div @click="today()">
+              <b-icon
+                icon="book-open"
+                size="is-medium"
+                style="margin-top: .8em"
+                class="alt-button"
+              >
+              </b-icon>
+            </div>
+          </b-tooltip>
         </div>
       </div>
       <Calendar />
@@ -52,6 +60,10 @@ export default class Admin extends Vue {
   mounted() {
     // Get new JWT every hour
     this.auth_timer = setInterval(() => updateJWT(), HOUR);
+  }
+
+  today() {
+    this.$router.push({name: 'Home Redirect'});
   }
 
   beforeDestroy() {
