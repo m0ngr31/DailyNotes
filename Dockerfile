@@ -10,7 +10,6 @@ RUN apk add build-base libffi-dev
 RUN \
   addgroup -g 911 abc
   adduser -u 911 -G abc abc
-  useradd -u 911 -U -d /config -s /bin/false abc && \
   usermod -G users abc
 
 RUN \
