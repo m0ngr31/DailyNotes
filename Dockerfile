@@ -9,8 +9,7 @@ RUN apk add build-base libffi-dev
 
 RUN \
   addgroup -g 911 abc && \
-  adduser -D -H -u 911 -G abc abc && \
-  usermod -G users abc
+  adduser -D -H -u 911 -G abc abc
 
 RUN \
   cd /app && \
