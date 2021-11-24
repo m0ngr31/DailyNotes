@@ -4,11 +4,12 @@ PUID=${PUID:-911}
 PGID=${PGID:-911}
 
 if [ "$(whoami)" = "abc" ]; then
-  echo "Setting container permissions"
-  groupmod -o -g "$PGID" abc
-  usermod -o -u "$PUID" abc
-  chown abc:abc /app
-  chown abc:abc /config
+  if [ "$PUID" != 911 ]; then
+    echo "Setting container permissions"
+    sudo groupmod -o -g "$PGID" abc
+    sudo usermod -o -u "$PUID" abc
+    sudo chown -R abc:abc /app
+  fi
 fi
 
 if test -f "./config/.env"; then

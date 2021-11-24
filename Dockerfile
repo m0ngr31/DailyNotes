@@ -5,12 +5,13 @@ WORKDIR /app
 
 COPY . .
 
-RUN apk add build-base libffi-dev shadow
+RUN apk add build-base libffi-dev shadow sudo
 
 RUN \
-  addgroup -g 911 abc && \
-  adduser -D -H -u 911 -G abc abc && \
-  usermod -G users abc
+  groupmod -g 1000 users && \
+  useradd -u 911 -U -s /bin/false abc && \
+  usermod -G users abc && \
+  echo "abc ALL=(ALL) ALL" > /etc/sudoers.d/abc && chmod 0440 /etc/sudoers.d/abc
 
 RUN \
   cd /app && \
@@ -22,7 +23,7 @@ RUN \
 RUN \
   cd /app/client && \
   npm ci && \
-  npm install node-sass && \
+  npm rebuild node-sass && \
   npm run build
 
 USER abc
