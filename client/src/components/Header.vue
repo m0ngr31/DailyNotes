@@ -124,7 +124,6 @@ export default class Header extends Vue {
   public sidebar = SidebarInst;
   public options!: IHeaderOptions;
   public isSaving: boolean = false;
-  public isSwitchedCustom: boolean = false;
 
   public toggleSidebar(show = false) {
     this.sidebar.hide = show;
