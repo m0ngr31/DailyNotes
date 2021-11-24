@@ -7,7 +7,7 @@
   </svg>
 </p>
 
-Current version: **1.0-beta11**
+Current version: **1.0-beta12**
 
 ## About
 The idea for this app came from using my Hobonichi Techo planner every morning to write down what I needed to accomplish that day & using it for scratching down random thoughts and notes as the day went on. The closest thing I've seen to an app for replacing this system is Noteplan, but I don't use a Mac or an iOS device, and it's not self-hostable, so I decided to write my own.
