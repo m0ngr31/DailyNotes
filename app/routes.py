@@ -306,8 +306,34 @@ def sidebar_data():
   tags = sorted(set([a.name for a in user.meta.filter_by(kind="tag").all()]), key=lambda s: s.lower())
   projects = sorted(set([a.name for a in user.meta.filter_by(kind="project").all()]), key=lambda s: s.lower())
   tasks = sorted([a.serialize for a in user.meta.filter_by(kind="task").all()], key=lambda task: task['note_id'])
+  auto_save = user.auto_save
 
-  return jsonify(tags=tags,projects=projects,notes=notes,tasks=tasks), 200
+  return jsonify(tags=tags,projects=projects,notes=notes,tasks=tasks,auto_save=auto_save), 200
+
+
+@app.route('/api/toggle_auto_save', methods=['POST'])
+@jwt_required()
+def toggle_auto_save():
+  req = request.get_json()
+  auto_save = req.get('auto_save', False)
+
+  username = get_jwt_identity()
+
+  if not username:
+    abort(401)
+
+  user = User.query.filter_by(username=username.lower()).first()
+
+  if not user:
+    abort(400)
+
+  user.auto_save = auto_save
+
+  db.session.add(user)
+  db.session.flush()
+  db.session.commit()
+
+  return jsonify({}), 200
 
 
 @app.route('/api/search', methods=['POST'])
@@ -365,7 +391,9 @@ def search():
     cleaned_note['projects'] = sorted(set([x.name for x in note.meta.filter_by(kind="project").all()]), key=lambda s: s.lower())
     notes.append(cleaned_note)
 
-  return jsonify(notes=notes), 200
+  sorted_nodes = sorted(notes, key=lambda s: s['title'].lower())
+
+  return jsonify(notes=sorted_nodes), 200
 
 
 @app.route('/', defaults={'path': ''})
