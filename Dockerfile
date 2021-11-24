@@ -5,11 +5,15 @@ WORKDIR /app
 
 COPY . .
 
-RUN apk add build-base libffi-dev
+RUN apk add build-base libffi-dev shadow
+
+RUN \
+  addgroup -g 911 abc && \
+  adduser -D -H -u 911 -G abc abc && \
+  usermod -G users abc
 
 RUN \
   cd /app && \
-  pip install gunicorn && \
   pip install -r requirements.txt && \
   chmod +x run.sh && \
   chmod +x verify_env.py && \
@@ -17,9 +21,10 @@ RUN \
 
 RUN \
   cd /app/client && \
-  npm install node-sass && \
   npm ci && \
+  npm install node-sass && \
   npm run build
 
+USER abc
 EXPOSE 5000
 ENTRYPOINT "./run.sh"

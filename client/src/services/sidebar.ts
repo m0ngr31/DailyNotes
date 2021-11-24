@@ -17,6 +17,7 @@ class SidebarSerivce {
   public projects: string[] = [];
   public notes: INote[] = [];
   public calLoading: boolean = false;
+  public autoSave: boolean = false;
   public date: any = null;
   public sidebarLoading: boolean = false;
   public searchLoading: boolean = false;
@@ -99,6 +100,7 @@ class SidebarSerivce {
         this.tasks = res.data.tasks;
         this.projects = res.data.projects;
         this.notes = res.data.notes;
+        this.autoSave = res.data.auto_save;
       }
 
       if (this.selectedSearch.length && this.searchString.length) {
@@ -135,6 +137,13 @@ class SidebarSerivce {
   public async saveTaskProgress(name: string, uuid: string) {
     try {
       await Requests.put('/save_task', {name, uuid});
+      this.getSidebarInfo();
+    } catch (e) {}
+  }
+
+  public async toggleAutoSave(autoSave: boolean) {
+    try {
+      await Requests.post('/toggle_auto_save', {auto_save: autoSave});
       this.getSidebarInfo();
     } catch (e) {}
   }
