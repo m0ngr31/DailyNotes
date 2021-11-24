@@ -4,7 +4,9 @@ import {getToken, clearToken, setToken} from './user';
 import router from '../router/index';
 import {SharedBuefy} from './sharedBuefy';
 
-axios.defaults.baseURL = '/api';
+axios.defaults.baseURL = process.env.VUE_APP_BASE_URL
+  ? `${process.env.VUE_APP_BASE_URL}/api`
+  : '/api';
 
 axios.interceptors.request.use(config => {
   // Get token
