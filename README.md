@@ -7,7 +7,7 @@
   </svg>
 </p>
 
-Current version: **1.0-beta10**
+Current version: **1.0-beta11**
 
 ## About
 The idea for this app came from using my Hobonichi Techo planner every morning to write down what I needed to accomplish that day & using it for scratching down random thoughts and notes as the day went on. The closest thing I've seen to an app for replacing this system is Noteplan, but I don't use a Mac or an iOS device, and it's not self-hostable, so I decided to write my own.
@@ -17,7 +17,7 @@ Since I had the need for keeping track of to-dos throughout the day, regular Mar
 ## Roadmap
 I'd like to try add include at least of some the following features to get to a final v1.0 release:
 
- - CalDAV support
+ - iCal support
  - HTML preview (instead of just markdown)
  - Kanban board for tasks (and new syntax to attach meta info like swimlane and project for each task)
  - Nested tagging
@@ -50,7 +50,10 @@ The recommended way of running is to pull the image from [Docker Hub](https://hu
 | API_SECRET_KEY | Used to sign API tokens. | Will be generated automatically if not passed in. |
 | DATABASE_URI | Connection string for DB. | Will create and use a SQLite DB if not passed in. |
 | DB_ENCRYPTION_KEY | Secret key for encrypting data. Length must be a multiple of 16.<br><br>*Warning*: If changed data will not be able to be decrypted! | Will be generated automatically if not passed in. |
-| PREVENT_SIGNUPS | Disable signup form? Anything in this variable will prevent signups. | |
+| PREVENT_SIGNUPS | Disable signup form? Anything in this variable will prevent signups. | False |
+| BASE_URL | Used when using a subfolder on a reverse proxy | None |
+| PUID | User ID (for folder permissions) | None |
+| PGID | Group ID (for folder permissions) | None |
 
 
 #### Volumes
