@@ -86,6 +86,7 @@
                 {{ sidebar.autoSave ? 'Disable Auto-Save' : 'Enable Auto-Save' }}
               </b-switch>
             </b-dropdown-item>
+            <b-dropdown-item @click="exportNotes()">Export Notes</b-dropdown-item>
             <b-dropdown-item @click="logout()">Logout</b-dropdown-item>
           </b-dropdown>
         </div>
@@ -104,6 +105,7 @@ import format from 'date-fns/format';
 
 import SidebarInst from '../services/sidebar';
 import {clearToken} from '../services/user';
+import {NoteService} from '../services/notes';
 
 import {IHeaderOptions} from '../interfaces';
 
@@ -187,6 +189,10 @@ export default class Header extends Vue {
     } catch(e) {}
 
     this.isSaving = false;
+  }
+
+  public async exportNotes() {
+    NoteService.exportNotes();
   }
 
   public logout() {

@@ -92,5 +92,12 @@ export const NoteService = {
    */
   deleteNote: async (uuid: string): Promise<void> => {
     await Requests.delete(`/delete_note/${uuid}`);
+  },
+
+  /**
+   * Exports all notes to a zip file and downloads
+   */
+  exportNotes: async (): Promise<void> => {
+    Requests.download("/export", "export.zip");
   }
 };
