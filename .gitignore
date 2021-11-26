@@ -244,3 +244,6 @@ test.py
 
 # Docker volume
 /dailynotes-volume
+
+# Generated exports
+export.zip
