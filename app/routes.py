@@ -1,4 +1,6 @@
+import os
 import zipfile
+
 from app import app, db, argon2
 from app.models import User, Note, Meta, aes_encrypt, aes_encrypt_old
 from flask import render_template, request, jsonify, abort, send_file
@@ -406,7 +408,9 @@ def export():
   if not user:
     abort(400)
 
-  zf = zipfile.ZipFile('export.zip', mode='w')
+  zip_location = app.config['EXPORT_FILE']
+  zf = zipfile.ZipFile(zip_location, mode='w')
+  os.chmod(zip_location, 0o755)
   notes = user.notes
   for note in notes:
     ret_note = note.serialize
@@ -414,7 +418,9 @@ def export():
     print(ret_note)
   zf.close()
 
-  return send_file('../export.zip', as_attachment=True)
+  rval = send_file(zip_location, as_attachment=True)
+  os.remove(zip_location)
+  return rval
 
 
 @app.route('/', defaults={'path': ''})
