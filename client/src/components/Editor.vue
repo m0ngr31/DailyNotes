@@ -74,6 +74,7 @@ export default class Editor extends Vue {
     extraKeys: {
       'Enter': 'newlineAndIndentContinueMarkdownList',
       'Ctrl-S': () => this.save(),
+      'Cmd-S': () => this.save(),
     },
   };
 
