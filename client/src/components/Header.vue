@@ -23,16 +23,7 @@
             </b-tooltip>
           </div>
         </div>
-        <div class="level-item alt-button" v-if="sidebar.tasks.length">
-          <b-dropdown aria-role="list">
-            <b-tooltip label="Tasks" position="is-bottom" slot="trigger" role="button">
-              <b-icon icon="tasks"></b-icon>
-            </b-tooltip>
-            <b-dropdown-item custom v-for="task of sidebar.tasks" v-bind:key="task.uuid">
-              <SimpleTask :task="task"></SimpleTask>
-            </b-dropdown-item>
-          </b-dropdown>
-        </div>
+        <Tasks></Tasks>
         <div class="level-item alt-button">
           <div @click="goToSearch()">
             <b-tooltip label="Search notes" position="is-bottom">
@@ -109,11 +100,11 @@ import {NoteService} from '../services/notes';
 
 import {IHeaderOptions} from '../interfaces';
 
-import SimpleTask from './SimpleTask.vue';
+import Tasks from './Tasks.vue';
 
 @Component({
   components: {
-    SimpleTask,
+    Tasks
   },
   props: {
     options: {

@@ -13,8 +13,22 @@ export default {
   mounted: function() {
     SharedBuefy.notifications = this.$buefy.toast;
     SharedBuefy.dialog = this.$buefy.dialog;
+  },
+  provide() {
+    const global = {};
+    Object.defineProperty(global, "taskList", {
+      enumerable: true,
+      get: () => this.taskList
+    });
+    return { global };
+  },
+  data() {
+    return {
+      global: {},
+      taskList: []
+    };
   }
-}
+};
 </script>
 
 <style lang="sass">

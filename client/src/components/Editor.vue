@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Watch } from 'vue-property-decorator';
+import { Vue, Component, Watch, Inject } from 'vue-property-decorator';
 import * as CodeMirror from 'codemirror';
 import _ from 'lodash';
 
@@ -53,6 +53,8 @@ import eventHub from '../services/eventHub';
   }
 })
 export default class Editor extends Vue {
+  @Inject()
+  private global: any;
   public editor!: CodeMirror.Editor;
   public value!: string;
 
@@ -83,10 +85,28 @@ export default class Editor extends Vue {
     this.editor = CodeMirror.fromTextArea(tagElement, this.config);
 
     this.editor.on('changes', _.throttle(() => {
+      this.generateTaskList();
       this.$emit('valChanged', this.editor.getValue());
     }, 500, {trailing: true, leading: false}));
 
     this.handleValueUpdate(true);
+  }
+
+  generateTaskList() {
+    // Get task list for today
+    const data = this.editor.getValue();
+    const regex = /- \[( |x)\] (.+)/gm;
+    let m: any;
+    let completed = false;
+    this.global.taskList.splice(0)
+    while ((m = regex.exec(data)) !== null) {
+      // This is necessary to avoid infinite loops with zero-width matches
+      if (m.index === regex.lastIndex) {
+        regex.lastIndex++;
+      }
+      completed = m[1] === "x";
+      this.global.taskList.push({ completed, name: m[2], index: m['index'] });
+    }
   }
 
   created() {
@@ -142,6 +162,19 @@ export default class Editor extends Vue {
 
       this.editor.setCursor(cursor);
     });
+  }
+
+  @Watch('global.taskList')
+  onTaskListChanged() {
+    const data = this.editor.getValue();
+    let newData = data
+    this.global.taskList.forEach((task: any) => {
+      let c = task.completed ? 'x' : ' ';
+      newData = newData.substr(0, task.index + 3) + c + newData.substr(task.index + 4);
+    })
+    if (newData !== data) {
+      this.editor.setValue(newData);
+    }
   }
 }
 </script>
