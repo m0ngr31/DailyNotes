@@ -25,6 +25,7 @@ import {INote} from '../interfaces';
 
 import Editor from '@/components/Editor.vue';
 import Header from '@/components/Header.vue';
+import UnsavedForm from '@/components/UnsavedForm.vue';
 
 import {IHeaderOptions} from '../interfaces';
 
@@ -254,14 +255,23 @@ export default class Day extends Vue {
   }
 
   async unsavedDialog(next: Function) {
-    this.$buefy.dialog.confirm({
-      title: "Unsaved Content",
-      message: "Are you sure you want to discard the unsaved content?",
-      confirmText: "Discard",
-      type: "is-warning",
-      hasIcon: true,
-      onConfirm: () => next(),
-      onCancel: () => next(false)
+    this.$buefy.modal.open({
+      parent: this,
+      component: UnsavedForm,
+      hasModalCard: true,
+      trapFocus: true,
+      events: {
+        cancel: () => {
+          next(false);
+        },
+        discard: () => {
+          next();
+        },
+        save: () => {
+          this.saveDay();
+          next();
+        }
+      }
     });
   }
 }
