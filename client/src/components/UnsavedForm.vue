@@ -70,7 +70,7 @@ export default class UnsavedForm extends Vue {
     }
   }
 
-  keyPress({ key }) {
+  keyPress({ key }: any) {
     if (key == "Enter") {
       this.save();
     }
