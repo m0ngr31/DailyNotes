@@ -126,7 +126,9 @@ export default class Note extends Vue {
     const updatedNote = Object.assign(this.note, {data: this.modifiedText});
     try {
       this.note = await NoteService.saveNote(updatedNote);
-      this.text = this.modifiedText;
+      if (!this.sidebar.autoSave) {
+        this.text = this.modifiedText;
+      }
       this.headerOptions.title = this.note.title || '';
 
       // Update the indicators
