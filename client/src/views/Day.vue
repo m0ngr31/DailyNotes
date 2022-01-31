@@ -160,7 +160,9 @@ export default class Day extends Vue {
     const updatedDay = Object.assign(this.day, {data: this.modifiedText});
     try {
       const res = await NoteService.saveDay(updatedDay);
-      this.text = this.modifiedText;
+      if (!this.sidebar.autoSave) {
+        this.text = this.modifiedText;
+      }
       this.day.uuid = res.uuid;
 
       // Update the indicators
