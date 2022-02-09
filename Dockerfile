@@ -20,6 +20,5 @@ RUN \
   npm rebuild node-sass && \
   npm run build
 
-USER abc
 EXPOSE 5000
 ENTRYPOINT "./run.sh"
