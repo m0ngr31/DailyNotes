@@ -5,12 +5,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN apk add build-base libffi-dev shadow sudo
-
-RUN \
-  useradd -u 911 -U -s /bin/false abc && \
-  usermod -G users abc && \
-  echo "abc ALL=(ALL) ALL" > /etc/sudoers.d/abc && chmod 0440 /etc/sudoers.d/abc
+RUN apk add build-base libffi-dev
 
 RUN \
   cd /app && \
