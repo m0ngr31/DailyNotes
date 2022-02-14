@@ -5,7 +5,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN apk add build-base libffi-dev
+RUN apk add build-base libffi-dev postgresql-dev
 
 RUN \
   cd /app && \

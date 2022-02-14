@@ -29,10 +29,10 @@ def upgrade():
     op.create_index(op.f('ix_user_uuid'), 'user', ['uuid'], unique=True)
     op.create_table('note',
     sa.Column('uuid', app.model_types.GUID(), nullable=False),
-    sa.Column('tags', sa.String(), nullable=True),
-    sa.Column('projects', sa.String(), nullable=True),
+    sa.Column('tags', sa.String(128), nullable=True),
+    sa.Column('projects', sa.String(128), nullable=True),
     sa.Column('user_id', app.model_types.GUID(), nullable=False),
-    sa.Column('data', sa.String(), nullable=True),
+    sa.Column('data', sa.Text(), nullable=True),
     sa.Column('title', sa.String(length=128), nullable=False),
     sa.Column('date', sa.DateTime(timezone=True), server_default=sa.text(u'(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('is_date', sa.Boolean(), nullable=True),
