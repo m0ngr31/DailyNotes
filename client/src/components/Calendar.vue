@@ -29,6 +29,7 @@ export default class Calendar extends Vue {
   public changeDate(value: any) {
     if (value) {
       this.$router.push({ name: 'day-id', params: { id: format(value, 'MM-dd-yyyy') } });
+      this.sidebar.deactivate()
     }
   }
 }

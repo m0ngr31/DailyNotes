@@ -41,11 +41,13 @@ export default class Tags extends Vue {
   sidebar = SidebarInst;
 
   public goToNote(uuid: string) {
-    router.push({name: 'note-id', params: {uuid}});
+    router.push({ name: 'note-id', params: { uuid } });
+    this.sidebar.deactivate()
   }
 
   public goToSearch(searchType: string, tag: string) {
-    router.push({name: 'search', query: {[searchType]: tag}}).catch(err => {});
+    router.push({ name: 'search', query: { [searchType]: tag } }).catch(err => { });
+    this.sidebar.deactivate()
   }
 }
 </script>

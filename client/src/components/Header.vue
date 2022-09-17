@@ -2,40 +2,57 @@
   <div class="header-wrapper light-white" @click="prevent($event)">
     <div class="main-header level is-mobile">
       <div class="level-left">
-        <div class="level-item alt-button" @click="toggleSidebar(true)">
-          <b-icon
-            v-show="!sidebar.hide"
-            icon="grip-lines"
+        <div
+          class="level-item alt-button is-hidden-mobile"
+          @click="sidebar.toggle(false)"
           >
-          </b-icon>
+          <b-icon v-show="!sidebar.hide" icon="grip-lines"> </b-icon>
         </div>
-        <div class="level-item alt-button" @click="toggleSidebar()">
-          <b-icon
-            v-show="sidebar.hide"
-            icon="grip-lines-vertical"
+        <div
+          class="level-item alt-button is-hidden-mobile"
+          @click="sidebar.toggle(true)"
           >
-          </b-icon>
+          <b-icon v-show="sidebar.hide" icon="grip-lines-vertical"> </b-icon>
+        </div>
+        <div
+          class="level-item alt-button is-hidden-tablet"
+          @click="sidebar.activate()"
+        >
+          <b-icon icon="calendar"> </b-icon>
         </div>
         <div class="level-item alt-button" v-if="!options.hideCreate">
           <div @click="newNote()">
-            <b-tooltip label="Create new note" position="is-bottom">
+            <b-tooltip
+              label="Create new note"
+              position="is-bottom"
+              append-to-body
+            >
               <b-icon icon="plus"></b-icon>
             </b-tooltip>
           </div>
         </div>
         <div class="level-item alt-button" v-if="sidebar.tasks.length">
-          <b-dropdown aria-role="list">
-            <b-tooltip label="Tasks" position="is-bottom" slot="trigger" role="button">
+          <b-dropdown aria-role="list" append-to-body="true">
+            <b-tooltip
+              label="Tasks"
+              position="is-bottom"
+              slot="trigger"
+              role="button"
+            >
               <b-icon icon="tasks"></b-icon>
             </b-tooltip>
-            <b-dropdown-item custom v-for="task of sidebar.tasks" v-bind:key="task.uuid">
+            <b-dropdown-item
+              custom
+              v-for="task of sidebar.tasks"
+              v-bind:key="task.uuid"
+            >
               <SimpleTask :task="task"></SimpleTask>
             </b-dropdown-item>
           </b-dropdown>
         </div>
         <div class="level-item alt-button">
           <div @click="goToSearch()">
-            <b-tooltip label="Search notes" position="is-bottom">
+            <b-tooltip label="Search notes" position="is-bottom" append-to-body>
               <b-icon icon="search"></b-icon>
             </b-tooltip>
           </div>
@@ -62,7 +79,7 @@
           v-bind:class="{ 'save-disabled': options.saveDisabled }"
           @click="save()"
         >
-          <b-tooltip label="Save" position="is-bottom">
+          <b-tooltip label="Save" position="is-bottom" append-to-body>
             <b-icon icon="save"></b-icon>
           </b-tooltip>
         </div>
@@ -71,12 +88,16 @@
           v-show="options.showDelete"
           @click="deleteNote()"
         >
-          <b-tooltip label="Delete" position="is-bottom">
+          <b-tooltip label="Delete" position="is-bottom" append-to-body>
             <b-icon icon="trash-alt"></b-icon>
           </b-tooltip>
         </div>
         <div class="level-item alt-button">
-          <b-dropdown position="is-bottom-left" :close-on-click="false">
+          <b-dropdown
+            position="is-bottom-left"
+            :close-on-click="false"
+            append-to-body
+          >
             <b-icon slot="trigger" icon="ellipsis-v"></b-icon>
             <b-dropdown-item>
               <b-switch
@@ -128,15 +149,15 @@ export default class Header extends Vue {
   public isSaving: boolean = false;
 
   public toggleSidebar(show = false) {
-    this.sidebar.hide = show;
+    this.sidebar.toggle(show);
   }
 
   public newNote() {
-    this.$router.push({name: 'new-note'}).catch(err => {});
+    this.$router.push({ name: "new-note" }).catch(err => {});
   }
 
   public goToSearch(searchType: string, tag: string) {
-    this.$router.push({name: 'search'}).catch(err => {});
+    this.$router.push({ name: "search" }).catch(err => {});
   }
 
   public prevent($event: any) {
@@ -208,7 +229,6 @@ export default class Header extends Vue {
   padding: 10px 20px 0px 20px;
   border-bottom: 2px solid var(--main-bg-darker);
   position: sticky;
-  z-index: 100;
   top: 0;
   background-color: var(--main-bg-color);
 }

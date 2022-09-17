@@ -11,6 +11,7 @@ import {INote, IMeta} from '../interfaces';
 
 class SidebarSerivce {
   public hide: boolean = false;
+  public active: boolean = false;
   public events: any[] = [];
   public tags: string[] = [];
   public tasks: IMeta[] = [];
@@ -146,6 +147,16 @@ class SidebarSerivce {
       await Requests.post('/toggle_auto_save', {auto_save: autoSave});
       this.getSidebarInfo();
     } catch (e) {}
+  }
+
+  public toggle(show: boolean) {
+    this.hide = !show;
+  }
+  public activate() {
+    this.active = true;
+  }
+  public deactivate() {
+    this.active = false;
   }
 }
 
