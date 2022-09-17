@@ -1,9 +1,11 @@
 <template>
-  <div class="columns no-margin is-mobile full-height">
-    <div
-      class="column sidebar is-6-mobile is-6-tablet is-two-fifths-desktop is-4-widescreen is-3-fullhd"
-      v-show="!sidebar.hide"
-    >
+  <div class="columns no-margin">
+    <div class="column is-12-mobile is-6-tablet is-two-fifths-desktop is-4-widescreen is-3-fullhd" v-show="!sidebar.hide">
+      <div class="light-white"  style="float:right">
+        <div @click="sidebar.hide=true">
+          <b-icon icon="times" class="alt-button" ></b-icon>
+        </div>
+      </div>
       <div class="columns light-white center-columns text-center">
         <div class="column">
           <b-tooltip label="Go to Today" position="is-bottom">
