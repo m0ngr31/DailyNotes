@@ -1,4 +1,4 @@
-FROM nikolaik/python-nodejs:python3.8-nodejs12-alpine
+FROM nikolaik/python-nodejs:python3.8-nodejs16-alpine
 
 RUN mkdir /app
 WORKDIR /app
@@ -17,8 +17,7 @@ RUN \
 RUN \
   cd /app/client && \
   npm ci && \
-  npm rebuild node-sass && \
   npm run build
 
 EXPOSE 5000
-ENTRYPOINT "./run.sh"
+ENTRYPOINT ["./run.sh"]
