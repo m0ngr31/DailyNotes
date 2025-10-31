@@ -10,20 +10,22 @@
 Current version: **1.0-beta18**
 
 ## About
+
 The idea for this app came from using my Hobonichi Techo planner every morning to write down what I needed to accomplish that day & using it for scratching down random thoughts and notes as the day went on. The closest thing I've seen to an app for replacing this system is Noteplan, but I don't use a Mac or an iOS device, and it's not self-hostable, so I decided to write my own.
 
 Since I had the need for keeping track of to-dos throughout the day, regular Markdown didn't work for me since it doesn't natively support tasks. So as an alternative I'm using Github Flavored Markdown (GFM). I really wanted it to feel like an actual text editor and not just a textbox, so I decided to use CodeMirror to handle all the input. Fira Code is used to provide font ligatures. Some other nice features include code highlighting, text/code folding, and a task list where you can toggle the status of any task from any date or note.
 
 ## Roadmap
+
 I'd like to try add include at least of some the following features to get to a final v1.0 release:
 
- - iCal support
- - HTML preview (instead of just markdown)
- - Kanban board for tasks (and new syntax to attach meta info like swimlane and project for each task)
- - Nested tagging
-
+- iCal support
+- HTML preview (instead of just markdown)
+- Kanban board for tasks (and new syntax to attach meta info like swimlane and project for each task)
+- Nested tagging
 
 ## In Action
+
 Here is some screenshots of what it looks like:
 
 Main editor:
@@ -34,35 +36,36 @@ Search page:
 
 ![](https://i.imgur.com/JKqHlhT.png)
 
-
 Task list:
 
 ![](https://i.imgur.com/TSHboCT.png)
 
 ## Running
+
 The recommended way of running is to pull the image from [Docker Hub](https://hub.docker.com/r/m0ngr31/dailynotes).
 
 ### Docker Setup
 
 #### Environment Variables
-| Environment Variable | Description | Default |
-|---|---|---|
-| API_SECRET_KEY | Used to sign API tokens. | Will be generated automatically if not passed in. |
-| DATABASE_URI | Connection string for DB. | Will create and use a SQLite DB if not passed in. |
-| DB_ENCRYPTION_KEY | Secret key for encrypting data. Length must be a multiple of 16.<br><br>*Warning*: If changed data will not be able to be decrypted! | Will be generated automatically if not passed in. |
-| PREVENT_SIGNUPS | Disable signup form? Anything in this variable will prevent signups. | False |
-| BASE_URL | Used when using a subfolder on a reverse proxy | None |
-| PUID | User ID (for folder permissions) | None |
-| PGID | Group ID (for folder permissions) | None |
 
+| Environment Variable | Description                                                                                                                          | Default                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| API_SECRET_KEY       | Used to sign API tokens.                                                                                                             | Will be generated automatically if not passed in. |
+| DATABASE_URI         | Connection string for DB.                                                                                                            | Will create and use a SQLite DB if not passed in. |
+| DB_ENCRYPTION_KEY    | Secret key for encrypting data. Length must be a multiple of 16.<br><br>_Warning_: If changed data will not be able to be decrypted! | Will be generated automatically if not passed in. |
+| PREVENT_SIGNUPS      | Disable signup form? Anything in this variable will prevent signups.                                                                 | False                                             |
+| BASE_URL             | Used when using a subfolder on a reverse proxy                                                                                       | None                                              |
+| PUID                 | User ID (for folder permissions)                                                                                                     | None                                              |
+| PGID                 | Group ID (for folder permissions)                                                                                                    | None                                              |
 
 #### Volumes
-| Volume Name | Description |
-|---|---|
+
+| Volume Name | Description                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- |
 | /app/config | Used to store DB and environment variables. This is not needed if you pass in all of the above environment variables. |
 
-
 #### Docker Run
+
 By default, the easiest way to get running is:
 
 ```bash
@@ -71,16 +74,54 @@ docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
 
 ## Development setup
 
-### Installing dependencies
+### Automated Setup (macOS/Linux)
+
+The easiest way to set up your development environment is to use the automated setup script:
+
+```bash
+./dev-setup.sh
+```
+
+This script will:
+- Check for Python 3 and Node.js >= 8
+- Create a Python virtual environment
+- Install all Python dependencies
+- Install all Node.js dependencies
+- Generate environment configuration
+
+After setup completes, run the development servers:
+
+```bash
+# Backend (in one terminal)
+source venv/bin/activate
+./run.sh
+
+# Frontend (in another terminal)
+cd client
+npm run serve
+```
+
+### Manual Setup (Windows or alternative)
+
+If you're on Windows or prefer to set up manually:
+
+#### Installing dependencies
+
 You need Python (works on 2 and 3) and Node >= 8 installed
 
 ```bash
+# Create and activate virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 cd client
 npm ci
 ```
 
-### Creating the environment
+#### Creating the environment
+
 You can use the environment variables from above, or you can generate new ones by running the following:
 
 ```bash
@@ -89,14 +130,20 @@ You can use the environment variables from above, or you can generate new ones b
 
 Keep in mind that since the data is encrypted, if you modify the `DB_ENCRYPTION_KEY` variable, your data will not be accessible anymore.
 
-### Running
+#### Running
+
 During development you need to run the client and server simultaneously
 
 ```bash
+# Activate virtual environment first
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Run backend
 ./run.sh
 ```
 
 ```bash
+# In a separate terminal
 cd client
 npm run serve
 ```

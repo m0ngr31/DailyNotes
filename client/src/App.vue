@@ -32,19 +32,20 @@ export default {
 </script>
 
 <style lang="sass">
-@import '~bulmaswatch/minty/_variables';
-@import '~bulma/bulma';
-@import '~bulmaswatch/minty/_overrides';
+@use "sass:color"
+@import '~bulmaswatch/minty/_variables'
+@import '~bulma/bulma'
+@import '~bulmaswatch/minty/_overrides'
 
 $app-background: #263238
 $loading-background: $app-background
 $loading-background-legacy: $app-background
 
-$datepicker-background-color: darken($app-background, 2.5%)
+$datepicker-background-color: color.adjust($app-background, $lightness: -2.5%)
 $datepicker-shadow: none
 $datepicker-item-color: #fff
 
-@import "~buefy/src/scss/buefy";
+@import "~buefy/src/scss/buefy"
 
 html, body
   background-color: $datepicker-background-color

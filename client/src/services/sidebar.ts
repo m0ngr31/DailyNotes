@@ -1,6 +1,5 @@
 import parse from 'date-fns/parse';
 import formatISO from 'date-fns/formatISO';
-import {Route} from 'vue-router';
 import _ from 'lodash';
 
 import {Requests} from './requests';
@@ -31,7 +30,7 @@ class SidebarSerivce {
    *
    * @param $route A VueRouter Route object
    */
-  public updateDate = _.throttle(($route: Route) => {
+  public updateDate = _.throttle(($route: any) => {
     if (!$route.params || !$route.params.id) {
       this.date = null;
       return;
@@ -67,11 +66,11 @@ class SidebarSerivce {
       });
 
       if (res && res.data && res.data.events) {
-        this.events = _.map(res.data.events, event => {
+        this.events = _.map(res.data.events, (event: string) => {
           return {
             date: parse(event, 'MM-dd-yyyy', new Date()),
           };
-        });
+        }) as unknown as any[];
       }
     } catch (e) {}
 

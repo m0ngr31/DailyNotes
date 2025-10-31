@@ -11,7 +11,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import { Route } from "vue-router";
 import format from 'date-fns/format';
 import isValid from 'date-fns/isValid';
 import parse from 'date-fns/parse';
@@ -102,7 +101,7 @@ export default class Note extends Vue {
     });
   }
 
-  beforeRouteUpdate(to: Route, from: Route, next: Function) {
+  beforeRouteUpdate(to: any, from: any, next: Function) {
     if (this.unsavedChanges) {
       this.unsavedDialog(next);
     } else {
@@ -110,7 +109,7 @@ export default class Note extends Vue {
     }
   }
 
-  beforeRouteLeave(to: Route, from: Route, next: Function) {
+  beforeRouteLeave(to: any, from: any, next: Function) {
     if (this.unsavedChanges) {
       this.unsavedDialog(next);
     } else {
