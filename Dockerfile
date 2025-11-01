@@ -1,11 +1,11 @@
-FROM nikolaik/python-nodejs:python3.8-nodejs16-alpine
+FROM nikolaik/python-nodejs:python3.10-nodejs18
 
 RUN mkdir /app
 WORKDIR /app
 
 COPY . .
 
-RUN apk add build-base libffi-dev
+RUN apt-get update && apt-get install -y build-essential libffi-dev && rm -rf /var/lib/apt/lists/*
 
 RUN \
   cd /app && \
