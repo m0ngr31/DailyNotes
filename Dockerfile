@@ -19,5 +19,5 @@ RUN \
   npm ci && \
   npm run build
 
-EXPOSE 5000
+EXPOSE 5001
 ENTRYPOINT ["./run.sh"]

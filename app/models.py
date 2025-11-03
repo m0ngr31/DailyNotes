@@ -17,13 +17,19 @@ key = app.config['DB_ENCRYPTION_KEY']
 if isinstance(key, str):
   key = key.encode('utf-8')
 
+# Pad or truncate key to 32 bytes for AES-256
+key = (key + b'\0' * 32)[:32]
+
+# Derive IV from key - must be exactly 16 bytes
+iv = key[:16]
+
 
 def aes_encrypt(data):
   # Ensure data is bytes
   if isinstance(data, str):
     data = data.encode('utf-8')
 
-  cipher = AES.new(key, AES.MODE_CFB, key[::-1])
+  cipher = AES.new(key, AES.MODE_CFB, iv)
   return cipher.encrypt(data)
 
 def aes_encrypt_old(data):
@@ -44,7 +50,7 @@ def aes_decrypt(data):
   if isinstance(data, str):
     data = data.encode('utf-8')
 
-  cipher = AES.new(key, AES.MODE_CFB, key[::-1])
+  cipher = AES.new(key, AES.MODE_CFB, iv)
 
   decrypted = cipher.decrypt(data)
 

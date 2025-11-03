@@ -4,6 +4,8 @@
     v-model="sidebar.date"
     indicators="bars"
     :events="sidebar.events"
+    :nearby-month-days="true"
+    :nearby-selectable-month-days="true"
     @input="changeDate"
   >
   </b-datepicker>
