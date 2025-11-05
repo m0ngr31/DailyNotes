@@ -31,13 +31,6 @@
             </b-tooltip>
           </div>
         </div>
-        <div class="level-item alt-button">
-          <div @click="goToSearch()">
-            <b-tooltip label="Search notes" position="is-bottom">
-              <b-icon icon="search"></b-icon>
-            </b-tooltip>
-          </div>
-        </div>
       </div>
       <div class="level-item has-text-primary">
         <div @click="prevDay()" class="alt-button" v-if="options.showDateNavs">
