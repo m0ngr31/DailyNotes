@@ -29,7 +29,6 @@ export default class TaskItem extends Vue {
   public task: any;
   public index: any;
   public sidebar = SidebarInst;
-  public completed: Boolean = false;
 
   @Inject()
   public global: any;
