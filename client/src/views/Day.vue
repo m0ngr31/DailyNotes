@@ -51,6 +51,7 @@ export default class Day extends Vue {
   public title: string = '';
   public day!: INote;
   public isLoading: boolean = false;
+  public isSaving: boolean = false;
   public headerOptions: IHeaderOptions = {
     showDateNavs: true,
     showDelete: false,
@@ -127,6 +128,8 @@ export default class Day extends Vue {
 
   beforeDestroy() {
     window.removeEventListener('beforeunload', this.unsavedAlert);
+    // Cancel any pending autosaves when component is destroyed
+    this.autoSaveThrottle.cancel();
   }
 
   public async getDayData() {
@@ -155,19 +158,44 @@ export default class Day extends Vue {
     this.isLoading = false;
   }
 
-  public async saveDay() {
+  public async saveDay(isAutoSave: boolean = false) {
+    // Cancel any pending autosave when manually saving
+    if (!isAutoSave) {
+      this.autoSaveThrottle.cancel();
+    }
+
+    // Prevent concurrent saves
+    if (this.isSaving) {
+      return;
+    }
+
+    // Don't save if there are no changes
+    if (this.modifiedText === this.text) {
+      return;
+    }
+
+    this.isSaving = true;
     const updatedDay = Object.assign(this.day, {data: this.modifiedText});
+
     try {
       const res = await NoteService.saveDay(updatedDay);
-      if (!this.sidebar.autoSave) {
-        this.text = this.modifiedText;
-      }
+      this.text = this.modifiedText;
       this.day.uuid = res.uuid;
 
       // Update the indicators
       this.valChanged(this.text);
       this.sidebar.getEvents();
       this.sidebar.getSidebarInfo();
+
+      // Show subtle feedback for autosave
+      if (isAutoSave) {
+        this.$buefy.toast.open({
+          duration: 1500,
+          message: 'Autosaved',
+          position: 'is-bottom-right',
+          type: 'is-success'
+        });
+      }
     } catch(e) {
       this.$buefy.toast.open({
         duration: 5000,
@@ -175,6 +203,8 @@ export default class Day extends Vue {
         position: 'is-top',
         type: 'is-danger'
       });
+    } finally {
+      this.isSaving = false;
     }
 
     this.unsavedChanges = false;
@@ -243,7 +273,7 @@ export default class Day extends Vue {
     }
   }
 
-  public autoSaveThrottle = _.debounce(() => this.saveDay(), 3000, {
+  public autoSaveThrottle = _.debounce(() => this.saveDay(true), 3000, {
     leading: false,
     trailing: true
   });
