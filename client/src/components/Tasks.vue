@@ -23,7 +23,6 @@
 
 <script lang="ts">
 import { Vue, Component, Inject } from "vue-property-decorator";
-import _ from "lodash";
 
 import TaskItem from "./TaskItem.vue";
 
