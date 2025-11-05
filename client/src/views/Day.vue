@@ -11,6 +11,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
+import { Route } from "vue-router";
 import format from 'date-fns/format';
 import isValid from 'date-fns/isValid';
 import parse from 'date-fns/parse';
@@ -110,7 +111,7 @@ export default class Day extends Vue {
     });
   }
 
-  beforeRouteUpdate(to: any, from: any, next: Function) {
+  beforeRouteUpdate(to: Route, from: Route, next: Function) {
     if (this.unsavedChanges) {
       this.unsavedDialog(next);
     } else {
@@ -118,7 +119,7 @@ export default class Day extends Vue {
     }
   }
 
-  beforeRouteLeave(to: any, from: any, next: Function) {
+  beforeRouteLeave(to: Route, from: Route, next: Function) {
     if (this.unsavedChanges) {
       this.unsavedDialog(next);
     } else {
@@ -179,7 +180,9 @@ export default class Day extends Vue {
 
     try {
       const res = await NoteService.saveDay(updatedDay);
-      this.text = this.modifiedText;
+      if (!this.sidebar.autoSave) {
+        this.text = this.modifiedText;
+      }
       this.day.uuid = res.uuid;
 
       // Update the indicators

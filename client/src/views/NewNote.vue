@@ -8,6 +8,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
+import { Route } from "vue-router";
 
 import SidebarInst from '../services/sidebar';
 import {NoteService} from '../services/notes';
@@ -88,7 +89,7 @@ export default class NewNote extends Vue {
     this.headerOptions.showDelete = !!this.note.uuid;
   }
 
-  beforeRouteLeave(to: any, from: any, next: Function) {
+  beforeRouteLeave(to: Route, from: Route, next: Function) {
     if (this.unsavedChanges) {
       this.$buefy.modal.open({
         parent: this,
