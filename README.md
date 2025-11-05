@@ -83,7 +83,8 @@ The easiest way to set up your development environment is to use the automated s
 ```
 
 This script will:
-- Check for Python 3 and Node.js >= 8
+- Check for Python 3 and Node.js
+- Automatically use Node.js 16 via nvm (if available)
 - Create a Python virtual environment
 - Install all Python dependencies
 - Install all Node.js dependencies
@@ -98,8 +99,10 @@ source venv/bin/activate
 
 # Frontend (in another terminal)
 cd client
-npm run serve
+npm run dev  # Uses Node 16 via nvm automatically
 ```
+
+**Note:** The project includes a `.nvmrc` file that specifies Node.js 16. If you have nvm installed, it will automatically use the correct version.
 
 ### Manual Setup (Windows or alternative)
 
@@ -107,9 +110,15 @@ If you're on Windows or prefer to set up manually:
 
 #### Installing dependencies
 
-You need Python (works on 2 and 3) and Node >= 8 installed
+You need Python (works on 2 and 3) and Node.js 16 installed.
+
+**Recommended:** Use [nvm](https://github.com/nvm-sh/nvm) (macOS/Linux) or [nvm-windows](https://github.com/coreybutler/nvm-windows) to manage Node.js versions. The project includes a `.nvmrc` file that specifies Node.js 16.
 
 ```bash
+# If using nvm (recommended)
+nvm install 16
+nvm use 16
+
 # Create and activate virtual environment (recommended)
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -145,5 +154,12 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```bash
 # In a separate terminal
 cd client
+
+# If using nvm, switch to Node 16 first (or run npm run dev)
+nvm use  # Reads from .nvmrc file
+
+# Start frontend dev server
 npm run serve
+# Or use the dev script which automatically uses Node 16:
+npm run dev
 ```

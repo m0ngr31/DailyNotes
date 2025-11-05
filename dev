@@ -58,6 +58,7 @@ sleep 2
 # Start frontend dev server
 echo -e "${GREEN}Starting frontend dev server...${NC}"
 cd client
+nvm use
 NODE_OPTIONS=--openssl-legacy-provider npm run serve &
 FRONTEND_PID=$!
 cd ..

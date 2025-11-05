@@ -11,6 +11,7 @@ echo ""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Check if Python is installed
@@ -114,6 +115,14 @@ echo ""
 # Deactivate venv before installing Node dependencies to avoid Python path conflicts
 deactivate
 
+# Load nvm if available
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    source "$NVM_DIR/nvm.sh"
+elif [ -s "$HOME/.nvm/nvm.sh" ]; then
+    export NVM_DIR="$HOME/.nvm"
+    source "$NVM_DIR/nvm.sh"
+fi
+
 # Install Node dependencies
 echo "Installing Node.js dependencies in client directory..."
 if [ ! -d "client" ]; then
@@ -122,6 +131,14 @@ if [ ! -d "client" ]; then
 fi
 
 cd client
+
+# Use Node 16 via nvm if available
+if command -v nvm &> /dev/null && [ -f ".nvmrc" ]; then
+    echo "Using Node.js version from .nvmrc..."
+    nvm use || nvm install
+    NODE_VERSION=$(node --version)
+    echo -e "${GREEN}✓ Switched to Node.js $NODE_VERSION${NC}"
+fi
 
 # Remove old package-lock.json to force a fresh install with updated dependencies
 if [ -f "package-lock.json" ]; then
@@ -172,6 +189,12 @@ echo "======================================"
 echo ""
 
 cd client
+
+# Use Node 16 via nvm if available
+if command -v nvm &> /dev/null && [ -f ".nvmrc" ]; then
+    nvm use > /dev/null 2>&1
+fi
+
 echo "Building Vue.js production bundle..."
 if npm run build; then
     echo -e "${GREEN}✓ Frontend built successfully${NC}"
