@@ -1,7 +1,7 @@
 # ================================
 # Stage 1: Builder
 # ================================
-FROM nikolaik/python-nodejs:python3.10-nodejs18 AS builder
+FROM nikolaik/python-nodejs:python3.10-nodejs16 AS builder
 
 # Install build dependencies
 RUN apt-get update && \
