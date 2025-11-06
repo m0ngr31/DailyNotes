@@ -12,8 +12,8 @@ axios.interceptors.request.use(config => {
   // Get token
   const token = getToken();
 
-  if (token) {
-    config.headers.common['Authorization'] = `Bearer ${token}`;
+  if (token && config.headers) {
+    config.headers['Authorization'] = `Bearer ${token}`;
   }
 
   return config;
@@ -78,7 +78,8 @@ export const Requests = {
       method: "GET",
       responseType: "blob"
     }).then(res => {
-      var FILE = window.URL.createObjectURL(new Blob([res.data]));
+      const blob = new Blob([res.data as any]);
+      var FILE = window.URL.createObjectURL(blob);
       var docUrl = document.createElement("a");
       docUrl.href = FILE;
       docUrl.setAttribute("download", filename);

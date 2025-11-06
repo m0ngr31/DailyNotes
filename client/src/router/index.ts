@@ -1,24 +1,24 @@
 import Vue from "vue";
 import VueRouter from "vue-router";
 
-import Home from "../views/Home.vue";
-
-import PageNotFound from '../views/PageNotFound.vue';
-import UnauthorizedPage from '../views/UnauthorizedPage.vue';
-import ErrorPage from '../views/ErrorPage.vue';
-
-import Day from '../views/Day.vue';
-import Note from '../views/Note.vue';
-import NewNote from '../views/NewNote.vue';
-import Search from '../views/Search.vue';
-import HomeRedirect from '../views/HomeRedirect.vue';
-
-import Auth from '../views/Auth.vue';
-import Login from '../views/Login.vue';
-import Signup from '../views/Signup.vue';
-
 import {getToken} from '../services/user';
 import SidebarInst from '../services/sidebar';
+
+// Lazy-load route components for better code splitting
+const Home = () => import(/* webpackChunkName: "home" */ "../views/Home.vue");
+const PageNotFound = () => import(/* webpackChunkName: "errors" */ '../views/PageNotFound.vue');
+const UnauthorizedPage = () => import(/* webpackChunkName: "errors" */ '../views/UnauthorizedPage.vue');
+const ErrorPage = () => import(/* webpackChunkName: "errors" */ '../views/ErrorPage.vue');
+
+const Day = () => import(/* webpackChunkName: "editor" */ '../views/Day.vue');
+const Note = () => import(/* webpackChunkName: "editor" */ '../views/Note.vue');
+const NewNote = () => import(/* webpackChunkName: "editor" */ '../views/NewNote.vue');
+const Search = () => import(/* webpackChunkName: "search" */ '../views/Search.vue');
+const HomeRedirect = () => import(/* webpackChunkName: "home" */ '../views/HomeRedirect.vue');
+
+const Auth = () => import(/* webpackChunkName: "auth" */ '../views/Auth.vue');
+const Login = () => import(/* webpackChunkName: "auth" */ '../views/Login.vue');
+const Signup = () => import(/* webpackChunkName: "auth" */ '../views/Signup.vue');
 
 
 Vue.use(VueRouter);
