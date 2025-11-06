@@ -23,5 +23,15 @@ module.exports = {
         new RegExp('[/\\\\\](en)[/\\\\\]')
       )
     ]
+  },
+  css: {
+    loaderOptions: {
+      sass: {
+        sassOptions: {
+          api: 'modern',
+          silenceDeprecations: ['legacy-js-api', 'import', 'global-builtin', 'color-functions', 'slash-div']
+        }
+      }
+    }
   }
 };
