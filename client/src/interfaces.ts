@@ -6,6 +6,9 @@ export interface IHeaderOptions {
   saveDisabled?: boolean;
   saveFn?: () => Promise<any>;
   deleteFn?: () => Promise<any>;
+  showPreview?: boolean;
+  previewMode?: 'none' | 'side' | 'replace';
+  togglePreviewFn?: (mode: 'side' | 'replace' | 'none') => void;
 }
 
 export interface INote {

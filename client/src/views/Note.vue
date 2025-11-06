@@ -1,7 +1,20 @@
 <template>
   <div>
     <Header :options="headerOptions"></Header>
-    <Editor v-if="!isLoading" v-bind:value="text" v-on:valChanged="valChanged" v-on:saveShortcut="saveNote"></Editor>
+    <div v-if="!isLoading" class="editor-container" :class="{ 'split-view': previewMode === 'side' }">
+      <Editor
+        v-show="previewMode !== 'replace'"
+        v-bind:value="text"
+        v-on:valChanged="valChanged"
+        v-on:saveShortcut="saveNote"
+        :class="{ 'editor-split': previewMode === 'side' }"
+      ></Editor>
+      <MarkdownPreview
+        v-if="previewMode !== 'none'"
+        v-bind:value="modifiedText || text"
+        :class="{ 'preview-split': previewMode === 'side' }"
+      ></MarkdownPreview>
+    </div>
     <div v-else class="loading-wrapper">
       <b-loading :is-full-page="false" :active="isLoading"></b-loading>
     </div>
@@ -25,6 +38,7 @@ import {INote} from '../interfaces';
 
 import Editor from '@/components/Editor.vue';
 import Header from '@/components/Header.vue';
+import MarkdownPreview from '@/components/MarkdownPreview.vue';
 
 import {IHeaderOptions} from '../interfaces';
 
@@ -39,6 +53,7 @@ Component.registerHooks([
   components: {
     Editor,
     Header,
+    MarkdownPreview,
   }
 })
 export default class Note extends Vue {
@@ -50,12 +65,16 @@ export default class Note extends Vue {
   public note!: INote;
   public isLoading: boolean = false;
   public isSaving: boolean = false;
+  public previewMode: 'none' | 'side' | 'replace' = 'none';
   public headerOptions: IHeaderOptions = {
     showDelete: true,
+    showPreview: true,
+    previewMode: 'none',
     title: '',
     saveDisabled: true,
     saveFn: () => this.saveNote(),
     deleteFn: () => this.deleteNote(),
+    togglePreviewFn: (mode) => this.togglePreview(mode),
   }
 
   public metaInfo(): any {
@@ -66,6 +85,7 @@ export default class Note extends Vue {
 
   created() {
     window.addEventListener('beforeunload', this.unsavedAlert);
+    window.addEventListener('keydown', this.handleKeydown);
   }
 
   async mounted() {
@@ -121,6 +141,7 @@ export default class Note extends Vue {
 
   beforeDestroy() {
     window.removeEventListener('beforeunload', this.unsavedAlert);
+    window.removeEventListener('keydown', this.handleKeydown);
     // Cancel any pending autosaves when component is destroyed
     this.autoSaveThrottle.cancel();
   }
@@ -232,6 +253,55 @@ export default class Note extends Vue {
     trailing: true
   });
 
+  private cmdKPressed: boolean = false;
+  private cmdKTimeout: any = null;
+
+  public handleKeydown(e: KeyboardEvent) {
+    // Handle Cmd+K then V for side-by-side preview
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      this.cmdKPressed = true;
+
+      // Reset after 1 second
+      if (this.cmdKTimeout) {
+        clearTimeout(this.cmdKTimeout);
+      }
+      this.cmdKTimeout = setTimeout(() => {
+        this.cmdKPressed = false;
+      }, 1000);
+      return;
+    }
+
+    // V after Cmd+K
+    if (this.cmdKPressed && e.key === 'v') {
+      e.preventDefault();
+      this.cmdKPressed = false;
+      if (this.cmdKTimeout) {
+        clearTimeout(this.cmdKTimeout);
+      }
+      this.togglePreview('side');
+      return;
+    }
+
+    // Handle Shift+Cmd+V for preview only
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'v') {
+      e.preventDefault();
+      this.togglePreview('replace');
+      return;
+    }
+  }
+
+  public togglePreview(mode: 'side' | 'replace' | 'none') {
+    if (mode === 'none') {
+      this.previewMode = 'none';
+    } else if (this.previewMode === mode) {
+      this.previewMode = 'none';
+    } else {
+      this.previewMode = mode;
+    }
+    this.headerOptions.previewMode = this.previewMode;
+  }
+
   unsavedAlert(e: Event) {
     if (this.unsavedChanges) {
       // Attempt to modify event will trigger Chrome/Firefox alert msg
@@ -258,5 +328,27 @@ export default class Note extends Vue {
   width: 100%;
   height: 100vh;
   position: relative;
+}
+
+.editor-container {
+  height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: row;
+}
+
+.split-view {
+  display: flex;
+}
+
+.editor-split,
+.preview-split {
+  flex: 1;
+  width: 50%;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.editor-split {
+  border-right: 1px solid #404854;
 }
 </style>

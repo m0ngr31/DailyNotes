@@ -28,6 +28,7 @@ DailyNotes is a self-hosted daily task and note-taking application that combines
 - **UI Library:** Buefy (Vue wrapper for Bulma CSS)
 - **CSS Framework:** Bulma with Bulmaswatch theme (Minty)
 - **Editor:** CodeMirror 5 (for markdown editing with syntax highlighting)
+- **Markdown Rendering:** Marked (for HTML preview with GFM support)
 - **Routing:** Vue Router 3
 - **HTTP Client:** Axios with JWT interceptors
 - **Utilities:** date-fns, Lodash, Vue Masonry CSS
@@ -63,6 +64,7 @@ DailyNotes/
 │   │   │   └── sharedBuefy.ts   # Shared Buefy notification/dialog
 │   │   ├── components/          # Reusable Vue components
 │   │   │   ├── Editor.vue       # CodeMirror markdown editor
+│   │   │   ├── MarkdownPreview.vue # HTML preview for markdown content
 │   │   │   ├── Header.vue       # Page header with nav & controls
 │   │   │   ├── Calendar.vue     # Date picker calendar
 │   │   │   ├── NoteCard.vue     # Note display card
@@ -342,6 +344,112 @@ docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
 8. **Auto-Save** - Optional auto-save toggle per user
 9. **Full-Text Search** - Simple string matching across notes
 10. **Export** - Download all notes as ZIP with markdown files
+11. **HTML Preview** - Real-time markdown preview with VS Code-style hotkeys
+
+## HTML Preview Feature
+
+The HTML Preview feature allows users to view their markdown content rendered as HTML in real-time, with two display modes and VS Code-style keyboard shortcuts.
+
+### Preview Modes
+
+1. **Side-by-Side Preview** (`Cmd+K` then `V`)
+   - Editor and preview displayed side-by-side
+   - 50/50 split view with synchronized scrolling
+   - Ideal for writing while seeing the formatted output
+   - Available in both Day.vue and Note.vue views
+
+2. **Preview Only** (`Shift+Cmd+V`)
+   - Full-screen preview with editor hidden
+   - Clean reading view of formatted markdown
+   - Useful for reviewing final output
+   - Toggle again to return to editor
+
+3. **Close Preview**
+   - Click the preview icon dropdown and select "Close Preview"
+   - Or toggle the current mode again to close
+
+### Implementation Details
+
+**Components:**
+
+- `MarkdownPreview.vue` - Main preview component
+  - Uses the `marked` library for markdown-to-HTML conversion
+  - Configured for GitHub Flavored Markdown (GFM)
+  - Supports task lists, tables, code blocks, and all standard markdown features
+  - Dark theme styling to match the CodeMirror editor
+
+**Keyboard Shortcuts:**
+
+- `Cmd+K V` (macOS) or `Ctrl+K V` (Windows/Linux) - Toggle side-by-side preview
+- `Shift+Cmd+V` (macOS) or `Shift+Ctrl+V` (Windows/Linux) - Toggle preview-only mode
+- Sequential key detection with 1-second timeout for `Cmd+K` then `V` pattern
+
+**UI Controls:**
+
+- Eye icon in header (right side, before save button)
+- Dropdown menu with three options:
+  - Preview Side-by-Side
+  - Preview Only
+  - Close Preview (when active)
+- Icon changes color when preview is active
+
+**Styling:**
+
+- Dark background (`#263238`) matching CodeMirror theme
+- Syntax-highlighted code blocks
+- Styled tables, blockquotes, and task lists
+- Typography optimized for readability
+- Responsive layout with proper spacing
+
+**State Management:**
+
+- Preview mode stored in component state (`previewMode: 'none' | 'side' | 'replace'`)
+- Synced with `headerOptions.previewMode` for UI updates
+- Live updates as user types in editor
+- Preview renders `modifiedText` (unsaved changes) or `text` (saved content)
+
+### Usage in Views
+
+Both `Day.vue` and `Note.vue` support the preview feature:
+
+```typescript
+// State
+public previewMode: 'none' | 'side' | 'replace' = 'none';
+
+// Header options
+public headerOptions: IHeaderOptions = {
+  showPreview: true,
+  previewMode: 'none',
+  togglePreviewFn: (mode) => this.togglePreview(mode),
+  // ... other options
+}
+
+// Toggle method
+public togglePreview(mode: 'side' | 'replace') {
+  if (this.previewMode === mode) {
+    this.previewMode = 'none';
+  } else {
+    this.previewMode = mode;
+  }
+  this.headerOptions.previewMode = this.previewMode;
+}
+```
+
+### Supported Markdown Features
+
+The preview renders all GitHub Flavored Markdown (GFM) features:
+
+- Headers (H1-H6)
+- Bold, italic, strikethrough
+- Links and images
+- Ordered and unordered lists
+- Task lists with checkboxes
+- Code blocks with syntax highlighting
+- Inline code
+- Blockquotes
+- Tables
+- Horizontal rules
+- Line breaks (GFM mode)
 
 ## Notes for Contributors
 
@@ -364,6 +472,7 @@ docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
 6. **CodeMirror Config:** Line numbers, syntax highlighting, code folding
 7. **JWT Expiration:** 7 days default (set in config.py)
 8. **Cascading Deletes:** User deletion cascades to all notes and metadata
+9. **Preview Hotkeys:** `Cmd+K` then `V` for side-by-side, `Shift+Cmd+V` for preview-only mode
 
 ## Security Considerations
 

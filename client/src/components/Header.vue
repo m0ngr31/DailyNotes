@@ -48,6 +48,31 @@
           </div>
         </div>
         <div
+          v-show="options.showPreview"
+          class="level-item alt-button"
+          v-bind:class="{ 'preview-active': options.previewMode !== 'none' }"
+        >
+          <b-dropdown position="is-bottom-left">
+            <b-tooltip slot="trigger" label="Preview" position="is-bottom">
+              <b-icon icon="eye"></b-icon>
+            </b-tooltip>
+            <b-dropdown-item @click="togglePreview('side')">
+              <b-icon icon="columns" size="is-small"></b-icon>
+              <span class="dropdown-text">Preview Side-by-Side</span>
+              <span class="dropdown-shortcut">⌘K V</span>
+            </b-dropdown-item>
+            <b-dropdown-item @click="togglePreview('replace')">
+              <b-icon icon="file-alt" size="is-small"></b-icon>
+              <span class="dropdown-text">Preview Only</span>
+              <span class="dropdown-shortcut">⇧⌘V</span>
+            </b-dropdown-item>
+            <b-dropdown-item v-if="options.previewMode !== 'none'" @click="closePreview()">
+              <b-icon icon="times" size="is-small"></b-icon>
+              <span class="dropdown-text">Close Preview</span>
+            </b-dropdown-item>
+          </b-dropdown>
+        </div>
+        <div
           v-show="options.saveFn"
           class="level-item alt-button"
           v-bind:class="{ 'save-disabled': options.saveDisabled }"
@@ -186,6 +211,18 @@ export default class Header extends Vue {
     NoteService.exportNotes();
   }
 
+  public togglePreview(mode: 'side' | 'replace' | 'none') {
+    if (this.options.togglePreviewFn && _.isFunction(this.options.togglePreviewFn)) {
+      this.options.togglePreviewFn(mode);
+    }
+  }
+
+  public closePreview() {
+    if (this.options.togglePreviewFn && _.isFunction(this.options.togglePreviewFn)) {
+      this.options.togglePreviewFn('none');
+    }
+  }
+
   public logout() {
     clearToken();
     this.$router.push({name: 'Login'});
@@ -219,5 +256,21 @@ export default class Header extends Vue {
 .save-disabled {
   color: #888;
   cursor: unset;
+}
+
+.preview-active {
+  color: #82aaff;
+}
+
+.dropdown-text {
+  margin-left: 8px;
+  margin-right: 12px;
+}
+
+.dropdown-shortcut {
+  opacity: 0.6;
+  font-size: 0.85em;
+  margin-left: auto;
+  float: right;
 }
 </style>
