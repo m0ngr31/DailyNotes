@@ -10,18 +10,14 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy dependency files
-COPY requirements.txt .
-COPY client/package.json client/package-lock.json ./client/
+# Copy all source code first (node_modules excluded via .dockerignore)
+COPY . .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Node dependencies
-RUN cd client && npm ci --prefer-offline --no-audit --legacy-peer-deps
-
-# Copy source code
-COPY . .
+# Install Node dependencies (regenerate lock file to avoid version mismatch)
+RUN cd client && npm install --prefer-offline --no-audit --legacy-peer-deps
 
 # Build frontend (creates /app/dist/)
 RUN cd client && npm run build

@@ -17,6 +17,10 @@ env/
 
 # Node
 node_modules/
+client/node_modules/
+**/node_modules/
+client/package-lock.json
+package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
