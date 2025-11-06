@@ -8,7 +8,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import { Route } from "vue-router";
+import type { Route } from "vue-router/types/router";
 
 import SidebarInst from '../services/sidebar';
 import {NoteService} from '../services/notes';

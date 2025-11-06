@@ -24,7 +24,7 @@ export const NoteService = {
 
       throw new Error('no matching data');
     } catch (e) {
-      throw new Error(e);
+      throw new Error(String(e));
     }
   },
 
@@ -45,7 +45,7 @@ export const NoteService = {
 
       return res.data.note as INote;
     } catch (e) {
-      throw new Error(e);
+      throw new Error(String(e));
     }
   },
 
@@ -63,7 +63,7 @@ export const NoteService = {
 
       return res.data as INote[];
     } catch (e) {
-      throw new Error(e);
+      throw new Error(String(e));
     }
   },
 

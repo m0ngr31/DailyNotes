@@ -18,7 +18,7 @@ COPY client/package.json client/package-lock.json ./client/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Node dependencies
-RUN cd client && npm ci --prefer-offline --no-audit
+RUN cd client && npm ci --prefer-offline --no-audit --legacy-peer-deps
 
 # Copy source code
 COPY . .
