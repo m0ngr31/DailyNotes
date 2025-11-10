@@ -167,7 +167,28 @@ def before_change_note(mapper, connection, target):
   if isinstance(data.get('title'), str) and len(data.get('title')) > 0:
     title = data.get('title')
 
-  if title and not target.is_date:
+  if not target.is_date:
+    # If no title found in frontmatter, generate a default title
+    if not title:
+      # Try to extract first line of content as title
+      content_lines = data.content.strip().split('\n')
+      first_line = ''
+      for line in content_lines:
+        if line.strip():
+          first_line = line.strip()
+          break
+
+      if first_line:
+        # Remove markdown formatting from first line
+        title = first_line.lstrip('#').strip()
+        # Limit title length
+        if len(title) > 100:
+          title = title[:100] + '...'
+
+      # If still no title, use default
+      if not title:
+        title = 'Untitled Note'
+
     target.name = title
 
 

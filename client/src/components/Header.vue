@@ -236,7 +236,7 @@ export default class Header extends Vue {
   padding: 10px 20px 0px 20px;
   border-bottom: 2px solid var(--main-bg-darker);
   position: sticky;
-  z-index: 100;
+  z-index: 30;
   top: 0;
   background-color: var(--main-bg-color);
 }

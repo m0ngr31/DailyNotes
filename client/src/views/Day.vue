@@ -3,8 +3,9 @@
     <Header :options="headerOptions"></Header>
     <div v-if="!isLoading" class="editor-container" :class="{ 'split-view': previewMode === 'side' }">
       <Editor
+        ref="editor"
         v-show="previewMode !== 'replace'"
-        v-bind:value="text"
+        v-bind:value="modifiedText || text"
         v-on:valChanged="valChanged"
         v-on:saveShortcut="saveDay"
         :class="{ 'editor-split': previewMode === 'side' }"
@@ -12,6 +13,7 @@
       <MarkdownPreview
         v-if="previewMode !== 'none'"
         v-bind:value="modifiedText || text"
+        v-on:checkbox-toggled="handleCheckboxToggled"
         :class="{ 'preview-split': previewMode === 'side' }"
       ></MarkdownPreview>
     </div>
@@ -201,13 +203,16 @@ export default class Day extends Vue {
 
     try {
       const res = await NoteService.saveDay(updatedDay);
-      if (!this.sidebar.autoSave) {
-        this.text = this.modifiedText;
-      }
+      this.text = this.modifiedText;
+      this.modifiedText = '';  // Reset so editor shows the saved text
       this.day.uuid = res.uuid;
 
-      // Update the indicators
-      this.valChanged(this.text);
+      // Update the UI state directly
+      this.unsavedChanges = false;
+      this.title = this.headerOptions.title;
+      this.headerOptions.saveDisabled = true;
+      this.headerOptions.showDelete = !!this.day.uuid;
+
       this.sidebar.getEvents();
       this.sidebar.getSidebarInfo();
 
@@ -230,9 +235,6 @@ export default class Day extends Vue {
     } finally {
       this.isSaving = false;
     }
-
-    this.unsavedChanges = false;
-    this.headerOptions.showDelete = !!this.day.uuid;
   }
 
   public async deleteNote() {
@@ -341,6 +343,8 @@ export default class Day extends Vue {
   }
 
   public togglePreview(mode: 'side' | 'replace' | 'none') {
+    const wasHidden = this.previewMode === 'replace';
+
     if (mode === 'none') {
       this.previewMode = 'none';
     } else if (this.previewMode === mode) {
@@ -349,6 +353,21 @@ export default class Day extends Vue {
       this.previewMode = mode;
     }
     this.headerOptions.previewMode = this.previewMode;
+
+    // Refresh the editor when it becomes visible
+    if (wasHidden && this.previewMode !== 'replace') {
+      this.$nextTick(() => {
+        const editor = this.$refs.editor as any;
+        if (editor && editor.refresh) {
+          editor.refresh();
+        }
+      });
+    }
+  }
+
+  public handleCheckboxToggled(updatedMarkdown: string) {
+    // Update the text with the toggled checkbox
+    this.valChanged(updatedMarkdown);
   }
 
   unsavedAlert(e: Event) {

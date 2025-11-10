@@ -9,13 +9,18 @@
         </div>
       </div>
     </div>
-    <div class="preview-content" v-html="renderedMarkdown"></div>
+    <div class="preview-content" v-html="renderedMarkdown" @click="handleCheckboxClick"></div>
   </div>
 </template>
 
 <script lang="ts">
 import { Vue, Component, Prop, Watch } from 'vue-property-decorator';
 import { marked } from 'marked';
+
+interface CheckboxInfo {
+  lineIndex: number;
+  checkboxIndex: number;
+}
 
 @Component
 export default class MarkdownPreview extends Vue {
@@ -24,6 +29,8 @@ export default class MarkdownPreview extends Vue {
 
   public renderedMarkdown: string = '';
   public frontmatter: Record<string, string> | null = null;
+  private contentLines: string[] = [];
+  private frontmatterLineCount: number = 0;
 
   created() {
     // Configure marked for GitHub Flavored Markdown
@@ -46,12 +53,16 @@ export default class MarkdownPreview extends Vue {
     const match = text.match(frontmatterRegex);
 
     if (!match) {
+      this.frontmatterLineCount = 0;
       return { frontmatter: null, content: text };
     }
 
     const frontmatterText = match[1];
     const content = match[2];
     const frontmatter: Record<string, string> = {};
+
+    // Calculate how many lines the frontmatter takes up (including delimiters)
+    this.frontmatterLineCount = frontmatterText.split('\n').length + 2; // +2 for the --- delimiters
 
     // Parse YAML-like frontmatter (simple key: value pairs)
     const lines = frontmatterText.split('\n');
@@ -74,14 +85,32 @@ export default class MarkdownPreview extends Vue {
       // Parse frontmatter and content
       const { frontmatter, content } = this.parseFrontmatter(this.value || '');
       this.frontmatter = frontmatter;
+      this.contentLines = content.split('\n');
 
       // Parse markdown to HTML
       let html = marked.parse(content) as string;
 
-      // Add classes to task list items for styling
+      // Replace checkboxes with clickable versions and add data attributes
+      // Marked renders checkboxes in various formats, so we need to handle all cases
+      let currentCheckboxId = 0;
+
+      // Match: <input disabled="" type="checkbox"> or <input type="checkbox" disabled> or similar
+      // We'll replace them all with enabled checkboxes with data attributes
       html = html.replace(
-        /<li><input (checked|disabled)? type="checkbox">/gi,
-        '<li class="task-list-item"><input $1 type="checkbox">'
+        /<input[^>]*type="checkbox"[^>]*>/gi,
+        (match) => {
+          const isChecked = /checked/i.test(match);
+          const dataAttr = `data-checkbox-id="${currentCheckboxId}"`;
+          currentCheckboxId++;
+          // Return checkbox without disabled attribute
+          return `<input type="checkbox" ${isChecked ? 'checked' : ''} ${dataAttr}>`;
+        }
+      );
+
+      // Ensure task list items have proper class
+      html = html.replace(
+        /<li>\s*<input type="checkbox"/gi,
+        '<li class="task-list-item"><input type="checkbox"'
       );
 
       this.renderedMarkdown = html;
@@ -89,6 +118,100 @@ export default class MarkdownPreview extends Vue {
       console.error('Error rendering markdown:', e);
       this.renderedMarkdown = '<p>Error rendering markdown preview</p>';
     }
+  }
+
+  handleCheckboxClick(event: Event) {
+    const target = event.target as HTMLElement;
+
+    // Check if the clicked element is a checkbox
+    if (target.tagName !== 'INPUT' || (target as HTMLInputElement).type !== 'checkbox') {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const checkbox = target as HTMLInputElement;
+    const checkboxId = parseInt(checkbox.getAttribute('data-checkbox-id') || '-1', 10);
+
+    if (checkboxId === -1) {
+      return;
+    }
+
+    // Find which line and position this checkbox is on
+    const checkboxInfo = this.findCheckboxPosition(checkboxId);
+
+    if (checkboxInfo === null) {
+      return;
+    }
+
+    // Toggle the checkbox in the markdown
+    const updatedMarkdown = this.toggleCheckboxInMarkdown(checkboxInfo);
+
+    // Emit the updated markdown to parent
+    this.$emit('checkbox-toggled', updatedMarkdown);
+  }
+
+  findCheckboxPosition(checkboxId: number): CheckboxInfo | null {
+    let currentCheckboxId = 0;
+
+    for (let lineIndex = 0; lineIndex < this.contentLines.length; lineIndex++) {
+      const line = this.contentLines[lineIndex];
+      const checkboxRegex = /- \[([ xX])\]/g;
+      let match;
+      let checkboxIndexOnLine = 0;
+
+      while ((match = checkboxRegex.exec(line)) !== null) {
+        if (currentCheckboxId === checkboxId) {
+          return {
+            lineIndex,
+            checkboxIndex: checkboxIndexOnLine
+          };
+        }
+        currentCheckboxId++;
+        checkboxIndexOnLine++;
+      }
+    }
+
+    return null;
+  }
+
+  toggleCheckboxInMarkdown(checkboxInfo: CheckboxInfo): string {
+    const { lineIndex, checkboxIndex } = checkboxInfo;
+    const line = this.contentLines[lineIndex];
+
+    // Find the specific checkbox on this line
+    const checkboxRegex = /- \[([ xX])\]/g;
+    let match;
+    let currentIndex = 0;
+    let updatedLine = line;
+
+    while ((match = checkboxRegex.exec(line)) !== null) {
+      if (currentIndex === checkboxIndex) {
+        // Toggle the checkbox
+        const currentState = match[1].toLowerCase();
+        const newState = currentState === 'x' ? ' ' : 'x';
+        const before = line.substring(0, match.index);
+        const after = line.substring(match.index + match[0].length);
+        updatedLine = `${before}- [${newState}]${after}`;
+        break;
+      }
+      currentIndex++;
+    }
+
+    // Reconstruct the full markdown
+    const updatedContentLines = [...this.contentLines];
+    updatedContentLines[lineIndex] = updatedLine;
+
+    // Add frontmatter back if it exists
+    if (this.frontmatter && Object.keys(this.frontmatter).length > 0) {
+      const frontmatterText = Object.entries(this.frontmatter)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\n');
+      return `---\n${frontmatterText}\n---\n${updatedContentLines.join('\n')}`;
+    }
+
+    return updatedContentLines.join('\n');
   }
 }
 </script>
@@ -264,6 +387,11 @@ export default class MarkdownPreview extends Vue {
 .preview-content >>> .task-list-item input[type="checkbox"] {
   margin-right: 0.5em;
   vertical-align: middle;
+  cursor: pointer;
+}
+
+.preview-content >>> .task-list-item input[type="checkbox"]:hover {
+  transform: scale(1.1);
 }
 
 /* Code blocks */

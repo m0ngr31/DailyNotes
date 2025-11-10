@@ -134,6 +134,14 @@ export default class Editor extends Vue {
     });
   }
 
+  refresh() {
+    _.defer(() => {
+      if (this.editor) {
+        this.editor.refresh();
+      }
+    });
+  }
+
   @Watch('value')
   onValueChanged() {
     this.handleValueUpdate();

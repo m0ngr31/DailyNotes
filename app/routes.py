@@ -73,7 +73,7 @@ def save_day():
   enc_date = aes_encrypt(title)
   note = user.notes.filter_by(title=enc_date).first()
 
-  if not Note:
+  if not note:
     # Check old encryption
     enc_date = aes_encrypt_old(title)
     note = user.notes.filter_by(title=enc_date).first()
