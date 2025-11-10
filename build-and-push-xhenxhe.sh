@@ -4,11 +4,29 @@
 # This script builds the DailyNotes Docker image and pushes it to xhenxhe/dailynotes
 #
 # Usage:
-#   ./build-and-push-xhenxhe.sh [version]
+#   ./build-and-push-xhenxhe.sh [version] [-y]
 #
 # If version is not provided, it will be read from client/package.json
+# Use -y to skip confirmation prompt
 
 set -e  # Exit on any error
+
+# Parse arguments
+AUTO_CONFIRM=false
+VERSION_ARG=""
+
+for arg in "$@"; do
+    case $arg in
+        -y|--yes)
+            AUTO_CONFIRM=true
+            shift
+            ;;
+        *)
+            VERSION_ARG="$arg"
+            shift
+            ;;
+    esac
+done
 
 # Color codes for output
 RED='\033[0;31m'
@@ -32,8 +50,8 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Get version from argument or package.json
-if [ -n "$1" ]; then
-    VERSION="$1"
+if [ -n "$VERSION_ARG" ]; then
+    VERSION="$VERSION_ARG"
     echo -e "${YELLOW}Using version from argument: ${VERSION}${NC}"
 else
     if [ ! -f "client/package.json" ]; then
@@ -55,54 +73,48 @@ echo ""
 echo -e "${YELLOW}This will build and push the following tags:${NC}"
 echo -e "  - ${DOCKER_IMAGE}:${VERSION}"
 echo -e "  - ${DOCKER_IMAGE}:latest"
+echo -e "${YELLOW}Platforms: linux/amd64, linux/arm64${NC}"
 echo ""
 
 # Confirm before proceeding
-read -p "Continue with build and push? (y/N) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${YELLOW}Build cancelled.${NC}"
-    exit 0
-fi
-
-echo ""
-echo -e "${GREEN}Step 1/4: Building Docker image...${NC}"
-docker build -t "${DOCKER_IMAGE}:${VERSION}" -t "${DOCKER_IMAGE}:latest" .
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Docker build failed${NC}"
-    exit 1
-fi
-
-echo ""
-echo -e "${GREEN}Step 2/4: Checking Docker Hub login...${NC}"
-if ! docker info | grep -q "Username: ${DOCKER_USERNAME}"; then
-    echo -e "${YELLOW}Not logged in to Docker Hub. Attempting login...${NC}"
-    docker login
-
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Error: Docker login failed${NC}"
-        exit 1
+if [ "$AUTO_CONFIRM" = false ]; then
+    read -p "Continue with build and push? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Build cancelled.${NC}"
+        exit 0
     fi
+else
+    echo -e "${GREEN}Auto-confirm enabled, proceeding with build...${NC}"
 fi
 
 echo ""
-echo -e "${GREEN}Step 3/4: Pushing ${DOCKER_IMAGE}:${VERSION}...${NC}"
-docker push "${DOCKER_IMAGE}:${VERSION}"
+echo -e "${GREEN}Step 1/4: Setting up buildx for multi-platform builds...${NC}"
+docker buildx create --name dailynotes-builder --use 2>/dev/null || docker buildx use dailynotes-builder
+
+echo ""
+echo -e "${GREEN}Step 2/4: Building and pushing multi-platform Docker image...${NC}"
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t "${DOCKER_IMAGE}:${VERSION}" \
+  -t "${DOCKER_IMAGE}:latest" \
+  --push \
+  .
 
 if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Failed to push versioned tag${NC}"
+    echo -e "${RED}Error: Docker build and push failed${NC}"
+    echo -e "${YELLOW}Note: Make sure you're logged in to Docker Hub${NC}"
+    echo -e "${YELLOW}Run: docker login${NC}"
     exit 1
 fi
 
 echo ""
-echo -e "${GREEN}Step 4/4: Pushing ${DOCKER_IMAGE}:latest...${NC}"
-docker push "${DOCKER_IMAGE}:latest"
+echo -e "${GREEN}Step 3/4: Verifying images were pushed...${NC}"
+docker buildx imagetools inspect "${DOCKER_IMAGE}:${VERSION}"
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Failed to push latest tag${NC}"
-    exit 1
-fi
+echo ""
+echo -e "${GREEN}Step 4/4: Cleaning up builder...${NC}"
+echo -e "${YELLOW}(Builder instance kept for future builds)${NC}"
 
 echo ""
 echo -e "${GREEN}=== Build and Push Complete ===${NC}"

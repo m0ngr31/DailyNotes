@@ -59,5 +59,5 @@ RUN chmod +x run.sh verify_env.py verify_data_migrations.py
 # Create config directory
 RUN mkdir -p /app/config
 
-EXPOSE 5001
+EXPOSE 8000
 ENTRYPOINT ["./run.sh"]

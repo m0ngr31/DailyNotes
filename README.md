@@ -69,8 +69,104 @@ The recommended way of running is to pull the image from [Docker Hub](https://hu
 By default, the easiest way to get running is:
 
 ```bash
-docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
+docker run -p 8000:8000 -v /config_dir:/app/config xhenxhe/dailynotes
 ```
+
+Or with the original image:
+
+```bash
+docker run -p 8000:8000 -v /config_dir:/app/config m0ngr31/dailynotes
+```
+
+#### Docker Compose
+
+Here is a complete docker-compose example with all configuration options:
+
+```yaml
+services:
+  dailynotes:
+    image: xhenxhe/dailynotes:latest
+    container_name: DailyNotes
+    ports:
+      - '8000:8000'
+    volumes:
+      # Persistent storage for database and config
+      - ./dailynotes-data:/app/config
+    environment:
+      # Required: Secret key for signing JWT tokens
+      # Generate with: openssl rand -hex 32
+      API_SECRET_KEY: 'your-secure-api-secret-key-here'
+
+      # Required: Encryption key for data at rest (must be multiple of 16)
+      # Generate with: openssl rand -hex 32
+      # WARNING: Changing this will make existing data unreadable!
+      DB_ENCRYPTION_KEY: 'your-secure-db-encryption-key-here'
+
+      # Optional: Database connection string
+      # Default: SQLite database in /app/config/app.db
+      # Examples:
+      #   PostgreSQL: postgresql://user:password@localhost:5432/dailynotes
+      #   MySQL: mysql://user:password@localhost:3306/dailynotes
+      # DATABASE_URI: "sqlite:////app/config/app.db"
+
+      # Optional: Prevent new user signups (set to any value to disable)
+      # PREVENT_SIGNUPS: "true"
+
+      # Optional: Base URL when using a reverse proxy subfolder
+      # Example: If accessing via https://example.com/notes, set to "/notes"
+      # BASE_URL: ""
+
+      # Optional: Set user/group ID for file permissions
+      # Useful for matching host user permissions
+      # PUID: "1000"
+      # PGID: "1000"
+    restart: unless-stopped
+
+    # Optional: Health check
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+# Optional: Use with PostgreSQL
+#  postgres:
+#    image: postgres:15-alpine
+#    container_name: dailynotes-db
+#    environment:
+#      POSTGRES_DB: dailynotes
+#      POSTGRES_USER: dailynotes
+#      POSTGRES_PASSWORD: your-secure-db-password
+#    volumes:
+#      - ./postgres-data:/var/lib/postgresql/data
+#    restart: unless-stopped
+```
+
+**Quick Start with Docker Compose:**
+
+1. Save the above as `docker-compose.yml`
+2. Generate secure keys:
+
+   ```bash
+   # Generate API secret key
+   openssl rand -hex 32
+
+   # Generate DB encryption key
+   openssl rand -hex 32
+   ```
+
+3. Update the `API_SECRET_KEY` and `DB_ENCRYPTION_KEY` values
+4. Start the application:
+   ```bash
+   docker-compose up -d
+   ```
+5. Access at `http://localhost:8000`
+
+**Important Notes:**
+
+- The `DB_ENCRYPTION_KEY` encrypts all your notes. **Never change it** after initial setup or your data will be unreadable!
+- The `./dailynotes-data` directory will store your database and configuration
+- The default port is now `8000` for better compatibility
 
 ## Development setup
 
@@ -83,6 +179,7 @@ The easiest way to set up your development environment is to use the automated s
 ```
 
 This script will:
+
 - Check for Python 3 and Node.js
 - Automatically use Node.js 16 via nvm (if available)
 - Create a Python virtual environment

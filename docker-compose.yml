@@ -2,7 +2,7 @@ services:
   server:
     build: .
     ports:
-      - 5001:5001
+      - 8000:8000
     volumes:
       - ./dailynotes-volume:/app/config
     environment:
