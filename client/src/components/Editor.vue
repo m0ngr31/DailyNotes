@@ -89,6 +89,52 @@ export default class Editor extends Vue {
       this.$emit('valChanged', this.editor.getValue());
     }, 500, {trailing: true, leading: false}));
 
+    // Add Cmd+click to open links
+    this.editor.on('mousedown', (cm: CodeMirror.Editor, event: MouseEvent) => {
+      // Check for Cmd (Mac) or Ctrl (Windows/Linux)
+      if (event.metaKey || event.ctrlKey) {
+        const pos = cm.coordsChar({ left: event.clientX, top: event.clientY });
+        const token = cm.getTokenAt(pos);
+
+        // Check if the token is a link
+        if (token.type && token.type.includes('link')) {
+          event.preventDefault();
+          const url = this.extractUrl(cm, pos);
+          if (url) {
+            window.open(url, '_blank');
+          }
+        }
+      }
+    });
+
+    // Add hover effect for links when Cmd/Ctrl is pressed using native DOM events
+    const wrapper = this.editor.getWrapperElement();
+
+    wrapper.addEventListener('mousemove', (event: MouseEvent) => {
+      if (event.metaKey || event.ctrlKey) {
+        const pos = this.editor.coordsChar({ left: event.clientX, top: event.clientY });
+        const token = this.editor.getTokenAt(pos);
+
+        // If hovering over a link, add cursor pointer and highlight
+        if (token.type && token.type.includes('link')) {
+          wrapper.style.cursor = 'pointer';
+          wrapper.classList.add('link-hover');
+        } else {
+          wrapper.style.cursor = '';
+          wrapper.classList.remove('link-hover');
+        }
+      } else {
+        wrapper.style.cursor = '';
+        wrapper.classList.remove('link-hover');
+      }
+    });
+
+    // Clean up cursor when mouse leaves
+    wrapper.addEventListener('mouseout', () => {
+      wrapper.style.cursor = '';
+      wrapper.classList.remove('link-hover');
+    });
+
     this.handleValueUpdate(true);
   }
 
@@ -140,6 +186,38 @@ export default class Editor extends Vue {
         this.editor.refresh();
       }
     });
+  }
+
+  extractUrl(cm: CodeMirror.Editor, pos: CodeMirror.Position): string | null {
+    const line = cm.getLine(pos.line);
+
+    // Regex patterns for different link formats
+    // Markdown links: [text](url)
+    const mdLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    // Bare URLs: http(s)://...
+    const urlRegex = /https?:\/\/[^\s)]+/g;
+
+    let match;
+
+    // Check for markdown links
+    while ((match = mdLinkRegex.exec(line)) !== null) {
+      const start = match.index;
+      const end = match.index + match[0].length;
+      if (pos.ch >= start && pos.ch <= end) {
+        return match[2]; // Return the URL part
+      }
+    }
+
+    // Check for bare URLs
+    while ((match = urlRegex.exec(line)) !== null) {
+      const start = match.index;
+      const end = match.index + match[0].length;
+      if (pos.ch >= start && pos.ch <= end) {
+        return match[0];
+      }
+    }
+
+    return null;
   }
 
   @Watch('value')
@@ -214,5 +292,22 @@ export default class Editor extends Vue {
 
 .cm-strong, .cm-header-1, .cm-header-2, .cm-header-3, .cm-header-4, .cm-header-5, .cm-header-6 {
   color: #aaa;
+}
+
+/* Link hover effect when Cmd/Ctrl is pressed */
+.CodeMirror.link-hover {
+  cursor: pointer !important;
+}
+
+.CodeMirror.link-hover .cm-link {
+  color: #42a5f5 !important;
+  text-decoration: underline;
+  cursor: pointer !important;
+}
+
+.CodeMirror.link-hover .cm-url {
+  color: #42a5f5 !important;
+  text-decoration: underline;
+  cursor: pointer !important;
 }
 </style>
