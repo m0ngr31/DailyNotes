@@ -32,13 +32,12 @@
 import Vue from 'vue';
 import Component from 'vue-class-component';
 
-import Calendar from "@/components/Calendar.vue";
-import Tags from "@/components/Tags.vue";
-
-import {updateJWT} from '../services/user';
+import Calendar from '@/components/Calendar.vue';
+import Tags from '@/components/Tags.vue';
+import eventHub from '../services/eventHub';
 
 import SidebarInst from '../services/sidebar';
-import eventHub from '../services/eventHub';
+import { updateJWT } from '../services/user';
 
 const MINUTES = 60;
 const SECONDS = 60;
@@ -51,10 +50,10 @@ const HOUR = MINUTES * SECONDS * 1000; // MS in an hour
   },
   metaInfo: {
     title: 'Home',
-  }
+  },
 })
 export default class Admin extends Vue {
-  public auth_timer: any = null;
+  public auth_timer: ReturnType<typeof setTimeout> | null = null;
   public sidebar = SidebarInst;
 
   mounted() {
@@ -63,7 +62,7 @@ export default class Admin extends Vue {
   }
 
   today() {
-    this.$router.push({name: 'Home Redirect'});
+    this.$router.push({ name: 'Home Redirect' });
   }
 
   beforeDestroy() {

@@ -11,9 +11,9 @@
 
 <script>
 export default {
-  name: "error",
+  name: 'error',
   metaInfo: {
     title: 'Error',
-  }
+  },
 };
 </script>

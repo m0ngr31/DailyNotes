@@ -1,5 +1,5 @@
 var webpack = require('webpack');
-var path = require('path');
+var path = require('node:path');
 
 process.env.VUE_APP_PREVENT_SIGNUPS = process.env.PREVENT_SIGNUPS ? true : '';
 process.env.VUE_APP_BASE_URL = process.env.BASE_URL ? VUE_APP_BASE_URL : '';
@@ -12,26 +12,27 @@ module.exports = {
     proxy: {
       '^/api': {
         target: 'http://localhost:5001',
-        changeOrigin: true
+        changeOrigin: true,
       },
-    }
+    },
   },
   configureWebpack: {
-    plugins: [
-      new webpack.ContextReplacementPlugin(
-        /date\-fns[\/\\]/,
-        new RegExp('[/\\\\\](en)[/\\\\\]')
-      )
-    ]
+    plugins: [new webpack.ContextReplacementPlugin(/date-fns[/\\]/, /[/\\](en)[/\\]/)],
   },
   css: {
     loaderOptions: {
       sass: {
         sassOptions: {
           api: 'modern',
-          silenceDeprecations: ['legacy-js-api', 'import', 'global-builtin', 'color-functions', 'slash-div']
-        }
-      }
-    }
-  }
+          silenceDeprecations: [
+            'legacy-js-api',
+            'import',
+            'global-builtin',
+            'color-functions',
+            'slash-div',
+          ],
+        },
+      },
+    },
+  },
 };

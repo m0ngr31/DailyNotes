@@ -121,33 +121,30 @@
 </template>
 
 <script lang="ts">
+import addDays from 'date-fns/addDays';
+import format from 'date-fns/format';
+import subDays from 'date-fns/subDays';
+import _ from 'lodash';
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import _ from 'lodash';
-import addDays from 'date-fns/addDays';
-import subDays from 'date-fns/subDays'
-import format from 'date-fns/format';
-
+import type { IHeaderOptions } from '../interfaces';
+import { NoteService } from '../services/notes';
 import SidebarInst from '../services/sidebar';
-import {clearToken} from '../services/user';
-import {NoteService} from '../services/notes';
-
-import {IHeaderOptions} from '../interfaces';
-
-import Tasks from './Tasks.vue';
+import { clearToken } from '../services/user';
 import Settings from './Settings.vue';
+import Tasks from './Tasks.vue';
 
 @Component({
   components: {
     Tasks,
-    Settings
+    Settings,
   },
   props: {
     options: {
       type: Object,
-      required: true
-    }
-  }
+      required: true,
+    },
+  },
 })
 export default class Header extends Vue {
   public sidebar = SidebarInst;
@@ -159,24 +156,24 @@ export default class Header extends Vue {
   }
 
   public newNote() {
-    this.$router.push({name: 'new-note'}).catch(err => {});
+    this.$router.push({ name: 'new-note' }).catch((_err) => {});
   }
 
-  public goToSearch(searchType: string, tag: string) {
-    this.$router.push({name: 'search'}).catch(err => {});
+  public goToSearch(_searchType: string, _tag: string) {
+    this.$router.push({ name: 'search' }).catch((_err) => {});
   }
 
-  public prevent($event: any) {
+  public prevent($event: Event) {
     $event.stopPropagation();
   }
 
   public prevDay() {
-    const date = subDays(this.sidebar.date, 1);
+    const date = subDays(this.sidebar.date || new Date(), 1);
     this.$router.push({ name: 'day-id', params: { id: format(date, 'MM-dd-yyyy') } });
   }
 
   public nextDay() {
-    const date = addDays(this.sidebar.date, 1);
+    const date = addDays(this.sidebar.date || new Date(), 1);
     this.$router.push({ name: 'day-id', params: { id: format(date, 'MM-dd-yyyy') } });
   }
 
@@ -194,7 +191,7 @@ export default class Header extends Vue {
 
     try {
       await this.options.saveFn();
-    } catch(e) {}
+    } catch (_e) {}
 
     this.isSaving = false;
   }
@@ -213,7 +210,7 @@ export default class Header extends Vue {
 
     try {
       await this.options.deleteFn();
-    } catch(e) {}
+    } catch (_e) {}
 
     this.isSaving = false;
   }
@@ -239,13 +236,14 @@ export default class Header extends Vue {
 
     this.$buefy.dialog.confirm({
       title: 'Import Notes',
-      message: 'Importing notes will add all notes from the ZIP file. Daily notes that already exist will be skipped. Do you want to continue?',
+      message:
+        'Importing notes will add all notes from the ZIP file. Daily notes that already exist will be skipped. Do you want to continue?',
       confirmText: 'Import',
       type: 'is-info',
       hasIcon: true,
       onConfirm: async () => {
         const loading = this.$buefy.loading.open({
-          container: null
+          container: null,
         });
 
         try {
@@ -256,7 +254,7 @@ export default class Header extends Vue {
           this.$buefy.toast.open({
             message: `Import completed! Imported: ${result.imported}, Skipped: ${result.skipped}, Errors: ${result.errors}`,
             type: 'is-success',
-            duration: 5000
+            duration: 5000,
           });
 
           // Reset file input
@@ -271,21 +269,25 @@ export default class Header extends Vue {
               this.sidebar.getEvents();
             }
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           loading.close();
-          let errorMessage = 'Failed to import notes. Please make sure the file is a valid ZIP containing markdown files.';
+          let errorMessage =
+            'Failed to import notes. Please make sure the file is a valid ZIP containing markdown files.';
 
           // Try to extract more specific error message
-          if (e.response && e.response.data && e.response.data.error) {
-            errorMessage = e.response.data.error;
-          } else if (e.message) {
+          if (e && typeof e === 'object' && 'response' in e) {
+            const response = (e as { response?: { data?: { error?: string } } }).response;
+            if (response?.data?.error) {
+              errorMessage = response.data.error;
+            }
+          } else if (e instanceof Error && e.message) {
             errorMessage = `Import failed: ${e.message}`;
           }
 
           this.$buefy.toast.open({
             message: errorMessage,
             type: 'is-danger',
-            duration: 7000
+            duration: 7000,
           });
           // Reset file input
           target.value = '';
@@ -294,7 +296,7 @@ export default class Header extends Vue {
       onCancel: () => {
         // Reset file input
         target.value = '';
-      }
+      },
     });
   }
 
@@ -316,13 +318,13 @@ export default class Header extends Vue {
       component: Settings,
       hasModalCard: true,
       trapFocus: true,
-      canCancel: ['escape', 'x']
+      canCancel: ['escape', 'x'],
     });
   }
 
   public logout() {
     clearToken();
-    this.$router.push({name: 'Login'});
+    this.$router.push({ name: 'Login' });
   }
 }
 </script>

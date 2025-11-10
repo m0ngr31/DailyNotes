@@ -3,31 +3,31 @@
 </template>
 
 <script>
-import {SharedBuefy} from './services/sharedBuefy';
+import { SharedBuefy } from './services/sharedBuefy';
 
 export default {
   name: 'App',
   metaInfo: {
-    titleTemplate: '%s | DailyNotes'
+    titleTemplate: '%s | DailyNotes',
   },
-  mounted: function() {
+  mounted: function () {
     SharedBuefy.notifications = this.$buefy.toast;
     SharedBuefy.dialog = this.$buefy.dialog;
   },
   provide() {
     const global = {};
-    Object.defineProperty(global, "taskList", {
+    Object.defineProperty(global, 'taskList', {
       enumerable: true,
-      get: () => this.taskList
+      get: () => this.taskList,
     });
     return { global };
   },
   data() {
     return {
       global: {},
-      taskList: []
+      taskList: [],
     };
-  }
+  },
 };
 </script>
 

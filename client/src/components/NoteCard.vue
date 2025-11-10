@@ -16,41 +16,38 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import Component from 'vue-class-component';
 import format from 'date-fns/format';
 import parse from 'date-fns/parse';
-
+import Vue from 'vue';
+import Component from 'vue-class-component';
+import type { INote } from '../interfaces';
 import router from '../router/index';
-
-import { INote } from '../interfaces';
-
 
 @Component({
   props: {
     note: {
       type: Object,
-      required: true
-    }
-  }
+      required: true,
+    },
+  },
 })
 export default class NoteCard extends Vue {
   public note!: INote;
 
   public goToNote() {
     if (this.note.is_date) {
-      (router as any).push({name: 'day-id', params: {id: this.note.title}});
+      router.push({ name: 'day-id', params: { id: this.note.title || '' } });
       return;
     }
 
-    (router as any).push({name: 'note-id', params: {uuid: this.note.uuid}});
+    router.push({ name: 'note-id', params: { uuid: this.note.uuid || '' } });
   }
 
   get parsedTitle() {
     if (this.note.is_date) {
       try {
-        return format(parse((this.note as any).title, 'MM-dd-yyyy', new Date()), 'EEE. MMM dd, yyyy');
-      } catch (e) {
+        return format(parse(this.note.title || '', 'MM-dd-yyyy', new Date()), 'EEE. MMM dd, yyyy');
+      } catch (_e) {
         return this.note.title;
       }
     }

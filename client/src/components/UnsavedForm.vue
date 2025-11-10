@@ -50,8 +50,8 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import Component from "vue-class-component";
+import Vue from 'vue';
+import Component from 'vue-class-component';
 
 @Component
 export default class UnsavedForm extends Vue {
@@ -59,36 +59,36 @@ export default class UnsavedForm extends Vue {
 
   mounted() {
     this.isActive = true;
-    if (typeof window !== "undefined") {
-      document.addEventListener("keyup", this.keyPress);
+    if (typeof window !== 'undefined') {
+      document.addEventListener('keyup', this.keyPress);
     }
   }
 
   beforeDestroy() {
-    if (typeof window !== "undefined") {
-      document.removeEventListener("keyup", this.keyPress);
+    if (typeof window !== 'undefined') {
+      document.removeEventListener('keyup', this.keyPress);
     }
   }
 
-  keyPress({ key }: any) {
-    if (key == "Enter") {
+  keyPress({ key }: { key: string }) {
+    if (key === 'Enter') {
       this.save();
     }
   }
 
   cancel() {
-    this.$emit("cancel");
-    this.$emit("close");
+    this.$emit('cancel');
+    this.$emit('close');
   }
 
   discard() {
-    this.$emit("close");
-    this.$emit("discard");
+    this.$emit('close');
+    this.$emit('discard');
   }
 
   save() {
-    this.$emit("close");
-    this.$emit("save");
+    this.$emit('close');
+    this.$emit('save');
   }
 }
 </script>

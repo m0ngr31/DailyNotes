@@ -22,16 +22,17 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Inject } from "vue-property-decorator";
+import { Component, Inject, Vue } from 'vue-property-decorator';
+import type { IGlobal } from '../interfaces';
 
-import TaskItem from "./TaskItem.vue";
+import TaskItem from './TaskItem.vue';
 
 @Component({
-  components: { TaskItem }
+  components: { TaskItem },
 })
 export default class Tasks extends Vue {
   @Inject()
-  public global: any;
+  public global!: IGlobal;
 }
 </script>
 

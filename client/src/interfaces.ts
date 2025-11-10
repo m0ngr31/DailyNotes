@@ -4,8 +4,8 @@ export interface IHeaderOptions {
   showDelete?: boolean;
   hideCreate?: boolean;
   saveDisabled?: boolean;
-  saveFn?: () => Promise<any>;
-  deleteFn?: () => Promise<any>;
+  saveFn?: () => Promise<void>;
+  deleteFn?: () => Promise<void>;
   showPreview?: boolean;
   previewMode?: 'none' | 'side' | 'replace';
   togglePreviewFn?: (mode: 'side' | 'replace' | 'none') => void;
@@ -24,4 +24,14 @@ export interface IMeta {
   uuid: string;
   name: string;
   note_id: string;
+}
+
+export interface ITask {
+  completed: boolean;
+  name: string;
+  index: number;
+}
+
+export interface IGlobal {
+  taskList: ITask[];
 }

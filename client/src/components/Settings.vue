@@ -24,7 +24,7 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component } from 'vue-property-decorator';
+import { Component, Vue } from 'vue-property-decorator';
 import sidebar from '../services/sidebar';
 
 @Component
@@ -44,7 +44,7 @@ export default class Settings extends Vue {
     this.$buefy.toast.open({
       message: `Vim mode ${value ? 'enabled' : 'disabled'}`,
       type: 'is-success',
-      duration: 2000
+      duration: 2000,
     });
   }
 

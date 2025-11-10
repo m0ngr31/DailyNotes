@@ -25,45 +25,31 @@
 </template>
 
 <script lang="ts">
+import _ from 'lodash';
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import { Route } from "vue-router";
-import format from 'date-fns/format';
-import isValid from 'date-fns/isValid';
-import parse from 'date-fns/parse';
-import _ from 'lodash';
-
-import SidebarInst from '../services/sidebar';
-import {NoteService} from '../services/notes';
-import {SharedBuefy} from '../services/sharedBuefy';
-
-import {INote} from '../interfaces';
-
+import type { Route } from 'vue-router';
 import Editor from '@/components/Editor.vue';
 import Header from '@/components/Header.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
+import type { IHeaderOptions, INote } from '../interfaces';
+import { NoteService } from '../services/notes';
+import SidebarInst from '../services/sidebar';
 
-import {IHeaderOptions} from '../interfaces';
-
-
-Component.registerHooks([
-  'metaInfo',
-  'beforeRouteUpdate',
-  'beforeRouteLeave'
-]);
+Component.registerHooks(['metaInfo', 'beforeRouteUpdate', 'beforeRouteLeave']);
 
 @Component({
   components: {
     Editor,
     Header,
     MarkdownPreview,
-  }
+  },
 })
 export default class Note extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
-  public modifiedText : string = '';
-  public unsavedChanges : boolean = false;
+  public modifiedText: string = '';
+  public unsavedChanges: boolean = false;
   public title: string = 'Note';
   public note!: INote;
   public isLoading: boolean = false;
@@ -78,13 +64,13 @@ export default class Note extends Vue {
     saveFn: () => this.saveNote(),
     deleteFn: () => this.deleteNote(),
     togglePreviewFn: (mode) => this.togglePreview(mode),
-  }
-
-  public metaInfo(): any {
-    return {
-      title: this.title
-    };
   };
+
+  public metaInfo(): { title: string } {
+    return {
+      title: this.title,
+    };
+  }
 
   created() {
     window.addEventListener('beforeunload', this.unsavedAlert);
@@ -100,14 +86,14 @@ export default class Note extends Vue {
 
       this.headerOptions.title = this.note.title || '';
       this.title = this.note.title || '';
-    } catch (e) {
-      this.$router.push({name: 'Home Redirect'});
+    } catch (_e) {
+      this.$router.push({ name: 'Home Redirect' });
     }
 
     this.isLoading = false;
 
-    this.$root.$on('taskUpdated', (data: any) => {
-      const {note_id, task, completed} = data;
+    this.$root.$on('taskUpdated', (data: { note_id: string; task: string; completed: boolean }) => {
+      const { note_id, task, completed } = data;
 
       if (note_id !== this.note.uuid) {
         return;
@@ -126,7 +112,7 @@ export default class Note extends Vue {
     });
   }
 
-  beforeRouteUpdate(to: Route, from: Route, next: Function) {
+  beforeRouteUpdate(_to: Route, _from: Route, next: () => void) {
     if (this.unsavedChanges) {
       this.unsavedDialog(next);
     } else {
@@ -134,7 +120,7 @@ export default class Note extends Vue {
     }
   }
 
-  beforeRouteLeave(to: Route, from: Route, next: Function) {
+  beforeRouteLeave(_to: Route, _from: Route, next: () => void) {
     if (this.unsavedChanges) {
       this.unsavedDialog(next);
     } else {
@@ -166,12 +152,12 @@ export default class Note extends Vue {
     }
 
     this.isSaving = true;
-    const updatedNote = Object.assign(this.note, {data: this.modifiedText});
+    const updatedNote = Object.assign(this.note, { data: this.modifiedText });
 
     try {
       this.note = await NoteService.saveNote(updatedNote);
       this.text = this.modifiedText;
-      this.modifiedText = '';  // Reset so editor shows the saved text
+      this.modifiedText = ''; // Reset so editor shows the saved text
       this.headerOptions.title = this.note.title || '';
 
       // Update the UI state directly
@@ -187,15 +173,15 @@ export default class Note extends Vue {
           duration: 1500,
           message: 'Autosaved',
           position: 'is-bottom-right',
-          type: 'is-success'
+          type: 'is-success',
         });
       }
-    } catch(e) {
+    } catch (_e) {
       this.$buefy.toast.open({
         duration: 5000,
         message: 'There was an error saving. Please try again.',
         position: 'is-top',
-        type: 'is-danger'
+        type: 'is-danger',
       });
     } finally {
       this.isSaving = false;
@@ -217,21 +203,21 @@ export default class Note extends Vue {
         try {
           await NoteService.deleteNote(this.note.uuid);
           this.sidebar.getSidebarInfo();
-          this.$router.push({name: 'Home Redirect'});
-        } catch(e) {
+          this.$router.push({ name: 'Home Redirect' });
+        } catch (_e) {
           this.$buefy.toast.open({
             duration: 5000,
             message: 'There was an error deleting note. Please try again.',
             position: 'is-top',
-            type: 'is-danger'
+            type: 'is-danger',
           });
         }
         this.$buefy.toast.open({
           duration: 2000,
-          message: 'Note deleted!'
+          message: 'Note deleted!',
         });
-      }
-    })
+      },
+    });
   }
 
   public valChanged(data: string) {
@@ -253,11 +239,11 @@ export default class Note extends Vue {
 
   public autoSaveThrottle = _.debounce(() => this.saveNote(true), 3000, {
     leading: false,
-    trailing: true
+    trailing: true,
   });
 
   private cmdKPressed: boolean = false;
-  private cmdKTimeout: any = null;
+  private cmdKTimeout: ReturnType<typeof setTimeout> | null = null;
 
   public handleKeydown(e: KeyboardEvent) {
     // Handle Cmd+K then V for side-by-side preview
@@ -309,8 +295,8 @@ export default class Note extends Vue {
     // Refresh the editor when it becomes visible
     if (wasHidden && this.previewMode !== 'replace') {
       this.$nextTick(() => {
-        const editor = this.$refs.editor as any;
-        if (editor && editor.refresh) {
+        const editor = this.$refs.editor as { refresh?: () => void };
+        if (editor?.refresh) {
           editor.refresh();
         }
       });
@@ -329,15 +315,15 @@ export default class Note extends Vue {
     }
   }
 
-  async unsavedDialog(next: Function) {
+  async unsavedDialog(next: (arg?: boolean) => void) {
     this.$buefy.dialog.confirm({
-      title: "Unsaved Content",
-      message: "Are you sure you want to discard the unsaved content?",
-      confirmText: "Discard",
-      type: "is-warning",
+      title: 'Unsaved Content',
+      message: 'Are you sure you want to discard the unsaved content?',
+      confirmText: 'Discard',
+      type: 'is-warning',
       hasIcon: true,
       onConfirm: () => next(),
-      onCancel: () => next(false)
+      onCancel: () => next(false),
     });
   }
 }

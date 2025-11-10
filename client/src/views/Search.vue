@@ -38,26 +38,22 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Watch } from 'vue-property-decorator';
-import _ from 'lodash';
+import { Component, Vue, Watch } from 'vue-property-decorator';
 
 import Header from '@/components/Header.vue';
 import NoteCard from '@/components/NoteCard.vue';
-
+import type { IHeaderOptions } from '../interfaces';
 import SidebarInst from '../services/sidebar';
-
-import {IHeaderOptions, INote} from '../interfaces';
 
 @Component({
   metaInfo: {
-    title: 'Search'
+    title: 'Search',
   },
   components: {
     Header,
     NoteCard,
-  }
+  },
 })
-
 export default class Search extends Vue {
   public sidebar = SidebarInst;
   public headerOptions: IHeaderOptions = {
@@ -77,17 +73,17 @@ export default class Search extends Vue {
     const searchHash = `${this.sidebar.selectedSearch}:${this.sidebar.searchString}`;
 
     let selectedSearch: string;
-    let searchString: any;
+    let searchString: string;
 
     if (this.$route.query.tag) {
       selectedSearch = 'tag';
-      searchString = this.$route.query.tag;
+      searchString = String(this.$route.query.tag);
     } else if (this.$route.query.project) {
       selectedSearch = 'project';
-      searchString = this.$route.query.project;
+      searchString = String(this.$route.query.project);
     } else if (this.$route.query.search) {
       selectedSearch = 'search';
-      searchString = this.$route.query.search;
+      searchString = String(this.$route.query.search);
     } else {
       selectedSearch = 'search';
       searchString = '';

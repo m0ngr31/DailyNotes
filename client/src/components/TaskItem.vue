@@ -7,31 +7,32 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import Component from "vue-class-component";
-import { Inject } from "vue-property-decorator";
+import Vue from 'vue';
+import Component from 'vue-class-component';
+import { Inject } from 'vue-property-decorator';
+import type { IGlobal, ITask } from '../interfaces';
 
-import SidebarInst from "../services/sidebar";
+import SidebarInst from '../services/sidebar';
 
 @Component({
   props: {
     task: {
       type: Object,
-      required: true
+      required: true,
     },
     index: {
       type: Number,
-      required: true
-    }
-  }
+      required: true,
+    },
+  },
 })
 export default class TaskItem extends Vue {
-  public task: any;
-  public index: any;
+  public task!: ITask;
+  public index!: number;
   public sidebar = SidebarInst;
 
   @Inject()
-  public global: any;
+  public global!: IGlobal;
 
   public async updateTask() {
     this.global.taskList.splice(this.index, 1, this.task);

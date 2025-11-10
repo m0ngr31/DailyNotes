@@ -9,30 +9,28 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import format from 'date-fns/format';
-
+import type { IMeta } from '../interfaces';
 import SidebarInst from '../services/sidebar';
-import {IMeta} from '../interfaces';
 
 @Component({
   props: {
     task: {
       type: Object,
-      required: true
-    }
-  }
+      required: true,
+    },
+  },
 })
 export default class SimpleTask extends Vue {
   public task!: IMeta;
   public sidebar = SidebarInst;
-  public completed: Boolean = false;
+  public completed: boolean = false;
 
   mounted() {
     this.completed = this.task.name.split('- [x] ').length > 1;
   }
 
   public async updateTask() {
-    let taskName;
+    let taskName: string;
 
     if (this.completed) {
       taskName = this.task.name.replace('- [ ]', '- [x]');
@@ -45,13 +43,13 @@ export default class SimpleTask extends Vue {
       this.$root.$emit('taskUpdated', {
         note_id: this.task.note_id,
         task: taskName,
-        completed: this.completed, 
+        completed: this.completed,
       });
     } catch {}
   }
 
   get taskName() {
-    if (this.task && this.task.name) {
+    if (this.task?.name) {
       let split = this.task.name.split('- [x] ');
 
       if (split.length > 1) {

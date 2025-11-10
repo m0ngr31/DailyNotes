@@ -5,9 +5,10 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Watch, Inject } from 'vue-property-decorator';
 import * as CodeMirror from 'codemirror';
 import _ from 'lodash';
+import { Component, Inject, Vue, Watch } from 'vue-property-decorator';
+import type { IGlobal } from '../interfaces';
 
 // Modes
 import 'codemirror/mode/gfm/gfm.js';
@@ -47,18 +48,18 @@ import 'codemirror/addon/fold/comment-fold.js';
 // Vim keymap
 import 'codemirror/keymap/vim.js';
 
-import {newNote, newDay} from '../services/consts';
+import { newDay, newNote } from '../services/consts';
 import eventHub from '../services/eventHub';
 
 @Component({
   props: {
     value: String,
-    useVimMode: Boolean
-  }
+    useVimMode: Boolean,
+  },
 })
 export default class Editor extends Vue {
   @Inject()
-  private global: any;
+  private global!: IGlobal;
   public editor!: CodeMirror.Editor;
   public value!: string;
   public useVimMode!: boolean;
@@ -69,10 +70,10 @@ export default class Editor extends Vue {
       lineNumbers: false,
       lineWrapping: true,
       mode: {
-        name: "yaml-frontmatter",
+        name: 'yaml-frontmatter',
         tokenTypeOverrides: {
-          emoji: "emoji"
-        }
+          emoji: 'emoji',
+        },
       },
       foldGutter: true,
       gutters: ['CodeMirror-foldgutter'],
@@ -81,7 +82,7 @@ export default class Editor extends Vue {
       autoCloseBrackets: true,
       keyMap: this.useVimMode ? 'vim' : 'default',
       extraKeys: {
-        'Enter': 'newlineAndIndentContinueMarkdownList',
+        Enter: 'newlineAndIndentContinueMarkdownList',
         'Ctrl-S': () => this.save(),
         'Cmd-S': () => this.save(),
       },
@@ -92,10 +93,17 @@ export default class Editor extends Vue {
     const tagElement = <HTMLTextAreaElement>this.$refs.editor;
     this.editor = CodeMirror.fromTextArea(tagElement, this.config);
 
-    this.editor.on('changes', _.throttle(() => {
-      this.generateTaskList();
-      this.$emit('valChanged', this.editor.getValue());
-    }, 500, {trailing: true, leading: false}));
+    this.editor.on(
+      'changes',
+      _.throttle(
+        () => {
+          this.generateTaskList();
+          this.$emit('valChanged', this.editor.getValue());
+        },
+        500,
+        { trailing: true, leading: false }
+      )
+    );
 
     // Add Cmd+click to open links
     this.editor.on('mousedown', (cm: CodeMirror.Editor, event: MouseEvent) => {
@@ -105,7 +113,7 @@ export default class Editor extends Vue {
         const token = cm.getTokenAt(pos);
 
         // Check if the token is a link
-        if (token.type && token.type.includes('link')) {
+        if (token.type?.includes('link')) {
           event.preventDefault();
           const url = this.extractUrl(cm, pos);
           if (url) {
@@ -124,7 +132,7 @@ export default class Editor extends Vue {
         const token = this.editor.getTokenAt(pos);
 
         // If hovering over a link, add cursor pointer and highlight
-        if (token.type && token.type.includes('link')) {
+        if (token.type?.includes('link')) {
           wrapper.style.cursor = 'pointer';
           wrapper.classList.add('link-hover');
         } else {
@@ -150,16 +158,18 @@ export default class Editor extends Vue {
     // Get task list for today
     const data = this.editor.getValue();
     const regex = /- \[( |x)\] (.+)/gm;
-    let m: any;
+    let m: RegExpExecArray | null;
     let completed = false;
-    this.global.taskList.splice(0)
-    while ((m = regex.exec(data)) !== null) {
+    this.global.taskList.splice(0);
+    m = regex.exec(data);
+    while (m !== null) {
       // This is necessary to avoid infinite loops with zero-width matches
       if (m.index === regex.lastIndex) {
         regex.lastIndex++;
       }
-      completed = m[1] === "x";
-      this.global.taskList.push({ completed, name: m[2], index: m['index'] });
+      completed = m[1] === 'x';
+      this.global.taskList.push({ completed, name: m[2], index: m.index });
+      m = regex.exec(data);
     }
   }
 
@@ -171,7 +181,7 @@ export default class Editor extends Vue {
     eventHub.$off('focusEditor', this.focus);
   }
 
-  prevent($event: any) {
+  prevent($event: Event) {
     $event.stopPropagation();
   }
 
@@ -205,24 +215,28 @@ export default class Editor extends Vue {
     // Bare URLs: http(s)://...
     const urlRegex = /https?:\/\/[^\s)]+/g;
 
-    let match;
+    let match: RegExpExecArray | null;
 
     // Check for markdown links
-    while ((match = mdLinkRegex.exec(line)) !== null) {
+    match = mdLinkRegex.exec(line);
+    while (match !== null) {
       const start = match.index;
       const end = match.index + match[0].length;
       if (pos.ch >= start && pos.ch <= end) {
         return match[2]; // Return the URL part
       }
+      match = mdLinkRegex.exec(line);
     }
 
     // Check for bare URLs
-    while ((match = urlRegex.exec(line)) !== null) {
+    match = urlRegex.exec(line);
+    while (match !== null) {
       const start = match.index;
       const end = match.index + match[0].length;
       if (pos.ch >= start && pos.ch <= end) {
         return match[0];
       }
+      match = urlRegex.exec(line);
     }
 
     return null;
@@ -247,18 +261,18 @@ export default class Editor extends Vue {
       this.editor.setValue(this.value || '');
 
       if (this.value === newNote) {
-        this.editor.setCursor(1, 7)
+        this.editor.setCursor(1, 7);
         return;
       }
 
       if (this.value === newDay) {
-        this.editor.setCursor(1, 6)
+        this.editor.setCursor(1, 6);
         return;
       }
 
       if (firstMount) {
         this.editor.setCursor(this.editor.lineCount(), 0);
-        return
+        return;
       }
 
       this.editor.setCursor(cursor);
@@ -268,11 +282,11 @@ export default class Editor extends Vue {
   @Watch('global.taskList')
   onTaskListChanged() {
     const data = this.editor.getValue();
-    let newData = data
-    this.global.taskList.forEach((task: any) => {
-      let c = task.completed ? 'x' : ' ';
+    let newData = data;
+    this.global.taskList.forEach((task) => {
+      const c = task.completed ? 'x' : ' ';
       newData = newData.substr(0, task.index + 3) + c + newData.substr(task.index + 4);
-    })
+    });
     if (newData !== data) {
       this.editor.setValue(newData);
     }

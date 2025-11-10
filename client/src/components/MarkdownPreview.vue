@@ -14,8 +14,8 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Prop, Watch } from 'vue-property-decorator';
 import { marked } from 'marked';
+import { Component, Prop, Vue, Watch } from 'vue-property-decorator';
 
 interface CheckboxInfo {
   lineIndex: number;
@@ -66,7 +66,7 @@ export default class MarkdownPreview extends Vue {
 
     // Parse YAML-like frontmatter (simple key: value pairs)
     const lines = frontmatterText.split('\n');
-    lines.forEach(line => {
+    lines.forEach((line) => {
       const colonIndex = line.indexOf(':');
       if (colonIndex > 0) {
         const key = line.substring(0, colonIndex).trim();
@@ -96,16 +96,13 @@ export default class MarkdownPreview extends Vue {
 
       // Match: <input disabled="" type="checkbox"> or <input type="checkbox" disabled> or similar
       // We'll replace them all with enabled checkboxes with data attributes
-      html = html.replace(
-        /<input[^>]*type="checkbox"[^>]*>/gi,
-        (match) => {
-          const isChecked = /checked/i.test(match);
-          const dataAttr = `data-checkbox-id="${currentCheckboxId}"`;
-          currentCheckboxId++;
-          // Return checkbox without disabled attribute
-          return `<input type="checkbox" ${isChecked ? 'checked' : ''} ${dataAttr}>`;
-        }
-      );
+      html = html.replace(/<input[^>]*type="checkbox"[^>]*>/gi, (match) => {
+        const isChecked = /checked/i.test(match);
+        const dataAttr = `data-checkbox-id="${currentCheckboxId}"`;
+        currentCheckboxId++;
+        // Return checkbox without disabled attribute
+        return `<input type="checkbox" ${isChecked ? 'checked' : ''} ${dataAttr}>`;
+      });
 
       // Ensure task list items have proper class
       html = html.replace(
@@ -114,10 +111,7 @@ export default class MarkdownPreview extends Vue {
       );
 
       // Make all links open in a new tab/window
-      html = html.replace(
-        /<a href=/gi,
-        '<a target="_blank" rel="noopener noreferrer" href='
-      );
+      html = html.replace(/<a href=/gi, '<a target="_blank" rel="noopener noreferrer" href=');
 
       this.renderedMarkdown = html;
     } catch (e) {
@@ -164,18 +158,20 @@ export default class MarkdownPreview extends Vue {
     for (let lineIndex = 0; lineIndex < this.contentLines.length; lineIndex++) {
       const line = this.contentLines[lineIndex];
       const checkboxRegex = /- \[([ xX])\]/g;
-      let match;
+      let match: RegExpExecArray | null;
       let checkboxIndexOnLine = 0;
 
-      while ((match = checkboxRegex.exec(line)) !== null) {
+      match = checkboxRegex.exec(line);
+      while (match !== null) {
         if (currentCheckboxId === checkboxId) {
           return {
             lineIndex,
-            checkboxIndex: checkboxIndexOnLine
+            checkboxIndex: checkboxIndexOnLine,
           };
         }
         currentCheckboxId++;
         checkboxIndexOnLine++;
+        match = checkboxRegex.exec(line);
       }
     }
 
@@ -188,11 +184,12 @@ export default class MarkdownPreview extends Vue {
 
     // Find the specific checkbox on this line
     const checkboxRegex = /- \[([ xX])\]/g;
-    let match;
+    let match: RegExpExecArray | null;
     let currentIndex = 0;
     let updatedLine = line;
 
-    while ((match = checkboxRegex.exec(line)) !== null) {
+    match = checkboxRegex.exec(line);
+    while (match !== null) {
       if (currentIndex === checkboxIndex) {
         // Toggle the checkbox
         const currentState = match[1].toLowerCase();
@@ -203,6 +200,7 @@ export default class MarkdownPreview extends Vue {
         break;
       }
       currentIndex++;
+      match = checkboxRegex.exec(line);
     }
 
     // Reconstruct the full markdown

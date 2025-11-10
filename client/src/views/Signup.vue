@@ -21,15 +21,15 @@
 import Vue from 'vue';
 import Component from 'vue-class-component';
 
-import {Requests} from '../services/requests';
-import {setToken} from '../services/user';
+import { Requests } from '../services/requests';
+import { setToken } from '../services/user';
 
-declare var process: any;
+declare const process: { env: { VUE_APP_PREVENT_SIGNUPS?: string } };
 
 @Component({
   metaInfo: {
-    title: 'Sign Up'
-  }
+    title: 'Sign Up',
+  },
 })
 export default class Signup extends Vue {
   public username: string = '';
@@ -45,16 +45,16 @@ export default class Signup extends Vue {
 
   public isLoading: boolean = false;
 
-  public hideSignup = process.env.VUE_APP_PREVENT_SIGNUPS ? true : false;
+  public hideSignup = !!process.env.VUE_APP_PREVENT_SIGNUPS;
 
   mounted() {
     if (this.hideSignup) {
-      this.$router.push({name: 'Login'});
+      this.$router.push({ name: 'Login' });
     }
   }
 
   public login() {
-    this.$router.push({name: 'Login'});
+    this.$router.push({ name: 'Login' });
   }
 
   public async signup() {
@@ -85,17 +85,20 @@ export default class Signup extends Vue {
     this.isLoading = true;
 
     try {
-      const res = await Requests.post('/sign-up', {username: this.username, password: this.password});
-      if (res.data && res.data.access_token) {
+      const res = await Requests.post('/sign-up', {
+        username: this.username,
+        password: this.password,
+      });
+      if (res.data?.access_token) {
         setToken(res.data.access_token);
 
-        if (this.$route.query && this.$route.query.from) {
-          this.$router.push({path: (this.$route.query as any).from});
+        if (this.$route.query?.from) {
+          this.$router.push({ path: String(this.$route.query.from) });
         } else {
-          this.$router.push({name: 'Home Redirect'});
+          this.$router.push({ name: 'Home Redirect' });
         }
       } else {
-        throw Error('Data isn\'t right');
+        throw Error("Data isn't right");
       }
     } catch (e) {
       console.log(e);
@@ -105,7 +108,7 @@ export default class Signup extends Vue {
         duration: 5000,
         message: this.errMsg,
         position: 'is-top',
-        type: 'is-danger'
+        type: 'is-danger',
       });
     }
 
