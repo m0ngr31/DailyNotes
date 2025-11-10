@@ -1,6 +1,6 @@
 <template>
   <div class="level-item alt-button">
-    <b-dropdown aria-role="list">
+    <b-dropdown aria-role="list" :can-close="['escape', 'outside']">
       <b-tooltip
         label="Tasks"
         position="is-bottom"
