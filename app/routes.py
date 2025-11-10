@@ -8,6 +8,17 @@ from flask import render_template, request, jsonify, abort, send_file
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Simple health check endpoint for Docker healthcheck"""
+    try:
+        # Test database connection
+        db.session.execute("SELECT 1")
+        return jsonify({"status": "healthy", "database": "ok"}), 200
+    except Exception as e:
+        return jsonify({"status": "unhealthy", "error": str(e)}), 503
+
+
 @app.route("/api/sign-up", methods=["POST"])
 def sign_up():
     if app.config["PREVENT_SIGNUPS"]:
