@@ -20,7 +20,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@types/marked": "^5.0.2",
-    "axios": "^0.30.2",
+    "axios": "^1.13.2",
     "buefy": "^0.9.29",
     "bulmaswatch": "^0.8.1",
     "codemirror": "^5.65.20",
