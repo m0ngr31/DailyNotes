@@ -6,6 +6,7 @@ from app import app, db, argon2
 from app.models import User, Note, Meta, aes_encrypt, aes_encrypt_old
 from flask import render_template, request, jsonify, abort, send_file
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
+from sqlalchemy import text
 
 
 @app.route("/health", methods=["GET"])
@@ -13,7 +14,7 @@ def health_check():
     """Simple health check endpoint for Docker healthcheck"""
     try:
         # Test database connection
-        db.session.execute("SELECT 1")
+        db.session.execute(text("SELECT 1"))
         return jsonify({"status": "healthy", "database": "ok"}), 200
     except Exception as e:
         return jsonify({"status": "unhealthy", "error": str(e)}), 503
