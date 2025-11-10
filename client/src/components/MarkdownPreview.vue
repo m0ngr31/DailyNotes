@@ -113,6 +113,12 @@ export default class MarkdownPreview extends Vue {
         '<li class="task-list-item"><input type="checkbox"'
       );
 
+      // Make all links open in a new tab/window
+      html = html.replace(
+        /<a href=/gi,
+        '<a target="_blank" rel="noopener noreferrer" href='
+      );
+
       this.renderedMarkdown = html;
     } catch (e) {
       console.error('Error rendering markdown:', e);

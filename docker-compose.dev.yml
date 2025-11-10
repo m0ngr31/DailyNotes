@@ -1,0 +1,61 @@
+services:
+  dailynotes-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: dailynotes-dev
+    ports:
+      # Flask backend
+      - "5001:5001"
+      # Vue dev server with hot reload
+      - "8080:8080"
+    volumes:
+      # Mount source code for hot-reloading
+      # Python backend files
+      - ./app:/app/app
+      - ./server.py:/app/server.py
+      - ./config.py:/app/config.py
+      - ./migrations:/app/migrations
+
+      # Frontend source files
+      - ./client/src:/app/client/src
+      - ./client/public:/app/client/public
+      - ./client/vue.config.js:/app/client/vue.config.js
+      - ./client/tsconfig.json:/app/client/tsconfig.json
+
+      # Persistent data (database, environment config)
+      - ./config:/app/config
+
+      # Exclude node_modules and Python cache from host
+      # (use container's versions instead)
+      - /app/client/node_modules
+      - /app/__pycache__
+      - /app/app/__pycache__
+    environment:
+      # These will be generated automatically if not provided
+      # Uncomment and set for production-like development
+      # API_SECRET_KEY: "dev-secret-key-change-in-production"
+      # DB_ENCRYPTION_KEY: "dev-encryption-key-must-be-multiple-of-16-chars"
+
+      # Development mode flags
+      FLASK_ENV: development
+      FLASK_DEBUG: "1"
+      NODE_ENV: development
+
+      # Optional: Prevent signups in dev
+      # PREVENT_SIGNUPS: "true"
+
+    # Development doesn't need aggressive health checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health", "||", "curl", "-f", "http://localhost:8080"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # Auto-restart on crashes during development
+    restart: unless-stopped
+
+    # Use stdin and tty for interactive debugging if needed
+    stdin_open: true
+    tty: true

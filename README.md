@@ -170,7 +170,93 @@ services:
 
 ## Development setup
 
-### Automated Setup (macOS/Linux)
+### Option 1: Docker Development Environment (Recommended)
+
+The easiest way to get started with development is using Docker. This approach provides:
+
+- ✅ Consistent environment across all platforms (macOS, Linux, Windows)
+- ✅ No need to install Python, Node.js, or manage versions
+- ✅ Hot-reloading for both frontend and backend code
+- ✅ Automatic database setup and migrations
+- ✅ Isolated environment that won't affect your system
+
+**Quick Start:**
+
+```bash
+# Start the development environment (builds, starts, and opens browser)
+./dev
+```
+
+That's it! The script will:
+
+1. Build the development Docker image
+2. Start both Flask (port 5001) and Vue.js (port 8080) servers
+3. Set up the database and run migrations
+4. Open your browser to http://localhost:8080
+
+**Development Workflow:**
+
+All your code changes will be automatically detected:
+
+- **Python/Flask changes**: Flask server auto-reloads
+- **Vue.js changes**: Hot module replacement (HMR) updates the browser instantly
+- **Database**: Persisted in `./config/app.db` on your host machine
+
+**Useful Commands:**
+
+```bash
+# View live logs from both servers
+docker compose -f docker-compose.dev.yml logs -f
+
+# Stop the development environment
+docker compose -f docker-compose.dev.yml down
+
+# Restart services
+docker compose -f docker-compose.dev.yml restart
+
+# Access the container shell (for debugging)
+docker exec -it dailynotes-dev bash
+
+# Rebuild after dependency changes
+docker compose -f docker-compose.dev.yml build
+```
+
+**File Structure:**
+
+- `Dockerfile.dev` - Development Docker image with both Python and Node.js
+- `docker-compose.dev.yml` - Development compose config with volume mounts
+- `docker-entrypoint-dev.sh` - Startup script that runs both servers
+- `dev-docker` - Convenience script to start everything and open browser
+
+**What's Mounted:**
+
+The following directories are mounted from your host to enable hot-reloading:
+
+- `./app/` - Python backend code
+- `./client/src/` - Vue.js source code
+- `./client/public/` - Static assets
+- `./config/` - Database and environment variables (persisted)
+- `./migrations/` - Database migrations
+
+**Environment Variables:**
+
+By default, the development environment will auto-generate secure keys in `./config/.env`. To customize:
+
+```yaml
+# Edit docker-compose.dev.yml
+environment:
+  API_SECRET_KEY: 'your-dev-key'
+  DB_ENCRYPTION_KEY: 'your-16-char-multiple-key'
+  PREVENT_SIGNUPS: 'true' # Optional: disable signups
+```
+
+---
+
+### Option 2: Local Development Setup
+
+If you prefer to run services directly on your host machine:
+
+#### Automated Setup (macOS/Linux)
 
 The easiest way to set up your development environment is to use the automated setup script:
 
