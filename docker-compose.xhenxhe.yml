@@ -1,0 +1,10 @@
+services:
+  server:
+    image: xhenxhe/dailynotes:latest
+    ports:
+      - 5001:5001
+    volumes:
+      - ./dailynotes-volume:/app/config
+    environment:
+      API_SECRET_KEY: CHANGE_THIS_WITH_SECURE_PASSWORD
+      DB_ENCRYPTION_KEY: CHANGE_THIS_WITH_SECURE_PASSWORD

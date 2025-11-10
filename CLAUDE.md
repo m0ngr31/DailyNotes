@@ -4,7 +4,7 @@
 
 DailyNotes is a self-hosted daily task and note-taking application that combines the experience of a physical planner with modern web technology. It supports markdown with GitHub Flavored Markdown (GFM) task lists, making it ideal for daily journaling, task tracking, and note management.
 
-**Current Version:** 1.0-beta18
+**Current Version:** 1.0-beta19
 
 ## Technology Stack
 
@@ -487,4 +487,4 @@ The preview renders all GitHub Flavored Markdown (GFM) features:
 
 ---
 
-_This guide was generated for DailyNotes v1.0-beta18. Refer to README.md and source code for latest information._
+_This guide was generated for DailyNotes v1.0-beta19. Refer to README.md and source code for latest information._
