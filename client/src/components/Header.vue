@@ -103,7 +103,15 @@
               </b-switch>
             </b-dropdown-item>
             <b-dropdown-item @click="exportNotes()">Export Notes</b-dropdown-item>
+            <b-dropdown-item @click="triggerImport()">Import Notes</b-dropdown-item>
             <b-dropdown-item @click="logout()">Logout</b-dropdown-item>
+            <input
+              ref="importInput"
+              type="file"
+              accept=".zip"
+              style="display: none"
+              @change="importNotes"
+            />
           </b-dropdown>
         </div>
       </div>
@@ -209,6 +217,82 @@ export default class Header extends Vue {
 
   public async exportNotes() {
     NoteService.exportNotes();
+  }
+
+  public triggerImport() {
+    const input = this.$refs.importInput as HTMLInputElement;
+    if (input) {
+      input.click();
+    }
+  }
+
+  public async importNotes(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    this.$buefy.dialog.confirm({
+      title: 'Import Notes',
+      message: 'Importing notes will add all notes from the ZIP file. Daily notes that already exist will be skipped. Do you want to continue?',
+      confirmText: 'Import',
+      type: 'is-info',
+      hasIcon: true,
+      onConfirm: async () => {
+        const loading = this.$buefy.loading.open({
+          container: null
+        });
+
+        try {
+          const result = await NoteService.importNotes(file);
+
+          loading.close();
+
+          this.$buefy.toast.open({
+            message: `Import completed! Imported: ${result.imported}, Skipped: ${result.skipped}, Errors: ${result.errors}`,
+            type: 'is-success',
+            duration: 5000
+          });
+
+          // Reset file input
+          target.value = '';
+
+          // Refresh sidebar and calendar to show new notes
+          if (this.sidebar) {
+            if (_.isFunction(this.sidebar.getSidebarInfo)) {
+              this.sidebar.getSidebarInfo();
+            }
+            if (_.isFunction(this.sidebar.getEvents)) {
+              this.sidebar.getEvents();
+            }
+          }
+        } catch (e: any) {
+          loading.close();
+          let errorMessage = 'Failed to import notes. Please make sure the file is a valid ZIP containing markdown files.';
+
+          // Try to extract more specific error message
+          if (e.response && e.response.data && e.response.data.error) {
+            errorMessage = e.response.data.error;
+          } else if (e.message) {
+            errorMessage = `Import failed: ${e.message}`;
+          }
+
+          this.$buefy.toast.open({
+            message: errorMessage,
+            type: 'is-danger',
+            duration: 7000
+          });
+          // Reset file input
+          target.value = '';
+        }
+      },
+      onCancel: () => {
+        // Reset file input
+        target.value = '';
+      }
+    });
   }
 
   public togglePreview(mode: 'side' | 'replace' | 'none') {

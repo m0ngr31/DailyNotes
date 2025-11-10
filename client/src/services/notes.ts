@@ -99,5 +99,27 @@ export const NoteService = {
    */
   exportNotes: async (): Promise<void> => {
     Requests.download("/export", "export.zip");
+  },
+
+  /**
+   * Imports notes from a zip file
+   *
+   * @param file The zip file to import
+   */
+  importNotes: async (file: File): Promise<{imported: number, skipped: number, errors: number}> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await Requests.post('/import', formData);
+
+      return {
+        imported: res.data.imported,
+        skipped: res.data.skipped,
+        errors: res.data.errors
+      };
+    } catch (e) {
+      throw new Error(String(e));
+    }
   }
 };
