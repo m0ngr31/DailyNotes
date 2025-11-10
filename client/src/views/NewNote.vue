@@ -1,7 +1,7 @@
 <template>
   <div>
     <Header :options="headerOptions"></Header>
-    <Editor v-bind:value="text" v-on:valChanged="valChanged" v-on:saveShortcut="saveNote"></Editor>
+    <Editor v-bind:value="text" :useVimMode="sidebar.vimMode" v-on:valChanged="valChanged" v-on:saveShortcut="saveNote"></Editor>
   </div>
 </template>
 

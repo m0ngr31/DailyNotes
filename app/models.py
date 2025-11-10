@@ -83,6 +83,7 @@ class User(db.Model):
   username = db.Column(db.String(64), unique=True, nullable=False)
   password_hash = db.Column(db.String(128), nullable=False)
   auto_save = db.Column(db.Boolean, nullable=True)
+  vim_mode = db.Column(db.Boolean, nullable=True, default=False)
   notes = db.relationship('Note', lazy='dynamic', cascade='all, delete, delete-orphan')
   meta = db.relationship('Meta', lazy='dynamic', cascade='all, delete, delete-orphan')
 

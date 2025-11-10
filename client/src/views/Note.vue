@@ -6,6 +6,7 @@
         ref="editor"
         v-show="previewMode !== 'replace'"
         v-bind:value="modifiedText || text"
+        :useVimMode="sidebar.vimMode"
         v-on:valChanged="valChanged"
         v-on:saveShortcut="saveNote"
         :class="{ 'editor-split': previewMode === 'side' }"

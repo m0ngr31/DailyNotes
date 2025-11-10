@@ -102,6 +102,7 @@
                 {{ sidebar.autoSave ? 'Disable Auto-Save' : 'Enable Auto-Save' }}
               </b-switch>
             </b-dropdown-item>
+            <b-dropdown-item @click="openSettings()">Settings</b-dropdown-item>
             <b-dropdown-item @click="exportNotes()">Export Notes</b-dropdown-item>
             <b-dropdown-item @click="triggerImport()">Import Notes</b-dropdown-item>
             <b-dropdown-item @click="logout()">Logout</b-dropdown-item>
@@ -134,10 +135,12 @@ import {NoteService} from '../services/notes';
 import {IHeaderOptions} from '../interfaces';
 
 import Tasks from './Tasks.vue';
+import Settings from './Settings.vue';
 
 @Component({
   components: {
-    Tasks
+    Tasks,
+    Settings
   },
   props: {
     options: {
@@ -305,6 +308,16 @@ export default class Header extends Vue {
     if (this.options.togglePreviewFn && _.isFunction(this.options.togglePreviewFn)) {
       this.options.togglePreviewFn('none');
     }
+  }
+
+  public openSettings() {
+    this.$buefy.modal.open({
+      parent: this,
+      component: Settings,
+      hasModalCard: true,
+      trapFocus: true,
+      canCancel: ['escape', 'x']
+    });
   }
 
   public logout() {

@@ -335,10 +335,11 @@ def sidebar_data():
         key=lambda task: task["note_id"],
     )
     auto_save = user.auto_save
+    vim_mode = user.vim_mode
 
     return (
         jsonify(
-            tags=tags, projects=projects, notes=notes, tasks=tasks, auto_save=auto_save
+            tags=tags, projects=projects, notes=notes, tasks=tasks, auto_save=auto_save, vim_mode=vim_mode
         ),
         200,
     )
@@ -361,6 +362,31 @@ def toggle_auto_save():
         abort(400)
 
     user.auto_save = auto_save
+
+    db.session.add(user)
+    db.session.flush()
+    db.session.commit()
+
+    return jsonify({}), 200
+
+
+@app.route("/api/toggle_vim_mode", methods=["POST"])
+@jwt_required()
+def toggle_vim_mode():
+    req = request.get_json()
+    vim_mode = req.get("vim_mode", False)
+
+    username = get_jwt_identity()
+
+    if not username:
+        abort(401)
+
+    user = User.query.filter_by(username=username.lower()).first()
+
+    if not user:
+        abort(400)
+
+    user.vim_mode = vim_mode
 
     db.session.add(user)
     db.session.flush()

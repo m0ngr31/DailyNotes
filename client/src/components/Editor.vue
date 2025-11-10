@@ -44,12 +44,16 @@ import 'codemirror/addon/fold/indent-fold.js';
 import 'codemirror/addon/fold/markdown-fold.js';
 import 'codemirror/addon/fold/comment-fold.js';
 
+// Vim keymap
+import 'codemirror/keymap/vim.js';
+
 import {newNote, newDay} from '../services/consts';
 import eventHub from '../services/eventHub';
 
 @Component({
   props: {
-    value: String
+    value: String,
+    useVimMode: Boolean
   }
 })
 export default class Editor extends Vue {
@@ -57,28 +61,32 @@ export default class Editor extends Vue {
   private global: any;
   public editor!: CodeMirror.Editor;
   public value!: string;
+  public useVimMode!: boolean;
 
-  public config: CodeMirror.EditorConfiguration = {
-    tabSize: 2,
-    lineNumbers: false,
-    lineWrapping: true,
-    mode: {
-      name: "yaml-frontmatter",
-      tokenTypeOverrides: {
-        emoji: "emoji"
-      }
-    },
-    foldGutter: true,
-    gutters: ['CodeMirror-foldgutter'],
-    theme: 'material',
-    autofocus: true,
-    autoCloseBrackets: true,
-    extraKeys: {
-      'Enter': 'newlineAndIndentContinueMarkdownList',
-      'Ctrl-S': () => this.save(),
-      'Cmd-S': () => this.save(),
-    },
-  };
+  public get config(): CodeMirror.EditorConfiguration {
+    return {
+      tabSize: 2,
+      lineNumbers: false,
+      lineWrapping: true,
+      mode: {
+        name: "yaml-frontmatter",
+        tokenTypeOverrides: {
+          emoji: "emoji"
+        }
+      },
+      foldGutter: true,
+      gutters: ['CodeMirror-foldgutter'],
+      theme: 'material',
+      autofocus: true,
+      autoCloseBrackets: true,
+      keyMap: this.useVimMode ? 'vim' : 'default',
+      extraKeys: {
+        'Enter': 'newlineAndIndentContinueMarkdownList',
+        'Ctrl-S': () => this.save(),
+        'Cmd-S': () => this.save(),
+      },
+    };
+  }
 
   mounted() {
     const tagElement = <HTMLTextAreaElement>this.$refs.editor;
@@ -223,6 +231,13 @@ export default class Editor extends Vue {
   @Watch('value')
   onValueChanged() {
     this.handleValueUpdate();
+  }
+
+  @Watch('useVimMode')
+  onVimModeChanged() {
+    if (this.editor) {
+      this.editor.setOption('keyMap', this.useVimMode ? 'vim' : 'default');
+    }
   }
 
   public handleValueUpdate(firstMount?: boolean) {
