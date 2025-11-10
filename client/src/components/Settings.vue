@@ -9,7 +9,7 @@
       <div class="settings-content">
         <b-field label="Editor">
           <b-field>
-            <b-switch v-model="localVimMode" @input="onVimModeChange">
+            <b-switch v-model="localVimMode" @update:modelValue="onVimModeChange">
               Enable Vim keybindings
             </b-switch>
           </b-field>
@@ -23,35 +23,40 @@
   </div>
 </template>
 
-<script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
+<script setup lang="ts">
+import { getCurrentInstance, onMounted, ref } from 'vue';
+import type { BuefyInstance } from '../services/sharedBuefy';
 import sidebar from '../services/sidebar';
 
-@Component
-export default class Settings extends Vue {
-  public localVimMode: boolean = false;
+const emit = defineEmits<{
+  close: [];
+}>();
 
-  mounted() {
-    // Initialize with current value from sidebar
-    this.localVimMode = sidebar.vimMode;
-  }
+const instance = getCurrentInstance();
+const buefy = (instance?.appContext.config.globalProperties as { $buefy?: BuefyInstance }).$buefy;
 
-  public onVimModeChange(value: boolean) {
-    // Update the setting immediately
-    sidebar.toggleVimMode(value);
+const localVimMode = ref(false);
 
-    // Show success toast
-    this.$buefy.toast.open({
-      message: `Vim mode ${value ? 'enabled' : 'disabled'}`,
-      type: 'is-success',
-      duration: 2000,
-    });
-  }
+onMounted(() => {
+  // Initialize with current value from sidebar
+  localVimMode.value = sidebar.vimMode;
+});
 
-  public close() {
-    this.$emit('close');
-  }
-}
+const onVimModeChange = (value: boolean) => {
+  // Update the setting immediately
+  sidebar.toggleVimMode(value);
+
+  // Show success toast
+  buefy?.toast.open({
+    message: `Vim mode ${value ? 'enabled' : 'disabled'}`,
+    type: 'is-success',
+    duration: 2000,
+  });
+};
+
+const close = () => {
+  emit('close');
+};
 </script>
 
 <style scoped>
@@ -86,17 +91,17 @@ export default class Settings extends Vue {
 }
 
 /* Override Buefy field label color */
-.settings-content >>> .label {
+.settings-content :deep(.label) {
   color: #82aaff;
   font-weight: 600;
   margin-bottom: 12px;
 }
 
-.settings-content >>> .field:not(:last-child) {
+.settings-content :deep(.field:not(:last-child)) {
   margin-bottom: 24px;
 }
 
-.settings-content >>> .switch {
+.settings-content :deep(.switch) {
   margin-top: 8px;
 }
 

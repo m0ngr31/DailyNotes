@@ -5,10 +5,10 @@
   </div>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
-import Component from 'vue-class-component';
-import type { Route } from 'vue-router/types/router';
+<script setup lang="ts">
+import { useHead } from '@unhead/vue';
+import { computed, getCurrentInstance, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import Editor from '@/components/Editor.vue';
 import Header from '@/components/Header.vue';
 import UnsavedForm from '@/components/UnsavedForm.vue';
@@ -17,114 +17,111 @@ import { newNote } from '../services/consts';
 import { NoteService } from '../services/notes';
 import SidebarInst from '../services/sidebar';
 
-Component.registerHooks(['metaInfo', 'beforeRouteLeave']);
+const router = useRouter();
+const instance = getCurrentInstance();
+const buefy = (instance?.appContext.config.globalProperties as any).$buefy;
 
-@Component({
-  components: {
-    Editor,
-    Header,
-  },
-})
-export default class NewNote extends Vue {
-  public sidebar = SidebarInst;
-  public text: string = '';
-  public modifiedText: string = '';
-  public unsavedChanges: boolean = false;
-  public title: string = 'New Note';
-  public note!: INote;
-  public headerOptions: IHeaderOptions = {
-    title: 'New Note',
-    saveDisabled: true,
-    saveFn: () => this.saveNote(),
-  };
+const sidebar = SidebarInst;
+const text = ref('');
+const modifiedText = ref('');
+const unsavedChanges = ref(false);
+const title = ref('New Note');
+const note = ref<INote>({
+  data: '',
+  uuid: null,
+});
 
-  public metaInfo(): { title: string } {
-    return {
-      title: this.title,
-    };
+useHead({
+  title: computed(() => title.value),
+});
+
+const headerOptions = reactive<IHeaderOptions>({
+  title: 'New Note',
+  saveDisabled: true,
+  saveFn: () => saveNote(),
+});
+
+const saveNote = async () => {
+  const updatedNote = Object.assign(note.value, { data: modifiedText.value });
+  try {
+    const res = await NoteService.createNote(updatedNote);
+    sidebar.getSidebarInfo();
+    unsavedChanges.value = false;
+    router.push({ name: 'note-id', params: { uuid: (res as { uuid: string }).uuid } });
+  } catch (_e) {
+    buefy?.toast.open({
+      duration: 5000,
+      message: 'There was an error saving. Please try again.',
+      position: 'is-top',
+      type: 'is-danger',
+    });
   }
 
-  created() {
-    window.addEventListener('beforeunload', this.unsavedAlert);
+  headerOptions.showDelete = !!note.value.uuid;
+};
+
+const valChanged = (data: string) => {
+  modifiedText.value = data;
+
+  if (modifiedText.value !== text.value) {
+    title.value = '* New Note';
+    headerOptions.saveDisabled = false;
+    unsavedChanges.value = true;
+  } else {
+    title.value = 'New Note';
+    headerOptions.saveDisabled = true;
   }
+};
 
-  mounted() {
-    this.text = newNote;
-
-    this.note = {
-      data: this.text,
-      uuid: null,
-    };
+const unsavedAlert = (e: Event) => {
+  if (unsavedChanges.value) {
+    // Attempt to modify event will trigger Chrome/Firefox alert msg
+    e.returnValue = true;
   }
+};
 
-  beforeDestroy() {
-    window.removeEventListener('beforeunload', this.unsavedAlert);
-  }
-
-  public async saveNote() {
-    const updatedNote = Object.assign(this.note, { data: this.modifiedText });
-    try {
-      const res = await NoteService.createNote(updatedNote);
-      this.sidebar.getSidebarInfo();
-      this.unsavedChanges = false;
-      this.$router.push({ name: 'note-id', params: { uuid: (res as { uuid: string }).uuid } });
-    } catch (_e) {
-      this.$buefy.toast.open({
-        duration: 5000,
-        message: 'There was an error saving. Please try again.',
-        position: 'is-top',
-        type: 'is-danger',
-      });
-    }
-
-    this.headerOptions.showDelete = !!this.note.uuid;
-  }
-
-  beforeRouteLeave(_to: Route, _from: Route, next: (arg?: boolean) => void) {
-    if (this.unsavedChanges) {
-      this.$buefy.modal.open({
-        parent: this,
-        component: UnsavedForm,
-        hasModalCard: true,
-        trapFocus: true,
-        events: {
-          cancel: () => {
-            next(false);
-          },
-          discard: () => {
-            next();
-          },
-          save: () => {
-            this.saveNote();
-            next();
-          },
+onBeforeRouteLeave((_to, _from, next) => {
+  if (unsavedChanges.value) {
+    buefy?.modal.open({
+      parent: instance,
+      component: UnsavedForm,
+      hasModalCard: true,
+      trapFocus: true,
+      events: {
+        cancel: () => {
+          next(false);
         },
-      });
-    } else {
-      next();
-    }
+        discard: () => {
+          unsavedChanges.value = false;
+          modifiedText.value = '';
+          next();
+        },
+        save: async () => {
+          await saveNote();
+          unsavedChanges.value = false;
+          next();
+        },
+      },
+    });
+  } else {
+    next();
   }
+});
 
-  public valChanged(data: string) {
-    this.modifiedText = data;
+onMounted(() => {
+  window.addEventListener('beforeunload', unsavedAlert);
 
-    if (this.modifiedText !== this.text) {
-      this.title = '* New Note';
-      this.headerOptions.saveDisabled = false;
-      this.unsavedChanges = true;
-    } else {
-      this.title = 'New Note';
-      this.headerOptions.saveDisabled = true;
-    }
-  }
+  text.value = newNote;
 
-  unsavedAlert(e: Event) {
-    if (this.unsavedChanges) {
-      // Attempt to modify event will trigger Chrome/Firefox alert msg
-      e.returnValue = true;
-    }
-  }
-}
+  note.value = {
+    data: text.value,
+    uuid: null,
+  };
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', unsavedAlert);
+});
 </script>
 
 <style scoped>

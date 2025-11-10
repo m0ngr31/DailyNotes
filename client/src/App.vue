@@ -2,56 +2,54 @@
   <router-view></router-view>
 </template>
 
-<script>
-import { SharedBuefy } from './services/sharedBuefy';
+<script setup lang="ts">
+import { useHead } from '@unhead/vue';
+import { getCurrentInstance, onMounted, provide, ref } from 'vue';
+import { type BuefyInstance, SharedBuefy } from './services/sharedBuefy';
 
-export default {
-  name: 'App',
-  metaInfo: {
-    titleTemplate: '%s | DailyNotes',
+useHead({
+  titleTemplate: '%s | DailyNotes',
+});
+
+const taskList = ref([]);
+
+provide('global', {
+  get taskList() {
+    return taskList.value;
   },
-  mounted: function () {
-    SharedBuefy.notifications = this.$buefy.toast;
-    SharedBuefy.dialog = this.$buefy.dialog;
-  },
-  provide() {
-    const global = {};
-    Object.defineProperty(global, 'taskList', {
-      enumerable: true,
-      get: () => this.taskList,
-    });
-    return { global };
-  },
-  data() {
-    return {
-      global: {},
-      taskList: [],
-    };
-  },
-};
+});
+
+onMounted(() => {
+  const instance = getCurrentInstance();
+  if (instance) {
+    const buefy = (instance.appContext.config.globalProperties as { $buefy?: BuefyInstance })
+      .$buefy;
+    if (buefy) {
+      SharedBuefy.notifications = buefy.toast;
+      SharedBuefy.dialog = buefy.dialog;
+    }
+  }
+});
 </script>
 
-<style lang="sass">
-@use "sass:color"
-@import '~bulmaswatch/minty/_variables'
-@import '~bulma/bulma'
-@import '~bulmaswatch/minty/_overrides'
+<style lang="scss">
+// Set custom variables before importing Bulma
+$family-primary: 'Montserrat', sans-serif;
+$family-code: 'Fira Code', monospace;
 
-$app-background: #263238
-$loading-background: $app-background
-$loading-background-legacy: $app-background
+// Import Bulma framework
+@import '~bulma/bulma';
 
-$datepicker-background-color: color.adjust($app-background, $lightness: -2.5%)
-$datepicker-shadow: none
-$datepicker-item-color: #fff
-
-@import "~buefy/src/scss/buefy"
-
-html, body
-  background-color: $datepicker-background-color
+html, body {
+  background-color: #263238;
+}
 </style>
 
-<style>
+<style lang="scss">
+/* Import Buefy compiled CSS */
+@import '~buefy/dist/css/buefy.css';
+
+/* Import FontAwesome icons */
 @import '~@fortawesome/fontawesome-free/css/all.css';
 
 :root {
@@ -62,7 +60,7 @@ html, body
 .fade-enter-active, .fade-leave-active {
   transition: opacity .5s;
 }
-.fade-enter, .fade-leave-to {
+.fade-enter-from, .fade-leave-to {
   opacity: 0;
 }
 
@@ -161,5 +159,91 @@ html, body {
 
 .CodeMirror-vscrollbar {
   overflow-y: auto;
+}
+
+/* Datepicker dark theme */
+.datepicker {
+  background-color: var(--main-bg-color);
+}
+
+.datepicker .dropdown-content {
+  background-color: var(--main-bg-color);
+  border: none;
+}
+
+.datepicker-header {
+  background-color: var(--main-bg-color) !important;
+}
+
+.datepicker-header select,
+.datepicker-header .select select {
+  background-color: var(--main-bg-darker);
+  color: #ddd;
+  border-color: #364850;
+}
+
+.datepicker-header select:hover,
+.datepicker-header .select select:hover {
+  border-color: #4a5f6a;
+}
+
+.datepicker-header .pagination-previous,
+.datepicker-header .pagination-next {
+  color: #ddd;
+  background-color: transparent;
+}
+
+.datepicker-header .pagination-previous:hover,
+.datepicker-header .pagination-next:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.datepicker-table {
+  background-color: var(--main-bg-color);
+}
+
+.datepicker-table .datepicker-header {
+  color: #fff;
+}
+
+.datepicker-table .datepicker-body .datepicker-cell {
+  color: #fff !important;
+  border: none;
+  font-weight: 500;
+}
+
+.datepicker-table .datepicker-body .datepicker-cell.is-unselectable {
+  color: #aaa !important;
+}
+
+.datepicker-table .datepicker-body .datepicker-cell.is-nearby {
+  color: #666 !important;
+}
+
+.datepicker-table .datepicker-body .datepicker-cell span {
+  color: inherit !important;
+}
+
+.datepicker-table .datepicker-body .datepicker-cell:not(.is-selected):hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.datepicker-table .datepicker-body .datepicker-cell.is-today {
+  background-color: #4a90a4;
+  color: #fff;
+}
+
+.datepicker-table .datepicker-body .datepicker-cell.is-selected {
+  background-color: #4a90a4;
+  color: #fff;
+}
+
+.datepicker-table .datepicker-body .datepicker-cell.has-event {
+  position: relative;
+}
+
+.datepicker-table .datepicker-body .datepicker-cell.has-event .events .event {
+  background-color: #4a90a4;
 }
 </style>

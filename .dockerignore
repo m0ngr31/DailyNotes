@@ -29,6 +29,14 @@ yarn-error.log*
 dist/
 build/
 *.egg
+electron-app/dist/
+electron-app/build/
+*.zip
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
 
 # IDE
 .vscode

@@ -28,9 +28,10 @@
   </div>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
-import Component from 'vue-class-component';
+<script setup lang="ts">
+import { useHead } from '@unhead/vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 import Calendar from '@/components/Calendar.vue';
 import Tags from '@/components/Tags.vue';
@@ -39,42 +40,37 @@ import eventHub from '../services/eventHub';
 import SidebarInst from '../services/sidebar';
 import { updateJWT } from '../services/user';
 
+useHead({
+  title: 'Home',
+});
+
 const MINUTES = 60;
 const SECONDS = 60;
 const HOUR = MINUTES * SECONDS * 1000; // MS in an hour
 
-@Component({
-  components: {
-    Calendar,
-    Tags,
-  },
-  metaInfo: {
-    title: 'Home',
-  },
-})
-export default class Admin extends Vue {
-  public auth_timer: ReturnType<typeof setTimeout> | null = null;
-  public sidebar = SidebarInst;
+const router = useRouter();
+const route = useRoute();
+const sidebar = SidebarInst;
+let auth_timer: ReturnType<typeof setInterval> | null = null;
 
-  mounted() {
-    // Get new JWT every hour
-    this.auth_timer = setInterval(() => updateJWT(), HOUR);
-  }
+const today = () => {
+  router.push({ name: 'Home Redirect' });
+};
 
-  today() {
-    this.$router.push({ name: 'Home Redirect' });
-  }
+const focusEditor = () => {
+  eventHub.emit('focusEditor');
+};
 
-  beforeDestroy() {
-    if (this.auth_timer) {
-      clearInterval(this.auth_timer);
-    }
-  }
+onMounted(() => {
+  // Get new JWT every hour
+  auth_timer = setInterval(() => updateJWT(), HOUR);
+});
 
-  focusEditor() {
-    eventHub.$emit('focusEditor');
+onBeforeUnmount(() => {
+  if (auth_timer) {
+    clearInterval(auth_timer);
   }
-}
+});
 </script>
 
 <style scoped>

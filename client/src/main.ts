@@ -1,20 +1,20 @@
+import { createHead } from '@unhead/vue/client';
 import Buefy from 'buefy';
-import Vue from 'vue';
-import VueMasonry from 'vue-masonry-css';
-import VueMeta from 'vue-meta';
+import { createApp } from 'vue';
 
 import App from './App.vue';
 import router from './router';
 
-Vue.config.productionTip = false;
+const app = createApp(App);
+const head = createHead();
 
-Vue.use(Buefy, {
+app.use(router);
+app.use(head);
+
+// Buefy 3.x for Vue 3 - ensure components are properly registered
+app.use(Buefy, {
   defaultIconPack: 'fas',
+  defaultContainerElement: '#app',
 });
-Vue.use(VueMeta);
-Vue.use(VueMasonry);
 
-new Vue({
-  router,
-  render: (h) => h(App),
-}).$mount('#app');
+app.mount('#app');

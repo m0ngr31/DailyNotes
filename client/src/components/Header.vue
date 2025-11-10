@@ -53,9 +53,11 @@
           v-bind:class="{ 'preview-active': options.previewMode !== 'none' }"
         >
           <b-dropdown position="is-bottom-left">
-            <b-tooltip slot="trigger" label="Preview" position="is-bottom">
-              <b-icon icon="eye"></b-icon>
-            </b-tooltip>
+            <template #trigger>
+              <b-tooltip label="Preview" position="is-bottom">
+                <b-icon icon="eye"></b-icon>
+              </b-tooltip>
+            </template>
             <b-dropdown-item @click="togglePreview('side')">
               <b-icon icon="columns" size="is-small"></b-icon>
               <span class="dropdown-text">Preview Side-by-Side</span>
@@ -93,11 +95,13 @@
         </div>
         <div class="level-item alt-button">
           <b-dropdown position="is-bottom-left" :close-on-click="false">
-            <b-icon slot="trigger" icon="ellipsis-v"></b-icon>
+            <template #trigger>
+              <b-icon icon="ellipsis-v"></b-icon>
+            </template>
             <b-dropdown-item>
               <b-switch
                 v-model="sidebar.autoSave"
-                @input="sidebar.toggleAutoSave"
+                @update:modelValue="sidebar.toggleAutoSave"
               >
                 {{ sidebar.autoSave ? 'Disable Auto-Save' : 'Enable Auto-Save' }}
               </b-switch>
@@ -120,13 +124,13 @@
   </div>
 </template>
 
-<script lang="ts">
-import addDays from 'date-fns/addDays';
-import format from 'date-fns/format';
-import subDays from 'date-fns/subDays';
+<script setup lang="ts">
+import { addDays } from 'date-fns/addDays';
+import { format } from 'date-fns/format';
+import { subDays } from 'date-fns/subDays';
 import _ from 'lodash';
-import Vue from 'vue';
-import Component from 'vue-class-component';
+import { getCurrentInstance, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import type { IHeaderOptions } from '../interfaces';
 import { NoteService } from '../services/notes';
 import SidebarInst from '../services/sidebar';
@@ -134,199 +138,194 @@ import { clearToken } from '../services/user';
 import Settings from './Settings.vue';
 import Tasks from './Tasks.vue';
 
-@Component({
-  components: {
-    Tasks,
-    Settings,
-  },
-  props: {
-    options: {
-      type: Object,
-      required: true,
-    },
-  },
-})
-export default class Header extends Vue {
-  public sidebar = SidebarInst;
-  public options!: IHeaderOptions;
-  public isSaving: boolean = false;
+interface Props {
+  options: IHeaderOptions;
+}
 
-  public toggleSidebar(show = false) {
-    this.sidebar.hide = show;
+const props = defineProps<Props>();
+const router = useRouter();
+const instance = getCurrentInstance();
+const buefy = (instance?.appContext.config.globalProperties as any).$buefy;
+
+const sidebar = SidebarInst;
+const isSaving = ref(false);
+const importInput = ref<HTMLInputElement>();
+
+const toggleSidebar = (show = false) => {
+  sidebar.hide = show;
+};
+
+const newNote = () => {
+  router.push({ name: 'new-note' }).catch((_err) => {});
+};
+
+const goToSearch = () => {
+  router.push({ name: 'search' }).catch((_err) => {});
+};
+
+const prevent = ($event: Event) => {
+  $event.stopPropagation();
+};
+
+const prevDay = () => {
+  const date = subDays(sidebar.date || new Date(), 1);
+  router.push({ name: 'day-id', params: { id: format(date, 'MM-dd-yyyy') } });
+};
+
+const nextDay = () => {
+  const date = addDays(sidebar.date || new Date(), 1);
+  router.push({ name: 'day-id', params: { id: format(date, 'MM-dd-yyyy') } });
+};
+
+const save = async () => {
+  if (
+    props.options.saveDisabled ||
+    isSaving.value ||
+    !props.options.saveFn ||
+    !_.isFunction(props.options.saveFn)
+  ) {
+    return;
   }
 
-  public newNote() {
-    this.$router.push({ name: 'new-note' }).catch((_err) => {});
+  isSaving.value = true;
+
+  try {
+    await props.options.saveFn();
+  } catch (_e) {}
+
+  isSaving.value = false;
+};
+
+const deleteNote = async () => {
+  if (
+    !props.options.showDelete ||
+    isSaving.value ||
+    !props.options.deleteFn ||
+    !_.isFunction(props.options.deleteFn)
+  ) {
+    return;
   }
 
-  public goToSearch(_searchType: string, _tag: string) {
-    this.$router.push({ name: 'search' }).catch((_err) => {});
+  isSaving.value = true;
+
+  try {
+    await props.options.deleteFn();
+  } catch (_e) {}
+
+  isSaving.value = false;
+};
+
+const exportNotes = async () => {
+  NoteService.exportNotes();
+};
+
+const triggerImport = () => {
+  const input = importInput.value;
+  if (input) {
+    input.click();
+  }
+};
+
+const importNotes = async (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+
+  if (!file) {
+    return;
   }
 
-  public prevent($event: Event) {
-    $event.stopPropagation();
-  }
+  buefy?.dialog.confirm({
+    title: 'Import Notes',
+    message:
+      'Importing notes will add all notes from the ZIP file. Daily notes that already exist will be skipped. Do you want to continue?',
+    confirmText: 'Import',
+    type: 'is-info',
+    hasIcon: true,
+    onConfirm: async () => {
+      const loading = buefy?.loading.open({
+        container: null,
+      });
 
-  public prevDay() {
-    const date = subDays(this.sidebar.date || new Date(), 1);
-    this.$router.push({ name: 'day-id', params: { id: format(date, 'MM-dd-yyyy') } });
-  }
+      try {
+        const result = await NoteService.importNotes(file);
 
-  public nextDay() {
-    const date = addDays(this.sidebar.date || new Date(), 1);
-    this.$router.push({ name: 'day-id', params: { id: format(date, 'MM-dd-yyyy') } });
-  }
+        loading?.close();
 
-  public async save() {
-    if (
-      this.options.saveDisabled ||
-      this.isSaving ||
-      !this.options.saveFn ||
-      !_.isFunction(this.options.saveFn)
-    ) {
-      return;
-    }
-
-    this.isSaving = true;
-
-    try {
-      await this.options.saveFn();
-    } catch (_e) {}
-
-    this.isSaving = false;
-  }
-
-  public async deleteNote() {
-    if (
-      !this.options.showDelete ||
-      this.isSaving ||
-      !this.options.deleteFn ||
-      !_.isFunction(this.options.deleteFn)
-    ) {
-      return;
-    }
-
-    this.isSaving = true;
-
-    try {
-      await this.options.deleteFn();
-    } catch (_e) {}
-
-    this.isSaving = false;
-  }
-
-  public async exportNotes() {
-    NoteService.exportNotes();
-  }
-
-  public triggerImport() {
-    const input = this.$refs.importInput as HTMLInputElement;
-    if (input) {
-      input.click();
-    }
-  }
-
-  public async importNotes(event: Event) {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    this.$buefy.dialog.confirm({
-      title: 'Import Notes',
-      message:
-        'Importing notes will add all notes from the ZIP file. Daily notes that already exist will be skipped. Do you want to continue?',
-      confirmText: 'Import',
-      type: 'is-info',
-      hasIcon: true,
-      onConfirm: async () => {
-        const loading = this.$buefy.loading.open({
-          container: null,
+        buefy?.toast.open({
+          message: `Import completed! Imported: ${result.imported}, Skipped: ${result.skipped}, Errors: ${result.errors}`,
+          type: 'is-success',
+          duration: 5000,
         });
 
-        try {
-          const result = await NoteService.importNotes(file);
-
-          loading.close();
-
-          this.$buefy.toast.open({
-            message: `Import completed! Imported: ${result.imported}, Skipped: ${result.skipped}, Errors: ${result.errors}`,
-            type: 'is-success',
-            duration: 5000,
-          });
-
-          // Reset file input
-          target.value = '';
-
-          // Refresh sidebar and calendar to show new notes
-          if (this.sidebar) {
-            if (_.isFunction(this.sidebar.getSidebarInfo)) {
-              this.sidebar.getSidebarInfo();
-            }
-            if (_.isFunction(this.sidebar.getEvents)) {
-              this.sidebar.getEvents();
-            }
-          }
-        } catch (e: unknown) {
-          loading.close();
-          let errorMessage =
-            'Failed to import notes. Please make sure the file is a valid ZIP containing markdown files.';
-
-          // Try to extract more specific error message
-          if (e && typeof e === 'object' && 'response' in e) {
-            const response = (e as { response?: { data?: { error?: string } } }).response;
-            if (response?.data?.error) {
-              errorMessage = response.data.error;
-            }
-          } else if (e instanceof Error && e.message) {
-            errorMessage = `Import failed: ${e.message}`;
-          }
-
-          this.$buefy.toast.open({
-            message: errorMessage,
-            type: 'is-danger',
-            duration: 7000,
-          });
-          // Reset file input
-          target.value = '';
-        }
-      },
-      onCancel: () => {
         // Reset file input
         target.value = '';
-      },
-    });
-  }
 
-  public togglePreview(mode: 'side' | 'replace' | 'none') {
-    if (this.options.togglePreviewFn && _.isFunction(this.options.togglePreviewFn)) {
-      this.options.togglePreviewFn(mode);
-    }
-  }
+        // Refresh sidebar and calendar to show new notes
+        if (sidebar) {
+          if (_.isFunction(sidebar.getSidebarInfo)) {
+            sidebar.getSidebarInfo();
+          }
+          if (_.isFunction(sidebar.getEvents)) {
+            sidebar.getEvents();
+          }
+        }
+      } catch (e: unknown) {
+        loading?.close();
+        let errorMessage =
+          'Failed to import notes. Please make sure the file is a valid ZIP containing markdown files.';
 
-  public closePreview() {
-    if (this.options.togglePreviewFn && _.isFunction(this.options.togglePreviewFn)) {
-      this.options.togglePreviewFn('none');
-    }
-  }
+        // Try to extract more specific error message
+        if (e && typeof e === 'object' && 'response' in e) {
+          const response = (e as { response?: { data?: { error?: string } } }).response;
+          if (response?.data?.error) {
+            errorMessage = response.data.error;
+          }
+        } else if (e instanceof Error && e.message) {
+          errorMessage = `Import failed: ${e.message}`;
+        }
 
-  public openSettings() {
-    this.$buefy.modal.open({
-      parent: this,
-      component: Settings,
-      hasModalCard: true,
-      trapFocus: true,
-      canCancel: ['escape', 'x'],
-    });
-  }
+        buefy?.toast.open({
+          message: errorMessage,
+          type: 'is-danger',
+          duration: 7000,
+        });
+        // Reset file input
+        target.value = '';
+      }
+    },
+    onCancel: () => {
+      // Reset file input
+      target.value = '';
+    },
+  });
+};
 
-  public logout() {
-    clearToken();
-    this.$router.push({ name: 'Login' });
+const togglePreview = (mode: 'side' | 'replace' | 'none') => {
+  if (props.options.togglePreviewFn && _.isFunction(props.options.togglePreviewFn)) {
+    props.options.togglePreviewFn(mode);
   }
-}
+};
+
+const closePreview = () => {
+  if (props.options.togglePreviewFn && _.isFunction(props.options.togglePreviewFn)) {
+    props.options.togglePreviewFn('none');
+  }
+};
+
+const openSettings = () => {
+  buefy?.modal.open({
+    parent: instance,
+    component: Settings,
+    hasModalCard: true,
+    trapFocus: true,
+    canCancel: ['escape', 'x'],
+  });
+};
+
+const logout = () => {
+  clearToken();
+  router.push({ name: 'Login' });
+};
 </script>
 
 <style scoped>

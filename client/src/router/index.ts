@@ -1,5 +1,4 @@
-import Vue from 'vue';
-import VueRouter from 'vue-router';
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import SidebarInst from '../services/sidebar';
 import { getToken } from '../services/user';
 
@@ -20,9 +19,7 @@ const Auth = () => import(/* webpackChunkName: "auth" */ '../views/Auth.vue');
 const Login = () => import(/* webpackChunkName: "auth" */ '../views/Login.vue');
 const Signup = () => import(/* webpackChunkName: "auth" */ '../views/Signup.vue');
 
-Vue.use(VueRouter);
-
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/auth',
     component: Auth,
@@ -89,26 +86,25 @@ const routes = [
     component: ErrorPage,
   },
   {
-    path: '*',
+    path: '/:pathMatch(.*)*',
     redirect: '/page-not-found',
   },
 ];
 
-const router = new VueRouter({
-  mode: 'history',
+const router = createRouter({
+  history: createWebHistory(process.env.BASE_URL),
   linkActiveClass: 'active',
-  base: process.env.BASE_URL,
   routes,
 });
 
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to, _from) => {
   const currentUser = getToken();
   const requiresAuth = to.matched.some((record) => record.meta.auth);
 
   if (requiresAuth && !currentUser) {
-    await next({ name: 'Login', query: { from: to.path } });
+    return { name: 'Login', query: { from: to.path as string } };
   } else if (!requiresAuth && currentUser) {
-    await next({ name: 'Home Redirect' });
+    return { name: 'Home Redirect' };
   } else {
     if (requiresAuth && to.name !== 'day-id') {
       SidebarInst.date = null;
@@ -119,7 +115,7 @@ router.beforeEach(async (to, _from, next) => {
       SidebarInst.selectedSearch = '';
     }
 
-    await next();
+    return true;
   }
 });
 

@@ -1,7 +1,8 @@
-import formatISO from 'date-fns/formatISO';
-import parse from 'date-fns/parse';
+import { formatISO } from 'date-fns/formatISO';
+import { parse } from 'date-fns/parse';
 import _ from 'lodash';
-import type { Route } from 'vue-router';
+import { reactive } from 'vue';
+import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import type { IMeta, INote } from '../interfaces';
 
 import router from '../router';
@@ -35,21 +36,22 @@ class SidebarSerivce {
    * @param $route A VueRouter Route object
    */
   public updateDate = _.throttle(
-    ($route: Route) => {
+    ($route: RouteLocationNormalizedLoaded) => {
       if (!$route.params || !$route.params.id) {
         this.date = null;
         return;
       }
 
       try {
-        this.date = parse($route.params.id, 'MM-dd-yyyy', new Date());
+        const id = Array.isArray($route.params.id) ? $route.params.id[0] : $route.params.id;
+        this.date = parse(id, 'MM-dd-yyyy', new Date());
       } catch (_e) {
         // Reset date
         this.date = null;
       }
     },
     250,
-    { trailing: true, leading: false }
+    { trailing: true, leading: true }
   );
 
   /**
@@ -166,7 +168,7 @@ class SidebarSerivce {
   }
 }
 
-// Make it a singleton
-const SidebarInst = new SidebarSerivce();
+// Make it a singleton and wrap with reactive for Vue 3 reactivity
+const SidebarInst = reactive(new SidebarSerivce());
 
 export default SidebarInst;

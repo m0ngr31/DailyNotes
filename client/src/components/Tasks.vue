@@ -1,14 +1,15 @@
 <template>
   <div class="level-item alt-button">
     <b-dropdown aria-role="list" :can-close="['escape', 'outside']">
-      <b-tooltip
-        label="Tasks"
-        position="is-bottom"
-        slot="trigger"
-        role="button"
-      >
-        <b-icon icon="tasks"></b-icon>
-      </b-tooltip>
+      <template #trigger>
+        <b-tooltip
+          label="Tasks"
+          position="is-bottom"
+          role="button"
+        >
+          <b-icon icon="tasks"></b-icon>
+        </b-tooltip>
+      </template>
       <b-dropdown-item
         custom
         v-for="(task, idx) in global.taskList"
@@ -21,18 +22,14 @@
   </div>
 </template>
 
-<script lang="ts">
-import { Component, Inject, Vue } from 'vue-property-decorator';
+<script setup lang="ts">
+import { inject } from 'vue';
 import type { IGlobal } from '../interfaces';
-
 import TaskItem from './TaskItem.vue';
 
-@Component({
-  components: { TaskItem },
-})
-export default class Tasks extends Vue {
-  @Inject()
-  public global!: IGlobal;
+const global = inject<IGlobal>('global');
+if (!global) {
+  throw new Error('Global context not provided');
 }
 </script>
 

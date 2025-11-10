@@ -9,11 +9,10 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'unauthorized',
-  metaInfo: {
-    title: 'Unauthorized',
-  },
-};
+<script setup lang="ts">
+import { useHead } from '@unhead/vue';
+
+useHead({
+  title: 'Unauthorized',
+});
 </script>

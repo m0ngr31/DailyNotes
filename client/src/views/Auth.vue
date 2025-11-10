@@ -12,13 +12,12 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Auth',
-  metaInfo: {
-    title: '',
-  },
-};
+<script setup lang="ts">
+import { useHead } from '@unhead/vue';
+
+useHead({
+  title: '',
+});
 </script>
 
 <style>

@@ -21,33 +21,27 @@
       <span class="fa-1x" v-if="sidebar.notes.length">Notes</span>
       <b-taglist class="tag-margin alt-button">
         <div @click="goToNote(note.uuid)" v-for="note of sidebar.notes" v-bind:key="note.uuid" class="tags-margin">
-          <b-tag :ellipsis="true" type="is-danger">{{note.title}}</b-tag>
+          <b-tag :ellipsis="true" type="is-danger" class="note-tag">{{note.title}}</b-tag>
         </div>
       </b-taglist>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
-import Component from 'vue-class-component';
-
-import router from '../router/index';
-
+<script setup lang="ts">
+import { useRouter } from 'vue-router';
 import SidebarInst from '../services/sidebar';
 
-@Component
-export default class Tags extends Vue {
-  sidebar = SidebarInst;
+const router = useRouter();
+const sidebar = SidebarInst;
 
-  public goToNote(uuid: string) {
-    router.push({ name: 'note-id', params: { uuid } });
-  }
+const goToNote = (uuid: string) => {
+  router.push({ name: 'note-id', params: { uuid } });
+};
 
-  public goToSearch(searchType: string, tag: string) {
-    router.push({ name: 'search', query: { [searchType]: tag } }).catch((_err) => {});
-  }
-}
+const goToSearch = (searchType: string, tag: string) => {
+  router.push({ name: 'search', query: { [searchType]: tag } }).catch((_err) => {});
+};
 </script>
 
 <style scoped>
@@ -63,5 +57,9 @@ export default class Tags extends Vue {
 .tags-margin {
   margin-right: .5em;
   margin-bottom: .5em;
+}
+
+.note-tag {
+  background-color: #eea26f !important;
 }
 </style>

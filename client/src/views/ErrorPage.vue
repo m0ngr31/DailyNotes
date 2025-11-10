@@ -9,11 +9,10 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'error',
-  metaInfo: {
-    title: 'Error',
-  },
-};
+<script setup lang="ts">
+import { useHead } from '@unhead/vue';
+
+useHead({
+  title: 'Error',
+});
 </script>

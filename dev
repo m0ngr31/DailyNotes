@@ -2,6 +2,10 @@
 
 # DailyNotes Docker Development Environment Startup Script
 # This script starts the Docker development environment and opens the app in your browser
+# Usage:
+#   ./dev           - Start the development environment
+#   ./dev --restart - Restart the webpack dev server
+#   ./dev --down    - Stop the development environment
 
 set -e
 
@@ -11,6 +15,30 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
+
+# Determine which docker compose command to use
+if docker compose version &> /dev/null 2>&1; then
+  DOCKER_COMPOSE="docker compose"
+else
+  DOCKER_COMPOSE="docker-compose"
+fi
+
+# Handle --restart option
+if [ "$1" == "--restart" ]; then
+  echo -e "${BLUE}🔄 Restarting webpack dev server...${NC}"
+  docker exec dailynotes-dev pkill -f vue-cli-service || true
+  echo -e "${GREEN}✅ Dev server restart initiated${NC}"
+  echo -e "${YELLOW}Wait ~15 seconds for webpack to rebuild${NC}"
+  exit 0
+fi
+
+# Handle --down option
+if [ "$1" == "--down" ]; then
+  echo -e "${BLUE}🛑 Stopping development environment...${NC}"
+  $DOCKER_COMPOSE -f docker-compose.dev.yml down
+  echo -e "${GREEN}✅ Development environment stopped${NC}"
+  exit 0
+fi
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   DailyNotes Development Environment       ║${NC}"
@@ -29,13 +57,6 @@ if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/
   echo -e "${RED}❌ Error: docker-compose is not installed${NC}"
   echo -e "${YELLOW}Please install Docker Compose and try again${NC}"
   exit 1
-fi
-
-# Determine which docker compose command to use
-if docker compose version &> /dev/null 2>&1; then
-  DOCKER_COMPOSE="docker compose"
-else
-  DOCKER_COMPOSE="docker-compose"
 fi
 
 # Build and start the development environment

@@ -15,46 +15,40 @@
   </div>
 </template>
 
-<script lang="ts">
-import format from 'date-fns/format';
-import parse from 'date-fns/parse';
-import Vue from 'vue';
-import Component from 'vue-class-component';
+<script setup lang="ts">
+import { format } from 'date-fns/format';
+import { parse } from 'date-fns/parse';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import type { INote } from '../interfaces';
-import router from '../router/index';
 
-@Component({
-  props: {
-    note: {
-      type: Object,
-      required: true,
-    },
-  },
-})
-export default class NoteCard extends Vue {
-  public note!: INote;
-
-  public goToNote() {
-    if (this.note.is_date) {
-      router.push({ name: 'day-id', params: { id: this.note.title || '' } });
-      return;
-    }
-
-    router.push({ name: 'note-id', params: { uuid: this.note.uuid || '' } });
-  }
-
-  get parsedTitle() {
-    if (this.note.is_date) {
-      try {
-        return format(parse(this.note.title || '', 'MM-dd-yyyy', new Date()), 'EEE. MMM dd, yyyy');
-      } catch (_e) {
-        return this.note.title;
-      }
-    }
-
-    return this.note.title;
-  }
+interface Props {
+  note: INote;
 }
+
+const props = defineProps<Props>();
+const router = useRouter();
+
+const goToNote = () => {
+  if (props.note.is_date) {
+    router.push({ name: 'day-id', params: { id: props.note.title || '' } });
+    return;
+  }
+
+  router.push({ name: 'note-id', params: { uuid: props.note.uuid || '' } });
+};
+
+const parsedTitle = computed(() => {
+  if (props.note.is_date) {
+    try {
+      return format(parse(props.note.title || '', 'MM-dd-yyyy', new Date()), 'EEE. MMM dd, yyyy');
+    } catch (_e) {
+      return props.note.title;
+    }
+  }
+
+  return props.note.title;
+});
 </script>
 
 <style scoped>
