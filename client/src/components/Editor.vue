@@ -534,6 +534,11 @@ const handleValueUpdate = (firstMount?: boolean) => {
 
     if (currentDoc === newValue) return;
 
+    // Don't update if editor has focus and user is actively typing (unless it's first mount)
+    if (!firstMount && editorView.hasFocus) {
+      return;
+    }
+
     const currentSelection = editorView.state.selection.main;
 
     editorView.dispatch({

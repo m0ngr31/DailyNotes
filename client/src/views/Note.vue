@@ -110,7 +110,7 @@ const saveNote = async (isAutoSave: boolean = false) => {
   try {
     note.value = await NoteService.saveNote(updatedNote);
     text.value = modifiedText.value;
-    modifiedText.value = ''; // Reset so editor shows the saved text
+    // Don't reset modifiedText - it's already correct and resetting causes editor glitches
     headerOptions.title = note.value.title || '';
 
     // Update the UI state directly

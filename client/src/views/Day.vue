@@ -144,7 +144,7 @@ const saveDay = async (isAutoSave: boolean = false) => {
   try {
     const res = await NoteService.saveDay(updatedDay);
     text.value = modifiedText.value;
-    modifiedText.value = ''; // Reset so editor shows the saved text
+    // Don't reset modifiedText - it's already correct and resetting causes editor glitches
     day.value.uuid = res.uuid;
 
     // Update the UI state directly
