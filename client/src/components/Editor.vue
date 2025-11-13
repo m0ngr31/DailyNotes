@@ -42,13 +42,16 @@ const customTheme = EditorView.theme({
   '&': {
     backgroundColor: '#263238',
     height: '100%',
+    width: '100%',
     fontFamily: "'Fira Code', monospace",
     fontSize: '16px',
     fontWeight: '400',
     overflowX: 'hidden',
+    border: 'none',
   },
   '.cm-scroller': {
     overflowX: 'hidden',
+    width: '100%',
   },
   '.cm-content': {
     padding: '10px 0px 10px 20px',
@@ -56,6 +59,8 @@ const customTheme = EditorView.theme({
     fontSize: '16px',
     fontWeight: '400',
     color: '#EEFFFF', // Default text color - light gray/white
+    width: '100%',
+    maxWidth: 'none',
   },
   '.cm-line': {
     color: '#EEFFFF', // Ensure all lines have readable color
@@ -705,5 +710,20 @@ defineExpose({
 .editor {
   background-color: #263238;
   height: 100%;
+  width: 100%;
+  border: none;
+  outline: none;
+}
+
+.editor :deep(.cm-editor) {
+  width: 100%;
+  border: none;
+  outline: none;
+}
+
+.editor :deep(.cm-scroller) {
+  width: 100%;
+  border: none;
+  outline: none;
 }
 </style>

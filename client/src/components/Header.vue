@@ -94,18 +94,10 @@
           </b-tooltip>
         </div>
         <div class="level-item alt-button">
-          <b-dropdown position="is-bottom-left" :close-on-click="false">
+          <b-dropdown position="is-bottom-left">
             <template #trigger>
               <b-icon icon="ellipsis-v"></b-icon>
             </template>
-            <b-dropdown-item>
-              <b-switch
-                v-model="sidebar.autoSave"
-                @update:modelValue="sidebar.toggleAutoSave"
-              >
-                {{ sidebar.autoSave ? 'Disable Auto-Save' : 'Enable Auto-Save' }}
-              </b-switch>
-            </b-dropdown-item>
             <b-dropdown-item @click="openSettings()">Settings</b-dropdown-item>
             <b-dropdown-item @click="exportNotes()">Export Notes</b-dropdown-item>
             <b-dropdown-item @click="triggerImport()">Import Notes</b-dropdown-item>

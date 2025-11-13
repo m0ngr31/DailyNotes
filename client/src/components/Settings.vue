@@ -7,6 +7,14 @@
 
     <section class="modal-card-body">
       <div class="settings-content">
+        <b-field label="General">
+          <b-field>
+            <b-switch v-model="localAutoSave" @update:modelValue="onAutoSaveChange">
+              Enable Auto-Save
+            </b-switch>
+          </b-field>
+        </b-field>
+
         <b-field label="Editor">
           <b-field>
             <b-switch v-model="localVimMode" @update:modelValue="onVimModeChange">
@@ -35,12 +43,26 @@ const emit = defineEmits<{
 const instance = getCurrentInstance();
 const buefy = (instance?.appContext.config.globalProperties as { $buefy?: BuefyInstance }).$buefy;
 
+const localAutoSave = ref(false);
 const localVimMode = ref(false);
 
 onMounted(() => {
-  // Initialize with current value from sidebar
+  // Initialize with current values from sidebar
+  localAutoSave.value = sidebar.autoSave;
   localVimMode.value = sidebar.vimMode;
 });
+
+const onAutoSaveChange = (value: boolean) => {
+  // Update the setting immediately
+  sidebar.toggleAutoSave(value);
+
+  // Show success toast
+  buefy?.toast.open({
+    message: `Auto-save ${value ? 'enabled' : 'disabled'}`,
+    type: 'is-success',
+    duration: 2000,
+  });
+};
 
 const onVimModeChange = (value: boolean) => {
   // Update the setting immediately

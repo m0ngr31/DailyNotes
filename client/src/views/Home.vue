@@ -90,6 +90,7 @@ onBeforeUnmount(() => {
 .sidebar {
   overflow-y: auto;
   overflow-x: hidden;
+  background-color: var(--main-bg-darker);;
 }
 
 .full-height {

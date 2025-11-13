@@ -368,11 +368,27 @@ onBeforeRouteLeave((_to, _from, next) => {
   }
 });
 
-// Watch for route changes to update the sidebar date
+// Watch for route changes to update the sidebar date and reload day data
 watch(
   () => route.params.id,
   () => {
+    const date = parse(route.params.id as string, 'MM-dd-yyyy', new Date());
+    if (!isValid(date)) {
+      router.push({ name: 'Home Redirect' });
+      buefy?.toast.open({
+        duration: 5000,
+        message: 'There was an error retrieving that date. Redirecting to today.',
+        position: 'is-top',
+        type: 'is-danger',
+      });
+      return;
+    }
+
     sidebar.updateDate(route);
+    getDayData();
+
+    headerOptions.title = format(date, 'EEE. MMM dd, yyyy');
+    title.value = headerOptions.title;
   }
 );
 
@@ -419,8 +435,11 @@ onBeforeUnmount(() => {
 
 .editor-container {
   height: calc(100vh - 60px);
+  width: 100%;
   display: flex;
   flex-direction: row;
+  border: none;
+  outline: none;
 }
 
 .split-view {

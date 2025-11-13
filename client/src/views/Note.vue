@@ -345,8 +345,11 @@ onBeforeUnmount(() => {
 
 .editor-container {
   height: calc(100vh - 60px);
+  width: 100%;
   display: flex;
   flex-direction: row;
+  border: none;
+  outline: none;
 }
 
 .split-view {

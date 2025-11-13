@@ -55,6 +55,7 @@ html, body {
 :root {
   --main-bg-color: #263238;
   --main-bg-darker: #212b30;
+  --bulma-arrow-color: #4a5f6a;
 }
 
 .fade-enter-active, .fade-leave-active {
@@ -163,16 +164,19 @@ html, body {
 
 /* Datepicker dark theme */
 .datepicker {
-  background-color: var(--main-bg-color);
+  background-color: var(--main-bg-darker);
 }
 
 .datepicker .dropdown-content {
-  background-color: var(--main-bg-color);
+  background-color: var(--main-bg-darker);
   border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding-top: 0;
 }
 
 .datepicker-header {
-  background-color: var(--main-bg-color) !important;
+  background-color: var(--main-bg-darker) !important;
 }
 
 .datepicker-header select,
@@ -199,7 +203,7 @@ html, body {
 }
 
 .datepicker-table {
-  background-color: var(--main-bg-color);
+  background-color: var(--main-bg-darker);
 }
 
 .datepicker-table .datepicker-header {
