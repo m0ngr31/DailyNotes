@@ -9,6 +9,7 @@ import binascii
 import uuid
 import frontmatter
 import re
+import datetime
 
 
 key = app.config['DB_ENCRYPTION_KEY']
@@ -84,6 +85,7 @@ class User(db.Model):
   password_hash = db.Column(db.String(128), nullable=False)
   auto_save = db.Column(db.Boolean, nullable=True)
   vim_mode = db.Column(db.Boolean, nullable=True, default=False)
+  calendar_token = db.Column(db.String(64), unique=True, nullable=True)
   notes = db.relationship('Note', lazy='dynamic', cascade='all, delete, delete-orphan')
   meta = db.relationship('Meta', lazy='dynamic', cascade='all, delete, delete-orphan')
 
@@ -117,6 +119,30 @@ class Meta(db.Model):
       'name': self.name,
       'kind': self.kind,
       'note_id': self.note_id,
+    }
+
+
+class Upload(db.Model):
+  uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
+  user_id = db.Column(GUID, db.ForeignKey('user.uuid'), nullable=False)
+  filename = db.Column(db.String(255), nullable=False)
+  path = db.Column(db.String(512), nullable=False, unique=True)
+  size = db.Column(db.Integer, nullable=True)
+  created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+  last_seen_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+  def __repr__(self):
+    return '<Upload {}>'.format(self.uuid)
+
+  @property
+  def serialize(self):
+    return {
+      'uuid': self.uuid,
+      'filename': self.filename,
+      'path': self.path,
+      'size': self.size,
+      'created_at': self.created_at,
+      'last_seen_at': self.last_seen_at,
     }
 
 

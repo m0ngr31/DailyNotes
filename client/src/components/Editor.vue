@@ -17,6 +17,8 @@ import type { IGlobal } from '../interfaces';
 
 import { newDay, newNote } from '../services/consts';
 import eventHub from '../services/eventHub';
+import { SharedBuefy } from '../services/sharedBuefy';
+import { UploadService } from '../services/uploads';
 
 interface Props {
   value: string;
@@ -36,6 +38,7 @@ if (!global) {
 
 const editorContainer = ref<HTMLDivElement>();
 let editorView: EditorView;
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // Keep in sync with backend limit
 
 // Custom theme for CodeMirror 6
 const customTheme = EditorView.theme({
@@ -413,6 +416,136 @@ const generateTaskList = (text: string) => {
   }
 };
 
+const notify = (message: string, type: 'is-success' | 'is-danger' | 'is-info' = 'is-info') => {
+  SharedBuefy.notifications?.open({
+    duration: 4000,
+    message,
+    position: 'is-top',
+    type,
+  });
+};
+
+const insertImageMarkdown = (url: string, filename: string, position?: number): number => {
+  if (!editorView) {
+    return 0;
+  }
+
+  const altText = filename ? filename.replace(/\.[^/.]+$/, '') || 'image' : 'image';
+  const state = editorView.state;
+  const insertPos = typeof position === 'number' ? position : state.selection.main.from;
+  const needsLeadingNewline =
+    insertPos > 0 && state.doc.sliceString(insertPos - 1, insertPos) !== '\n';
+  const needsTrailingNewline = state.doc.sliceString(insertPos, insertPos + 1) !== '\n';
+  const markdown = `${needsLeadingNewline ? '\n' : ''}![${altText}](${url})${
+    needsTrailingNewline ? '\n' : ''
+  }`;
+
+  editorView.dispatch({
+    changes: {
+      from: insertPos,
+      to: insertPos,
+      insert: markdown,
+    },
+    selection: {
+      anchor: insertPos + markdown.length,
+      head: insertPos + markdown.length,
+    },
+  });
+  editorView.focus();
+
+  return editorView.state.selection.main.head;
+};
+
+const extractFilesFromClipboard = (event: ClipboardEvent): File[] => {
+  if (!event.clipboardData) {
+    return [];
+  }
+
+  const directFiles = Array.from(event.clipboardData.files || []);
+  const itemFiles = Array.from(event.clipboardData.items || [])
+    .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => !!file);
+
+  return [...directFiles, ...itemFiles].filter((file) => file.type.startsWith('image/'));
+};
+
+const dedupeFiles = (files: File[]): File[] => {
+  const seen = new Set<string>();
+  const unique: File[] = [];
+
+  files.forEach((file) => {
+    const key = `${file.name}-${file.size}-${file.lastModified}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(file);
+    }
+  });
+
+  return unique;
+};
+
+const handleUploads = async (files: File[], position?: number) => {
+  const uniqueFiles = dedupeFiles(files);
+
+  if (!uniqueFiles.length) {
+    return;
+  }
+
+  let insertPosition = position;
+
+  for (const file of uniqueFiles) {
+    if (!file || !file.type.startsWith('image/')) {
+      continue;
+    }
+
+    if (file.size > MAX_UPLOAD_SIZE) {
+      notify(`"${file.name}" exceeds the 10MB upload limit.`, 'is-danger');
+      continue;
+    }
+
+    try {
+      const res = await UploadService.uploadImage(file);
+      insertPosition = insertImageMarkdown(res.url || res.path, file.name, insertPosition);
+      notify(`Uploaded ${file.name}`, 'is-success');
+    } catch (err: any) {
+      const errorMsg =
+        (err?.response?.data && (err.response.data.error || err.response.data.message)) ||
+        'Failed to upload image';
+      notify(errorMsg, 'is-danger');
+    }
+  }
+};
+
+const handlePasteEvent = (event: ClipboardEvent): boolean => {
+  const imageFiles = extractFilesFromClipboard(event);
+
+  if (!imageFiles.length) {
+    return false;
+  }
+
+  event.preventDefault();
+  void handleUploads(imageFiles);
+  return true;
+};
+
+const handleDropEvent = (event: DragEvent, view: EditorView): boolean => {
+  const files = Array.from(event.dataTransfer?.files || []);
+  const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+
+  if (!imageFiles.length) {
+    if (files.length) {
+      event.preventDefault();
+    }
+    return false;
+  }
+
+  event.preventDefault();
+  const dropPos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+  void handleUploads(imageFiles, dropPos === null ? undefined : dropPos);
+  return true;
+};
+
 const prevent = ($event: Event) => {
   $event.stopPropagation();
 };
@@ -600,6 +733,19 @@ const getExtensions = (): Extension[] => {
     EditorView.domEventHandlers({
       mousedown: (event, view) => {
         handleMouseDown(event, view);
+        return false;
+      },
+      paste: (event) => {
+        return handlePasteEvent(event as ClipboardEvent);
+      },
+      drop: (event, view) => {
+        return handleDropEvent(event as DragEvent, view);
+      },
+      dragover: (event) => {
+        if (Array.from((event as DragEvent).dataTransfer?.types || []).includes('Files')) {
+          event.preventDefault();
+          return true;
+        }
         return false;
       },
       mousemove: (event, view) => {

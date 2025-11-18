@@ -68,6 +68,14 @@ export const Requests = {
     return axios.post(url, data);
   },
 
+  upload: (url: string, data: FormData): AxiosPromise => {
+    return axios.post(url, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
   get: (url: string, data?: Record<string, unknown>): AxiosPromise => {
     return axios.get(url, { params: data || {} });
   },

@@ -7,7 +7,7 @@
   </svg>
 </p>
 
-Current version: **1.0-beta19**
+Current version: **1.0.0-beta.20**
 
 ## About
 
@@ -23,6 +23,13 @@ I'd like to try add include at least of some the following features to get to a 
 - HTML preview (instead of just markdown)
 - Kanban board for tasks (and new syntax to attach meta info like swimlane and project for each task)
 - Nested tagging
+
+## Calendar feed (ICS)
+
+- Generate or rotate a private read-only ICS URL with `GET/POST /api/calendar_token` (requires auth).
+- Subscribe in Google Calendar via **Settings -> Add calendar -> From URL** using `/api/calendar.ics?token=<your_token>`.
+- Each daily note becomes an all-day event; the feed updates when notes change (Google polls periodically).
+- Rotate the token to immediately revoke previous subscriptions or disable sharing with `DELETE /api/calendar_token`.
 
 ## In Action
 
