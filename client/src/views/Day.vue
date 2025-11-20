@@ -41,7 +41,7 @@ import {
   watch,
 } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import type Editor from '@/components/Editor.vue';
+import Editor from '@/components/Editor.vue';
 import Header from '@/components/Header.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import UnsavedForm from '@/components/UnsavedForm.vue';

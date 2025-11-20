@@ -409,6 +409,8 @@ function decorateCheckboxes(state: EditorState): DecorationSet {
 }
 
 const generateTaskList = (text: string) => {
+  if (!global) return;
+
   const regex = /- \[( |x)\] (.+)/gm;
   let m: RegExpExecArray | null;
   let completed = false;
@@ -835,9 +837,9 @@ watch(
 );
 
 watch(
-  () => global.taskList.value,
+  () => global?.taskList.value,
   () => {
-    if (!editorView) return;
+    if (!editorView || !global) return;
 
     const data = editorView.state.doc.toString();
     let newData = data;
