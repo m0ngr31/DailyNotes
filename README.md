@@ -7,7 +7,7 @@
   </svg>
 </p>
 
-Current version: **1.0.0-beta.20**
+Current version: **1.0.0-beta.21**
 
 ## About
 
