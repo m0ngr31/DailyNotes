@@ -14,3 +14,4 @@ class Config(object):
   UPLOAD_FOLDER = os.path.join(basedir, 'config', 'uploads')
   MAX_UPLOAD_SIZE = int(os.environ.get('MAX_UPLOAD_SIZE', 10 * 1024 * 1024))  # 10MB default
   ALLOWED_UPLOAD_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+  DEFAULT_TIMEZONE = os.environ.get('DEFAULT_TIMEZONE', None)

@@ -1,22 +1,30 @@
 <template>
-  <b-datepicker
-    inline
-    :model-value="sidebar.date"
-    indicators="bars"
-    :events="sidebar.events"
-    :nearby-month-days="true"
-    :nearby-selectable-month-days="true"
-    :focusable="false"
-    @update:model-value="changeDate"
-  >
-  </b-datepicker>
+  <div class="calendar-stack">
+    <b-datepicker
+      inline
+      :model-value="sidebar.date"
+      indicators="bars"
+      :events="sidebar.events"
+      :nearby-month-days="true"
+      :nearby-selectable-month-days="true"
+      :focusable="false"
+      @update:model-value="changeDate"
+    >
+    </b-datepicker>
+
+    <ExternalEventsSidebar
+      :events="sidebar.externalEvents"
+      :loading="sidebar.externalEventsLoading"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { format } from 'date-fns/format';
-import { nextTick, onMounted } from 'vue';
+import { nextTick, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import SidebarInst from '../services/sidebar';
+import ExternalEventsSidebar from './ExternalEventsSidebar.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -26,6 +34,7 @@ onMounted(() => {
   sidebar.updateDate(route);
   sidebar.getEvents();
   sidebar.getSidebarInfo(true);
+  sidebar.getExternalEvents();
 });
 
 const changeDate = async (value: Date | null) => {
@@ -47,4 +56,21 @@ const changeDate = async (value: Date | null) => {
     }
   }
 };
+
+// Keep sidebar date and external events in sync when the route changes (prev/next navigation)
+watch(
+  () => route.params.id,
+  (newId) => {
+    if (!newId) return;
+    sidebar.updateDate(route);
+    sidebar.getExternalEvents();
+  }
+);
 </script>
+
+<style scoped>
+.calendar-stack {
+  display: flex;
+  flex-direction: column;
+}
+</style>

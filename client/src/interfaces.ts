@@ -1,3 +1,5 @@
+import type { Ref } from 'vue';
+
 export interface IHeaderOptions {
   title: string;
   showDateNavs?: boolean;
@@ -33,5 +35,23 @@ export interface ITask {
 }
 
 export interface IGlobal {
-  taskList: ITask[];
+  taskList: Ref<ITask[]>;
+}
+
+export interface IExternalCalendar {
+  uuid: string;
+  name: string;
+  url: string;
+  color?: string | null;
+}
+
+export interface IExternalEvent {
+  title: string;
+  all_day: boolean;
+  start: string;
+  end: string;
+  source: string;
+  color?: string | null;
+  location?: string | null;
+  url?: string | null;
 }

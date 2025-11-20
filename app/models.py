@@ -88,6 +88,7 @@ class User(db.Model):
   calendar_token = db.Column(db.String(64), unique=True, nullable=True)
   notes = db.relationship('Note', lazy='dynamic', cascade='all, delete, delete-orphan')
   meta = db.relationship('Meta', lazy='dynamic', cascade='all, delete, delete-orphan')
+  external_calendars = db.relationship('ExternalCalendar', lazy='dynamic', cascade='all, delete, delete-orphan')
 
   def __repr__(self):
     return '<User {}>'.format(self.uuid)
@@ -350,3 +351,24 @@ event.listen(Note, 'before_update', before_change_note)
 event.listen(Note, 'after_insert', after_change_note)
 event.listen(Note, 'after_update', after_change_note)
 event.listen(Meta, 'before_update', before_update_task)
+
+
+class ExternalCalendar(db.Model):
+  uuid = db.Column(GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4())
+  user_id = db.Column(GUID, db.ForeignKey('user.uuid'), nullable=False)
+  name = db.Column(db.String(128), nullable=False)
+  url = db.Column(db.String(512), nullable=False)
+  color = db.Column(db.String(16), nullable=True)
+  created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+
+  def __repr__(self):
+    return '<ExternalCalendar {}>'.format(self.uuid)
+
+  @property
+  def serialize(self):
+    return {
+      'uuid': self.uuid,
+      'name': self.name,
+      'url': self.url,
+      'color': self.color,
+    }

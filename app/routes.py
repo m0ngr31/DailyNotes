@@ -1,12 +1,16 @@
 import os
 import zipfile
 import re
+import time
 from uuid import uuid4
 import frontmatter
 import datetime
+import requests
+from dateutil import rrule, tz
+from urllib.parse import urlparse, parse_qs, quote
 
 from app import app, db, argon2
-from app.models import User, Note, Meta, Upload, aes_encrypt, aes_encrypt_old
+from app.models import User, Note, Meta, Upload, ExternalCalendar, aes_encrypt, aes_encrypt_old
 from flask import render_template, request, jsonify, abort, send_file, send_from_directory, Response, url_for
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from sqlalchemy import text
@@ -81,6 +85,227 @@ def _collect_referenced_uploads_for_user(user):
         db.session.commit()
 
     return referenced_paths
+
+
+_ICS_CACHE = {}
+_ICS_CACHE_TTL_SECONDS = 300
+_ICS_CACHE_MAX_SIZE = 100  # Limit cache size to prevent memory exhaustion
+
+
+def _normalize_calendar_url(raw_url):
+    """
+    Convert common Google Calendar embed URLs to ICS URLs.
+    """
+    if not raw_url:
+        return raw_url
+
+    parsed = urlparse(raw_url)
+    if "google.com" in parsed.netloc and ("/calendar/embed" in parsed.path or "/calendar/r" in parsed.path):
+        qs = parse_qs(parsed.query)
+        src = qs.get("src", [None])[0]
+        if src:
+            return f"https://calendar.google.com/calendar/ical/{quote(src)}/public/basic.ics"
+    return raw_url
+
+
+def _fetch_ics(url):
+    now = time.time()
+    cached = _ICS_CACHE.get(url)
+    if cached and now - cached["ts"] < _ICS_CACHE_TTL_SECONDS:
+        return cached["body"]
+
+    try:
+        # Basic SSRF protection: block localhost and private IPs
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if hostname:
+            hostname_lower = hostname.lower()
+            # Block localhost variants
+            if hostname_lower in ('localhost', '127.0.0.1', '0.0.0.0', '::1'):
+                return None
+            # Block private IP ranges (basic check)
+            if hostname_lower.startswith(('10.', '172.16.', '172.17.', '172.18.', '172.19.',
+                                          '172.20.', '172.21.', '172.22.', '172.23.', '172.24.',
+                                          '172.25.', '172.26.', '172.27.', '172.28.', '172.29.',
+                                          '172.30.', '172.31.', '192.168.', '169.254.')):
+                return None
+
+        resp = requests.get(url, timeout=12, stream=True)
+        if resp.status_code != 200:
+            return None
+
+        # Limit response size to 5MB to prevent memory exhaustion
+        max_size = 5 * 1024 * 1024
+        content_length = resp.headers.get('content-length')
+        if content_length and int(content_length) > max_size:
+            return None
+
+        # Read response with size limit
+        body = ''
+        size = 0
+        for chunk in resp.iter_content(chunk_size=8192, decode_unicode=True):
+            size += len(chunk.encode('utf-8'))
+            if size > max_size:
+                return None
+            body += chunk
+
+        # Evict old entries if cache is too large
+        if len(_ICS_CACHE) >= _ICS_CACHE_MAX_SIZE:
+            # Remove oldest entries (simple FIFO)
+            oldest_keys = sorted(_ICS_CACHE.keys(), key=lambda k: _ICS_CACHE[k]["ts"])[:10]
+            for key in oldest_keys:
+                _ICS_CACHE.pop(key, None)
+
+        _ICS_CACHE[url] = {"ts": now, "body": body}
+        return body
+    except Exception:
+        return None
+
+
+def _parse_ics_events(ics_text):
+    if not ics_text:
+        return []
+
+    # Unfold lines (continuation lines start with space or tab)
+    unfolded = []
+    for line in ics_text.splitlines():
+        if line.startswith((" ", "\t")) and unfolded:
+            unfolded[-1] += line[1:]
+        else:
+            unfolded.append(line.strip())
+
+    events = []
+    current = {}
+    collecting = False
+    max_events = 1000  # Limit to prevent DoS
+
+    for line in unfolded:
+        if line.upper().startswith("BEGIN:VEVENT"):
+            current = {}
+            collecting = True
+            continue
+        if line.upper().startswith("END:VEVENT"):
+            if collecting and current:
+                events.append(current)
+                # Limit number of events to prevent DoS
+                if len(events) >= max_events:
+                    break
+            collecting = False
+            current = {}
+            continue
+
+        if not collecting or ":" not in line:
+            continue
+
+        key_and_params, value = line.split(":", 1)
+        key_parts = key_and_params.split(";")
+        key = key_parts[0].upper()
+        params = ";".join(key_parts[1:]) if len(key_parts) > 1 else ""
+        current[key] = value
+        if params:
+            current[f"{key}_PARAMS"] = params
+
+    return events
+
+
+def _parse_ics_datetime(value, params):
+    if not value:
+        return None, False
+
+    params_upper = params.upper() if params else ""
+    if "VALUE=DATE" in params_upper:
+        try:
+            dt = datetime.datetime.strptime(value, "%Y%m%d")
+            return dt, True
+        except Exception:
+            return None, True
+
+    for fmt in ("%Y%m%dT%H%M%SZ", "%Y%m%dT%H%M%S"):
+        try:
+            dt = datetime.datetime.strptime(value, fmt)
+            return dt, False
+        except Exception:
+            continue
+
+    try:
+        dt = datetime.datetime.fromisoformat(value)
+        return dt, False
+    except Exception:
+        return None, False
+
+
+def _filter_events_for_date(events, target_date):
+    target_start = datetime.datetime.combine(target_date, datetime.time.min)
+    target_end = target_start + datetime.timedelta(days=1)
+    matched = []
+
+    for ev in events:
+        raw_start = ev.get("DTSTART")
+        raw_end = ev.get("DTEND")
+        start_params = ev.get("DTSTART_PARAMS", "")
+        end_params = ev.get("DTEND_PARAMS", "")
+        rrule_str = ev.get("RRULE")
+
+        start_dt, start_all_day = _parse_ics_datetime(raw_start, start_params)
+        end_dt, end_all_day = _parse_ics_datetime(raw_end, end_params)
+
+        if not start_dt:
+            continue
+
+        all_day = start_all_day or end_all_day
+
+        if not end_dt:
+            end_dt = start_dt + datetime.timedelta(days=1 if all_day else 1)
+
+        duration = end_dt - start_dt
+
+        # Handle recurrence with rrule
+        if rrule_str:
+            try:
+                rule = rrule.rrulestr(rrule_str, dtstart=start_dt)
+                # widen the window slightly to catch events starting just before the day and spanning into it
+                occurrences = rule.between(target_start - datetime.timedelta(days=1), target_end, inc=True)
+            except Exception:
+                occurrences = []
+
+            for occ in occurrences:
+                occ_start = occ
+                occ_end = occ_start + duration
+                range_start = datetime.datetime.combine(occ_start.date(), datetime.time.min) if all_day else occ_start
+                range_end = datetime.datetime.combine(occ_end.date(), datetime.time.min) if all_day else occ_end
+                overlaps = range_start < target_end and range_end > target_start
+                if overlaps:
+                    matched.append(
+                        {
+                            "summary": ev.get("SUMMARY", "(No title)"),
+                            "description": ev.get("DESCRIPTION", ""),
+                            "location": ev.get("LOCATION"),
+                            "all_day": all_day,
+                            "start": occ_start.isoformat(),
+                            "end": occ_end.isoformat(),
+                            "url": ev.get("URL") or None,
+                        }
+                    )
+            continue
+
+        range_start = datetime.datetime.combine(start_dt.date(), datetime.time.min) if all_day else start_dt
+        range_end = datetime.datetime.combine(end_dt.date(), datetime.time.min) if all_day else end_dt
+
+        overlaps = range_start < target_end and range_end > target_start
+        if overlaps:
+            matched.append(
+                {
+                    "summary": ev.get("SUMMARY", "(No title)"),
+                    "description": ev.get("DESCRIPTION", ""),
+                    "location": ev.get("LOCATION"),
+                    "all_day": all_day,
+                    "start": start_dt.isoformat(),
+                    "end": end_dt.isoformat(),
+                    "url": ev.get("URL") or None,
+                }
+            )
+
+    return matched
 
 
 def _ensure_calendar_token(user, regenerate=False):
@@ -487,6 +712,114 @@ def calendar_token():
     ics_url = url_for("calendar_feed", token=token, _external=True) if token else None
 
     return jsonify({"token": token, "ics_url": ics_url}), 200
+
+
+@app.route("/api/external_calendars", methods=["GET", "POST"])
+@jwt_required()
+def external_calendars():
+    """
+    List or add external ICS calendars for the user.
+    """
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username.lower()).first()
+
+    if not user:
+        abort(400)
+
+    if request.method == "GET":
+        calendars = [c.serialize for c in user.external_calendars.all()]
+        return jsonify({"calendars": calendars}), 200
+
+    req = request.get_json() or {}
+    name = (req.get("name") or "").strip()
+    url = (req.get("url") or "").strip()
+    color = (req.get("color") or "").strip() or None
+
+    if not name or not url:
+        return jsonify({"error": "Name and URL are required"}), 400
+
+    if not url.lower().startswith(("http://", "https://")):
+        return jsonify({"error": "URL must start with http:// or https://"}), 400
+
+    cal = ExternalCalendar(user_id=user.uuid, name=name, url=url, color=color)
+    db.session.add(cal)
+    db.session.commit()
+
+    return jsonify({"calendar": cal.serialize}), 200
+
+
+@app.route("/api/external_calendars/<uuid>", methods=["DELETE"])
+@jwt_required()
+def delete_external_calendar(uuid):
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username.lower()).first()
+
+    if not user:
+        abort(400)
+
+    cal = user.external_calendars.filter_by(uuid=uuid).first()
+    if not cal:
+        abort(404)
+
+    db.session.delete(cal)
+    db.session.commit()
+    return jsonify({}), 200
+
+
+@app.route("/api/external_events", methods=["GET"])
+@jwt_required()
+def external_events():
+    """
+    Return events from all connected external calendars for a given date (MM-dd-yyyy).
+    """
+    date = request.args.get("date")
+    if not date:
+        abort(400)
+
+    try:
+        target_date = datetime.datetime.strptime(date, "%m-%d-%Y").date()
+    except Exception:
+        abort(400)
+
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username.lower()).first()
+
+    if not user:
+        abort(400)
+
+    events = []
+    statuses = []
+    for cal in user.external_calendars.all():
+        normalized_url = _normalize_calendar_url(cal.url)
+        ics_body = _fetch_ics(normalized_url)
+        if not ics_body:
+            statuses.append({"name": cal.name, "url": cal.url, "error": "fetch_failed"})
+            continue
+        parsed = _parse_ics_events(ics_body)
+        filtered = _filter_events_for_date(parsed, target_date)
+        statuses.append({"name": cal.name, "url": cal.url, "events": len(filtered)})
+        for ev in filtered:
+            events.append(
+                {
+                    "title": ev.get("summary") or "(No title)",
+                    "all_day": ev.get("all_day", False),
+                    "start": ev.get("start"),
+                    "end": ev.get("end"),
+                    "source": cal.name,
+                    "color": cal.color,
+                    "location": ev.get("location"),
+                    "url": ev.get("url") or cal.url,
+                }
+            )
+
+    # Sort by start time, all-day first
+    def sort_key(ev):
+        allday_prefix = "0" if ev.get("all_day") else "1"
+        return f"{allday_prefix}-{ev.get('start') or ''}"
+
+    events = sorted(events, key=sort_key)
+
+    return jsonify({"events": events, "status": statuses}), 200
 
 
 @app.route("/api/calendar.ics", methods=["GET"])

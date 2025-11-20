@@ -12,12 +12,12 @@
       </template>
       <b-dropdown-item
         custom
-        v-for="(task, idx) in global.taskList"
+        v-for="(task, idx) in global.taskList.value"
         :key="task.index"
       >
         <task-item :task="task" :index="idx"></task-item>
       </b-dropdown-item>
-      <div class="no-tasks" v-if="!global.taskList.length">No tasks found</div>
+      <div class="no-tasks" v-if="!global.taskList.value.length">No tasks found</div>
     </b-dropdown>
   </div>
 </template>

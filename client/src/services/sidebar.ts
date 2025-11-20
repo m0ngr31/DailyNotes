@@ -3,9 +3,10 @@ import { parse } from 'date-fns/parse';
 import _ from 'lodash';
 import { reactive } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import type { IMeta, INote } from '../interfaces';
+import type { IExternalEvent, IMeta, INote } from '../interfaces';
 
 import router from '../router';
+import { CalendarService } from './calendars';
 import { Requests } from './requests';
 
 interface CalendarEvent {
@@ -20,6 +21,8 @@ class SidebarSerivce {
   public projects: string[] = [];
   public notes: INote[] = [];
   public calLoading: boolean = false;
+  public externalEvents: IExternalEvent[] = [];
+  public externalEventsLoading: boolean = false;
   public autoSave: boolean = false;
   public vimMode: boolean = false;
   public date: Date | null = null;
@@ -45,6 +48,7 @@ class SidebarSerivce {
       try {
         const id = Array.isArray($route.params.id) ? $route.params.id[0] : $route.params.id;
         this.date = parse(id, 'MM-dd-yyyy', new Date());
+        this.getExternalEvents(this.date);
       } catch (_e) {
         // Reset date
         this.date = null;
@@ -85,6 +89,24 @@ class SidebarSerivce {
     } catch (_e) {}
 
     this.calLoading = false;
+  }
+
+  /**
+   * Get external events for the current date.
+   */
+  public async getExternalEvents(date?: Date | null): Promise<void> {
+    const target = date || this.date || new Date();
+    this.externalEventsLoading = true;
+    try {
+      const openDate = target
+        ? `${String(target.getMonth() + 1).padStart(2, '0')}-${String(target.getDate()).padStart(2, '0')}-${target.getFullYear()}`
+        : '';
+      this.externalEvents = openDate ? await CalendarService.eventsForDate(openDate) : [];
+    } catch (_e) {
+      this.externalEvents = [];
+    } finally {
+      this.externalEventsLoading = false;
+    }
   }
 
   /**

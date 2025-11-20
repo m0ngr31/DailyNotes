@@ -3,12 +3,24 @@
 </template>
 
 <script setup lang="ts">
-import { EditorView, keymap, ViewUpdate, Decoration, DecorationSet } from '@codemirror/view';
-import { EditorState, Extension, StateField, StateEffect, Range } from '@codemirror/state';
-import { defaultKeymap, historyKeymap, history, indentWithTab } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { foldGutter, foldKeymap, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
-import { syntaxHighlighting, HighlightStyle, foldGutter, foldKeymap } from '@codemirror/language';
+import {
+  EditorState,
+  type Extension,
+  type Range,
+  StateEffect,
+  StateField,
+} from '@codemirror/state';
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  keymap,
+  type ViewUpdate,
+} from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import { vim } from '@replit/codemirror-vim';
 import _ from 'lodash';
@@ -316,7 +328,7 @@ const checkboxDecorator = StateField.define<DecorationSet>({
     }
     return decorations;
   },
-  provide: f => EditorView.decorations.from(f)
+  provide: (f) => EditorView.decorations.from(f),
 });
 
 function decorateCheckboxes(state: EditorState): DecorationSet {
@@ -348,9 +360,7 @@ function decorateCheckboxes(state: EditorState): DecorationSet {
       if (frontmatterMatch) {
         const keyEnd = pos + frontmatterMatch[1].length;
         const colonEnd = keyEnd + 1; // Include the colon
-        decorations.push(
-          Decoration.mark({ class: 'cm-frontmatter-key' }).range(pos, colonEnd)
-        );
+        decorations.push(Decoration.mark({ class: 'cm-frontmatter-key' }).range(pos, colonEnd));
         if (frontmatterMatch[2]) {
           decorations.push(
             Decoration.mark({ class: 'cm-frontmatter-value' }).range(colonEnd, pos + line.length)
@@ -363,9 +373,7 @@ function decorateCheckboxes(state: EditorState): DecorationSet {
       const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
       if (headingMatch) {
         const hashesEnd = pos + headingMatch[1].length;
-        decorations.push(
-          Decoration.mark({ class: 'cm-heading-mark' }).range(pos, hashesEnd)
-        );
+        decorations.push(Decoration.mark({ class: 'cm-heading-mark' }).range(pos, hashesEnd));
         decorations.push(
           Decoration.mark({ class: 'cm-heading-text' }).range(hashesEnd, pos + line.length)
         );
@@ -378,7 +386,7 @@ function decorateCheckboxes(state: EditorState): DecorationSet {
         const isChecked = checkboxMatch[1] === 'x';
         decorations.push(
           Decoration.mark({
-            class: isChecked ? 'cm-task-checked' : 'cm-task-unchecked'
+            class: isChecked ? 'cm-task-checked' : 'cm-task-unchecked',
           }).range(checkboxStart, checkboxStart + 3)
         );
       }
@@ -404,14 +412,14 @@ const generateTaskList = (text: string) => {
   const regex = /- \[( |x)\] (.+)/gm;
   let m: RegExpExecArray | null;
   let completed = false;
-  global.taskList.splice(0);
+  global.taskList.value.splice(0);
   m = regex.exec(text);
   while (m !== null) {
     if (m.index === regex.lastIndex) {
       regex.lastIndex++;
     }
     completed = m[1] === 'x';
-    global.taskList.push({ completed, name: m[2], index: m.index });
+    global.taskList.value.push({ completed, name: m[2], index: m.index });
     m = regex.exec(text);
   }
 };
@@ -786,6 +794,8 @@ onMounted(() => {
   });
 
   handleValueUpdate(true);
+  // Generate task list on initial mount
+  generateTaskList(props.value || '');
   eventHub.on('focusEditor', focus);
 });
 
@@ -800,6 +810,8 @@ watch(
   () => props.value,
   () => {
     handleValueUpdate();
+    // Regenerate task list when content changes
+    generateTaskList(props.value || '');
   }
 );
 
@@ -823,13 +835,13 @@ watch(
 );
 
 watch(
-  () => global.taskList,
+  () => global.taskList.value,
   () => {
     if (!editorView) return;
 
     const data = editorView.state.doc.toString();
     let newData = data;
-    global.taskList.forEach((task) => {
+    global.taskList.value.forEach((task) => {
       const c = task.completed ? 'x' : ' ';
       newData = newData.substr(0, task.index + 3) + c + newData.substr(task.index + 4);
     });

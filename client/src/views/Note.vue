@@ -37,7 +37,7 @@ import {
   ref,
 } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import Editor from '@/components/Editor.vue';
+import type Editor from '@/components/Editor.vue';
 import Header from '@/components/Header.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import type { IHeaderOptions, INote } from '../interfaces';

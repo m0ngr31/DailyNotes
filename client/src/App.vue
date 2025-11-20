@@ -5,18 +5,17 @@
 <script setup lang="ts">
 import { useHead } from '@unhead/vue';
 import { getCurrentInstance, onMounted, provide, ref } from 'vue';
+import type { ITask } from './interfaces';
 import { type BuefyInstance, SharedBuefy } from './services/sharedBuefy';
 
 useHead({
   titleTemplate: '%s | DailyNotes',
 });
 
-const taskList = ref([]);
+const taskList = ref<ITask[]>([]);
 
 provide('global', {
-  get taskList() {
-    return taskList.value;
-  },
+  taskList,
 });
 
 onMounted(() => {
