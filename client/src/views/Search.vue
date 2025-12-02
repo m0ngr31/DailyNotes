@@ -97,7 +97,9 @@ onMounted(() => {
 <style scoped>
 .search-container {
   padding: 1.5em;
-  height: 100%;
+  height: calc(100vh - 60px);
+  height: calc(100dvh - 60px);
+  overflow-y: auto;
 }
 
 .mt-25 {
@@ -111,13 +113,23 @@ onMounted(() => {
   align-items: start;
 }
 
-@media (max-width: 750px) {
+@media (max-width: 767px) {
+  .search-container {
+    padding: 0.75em;
+    height: calc(100vh - 52px);
+    height: calc(100dvh - 52px);
+  }
+
   .masonry-grid {
     grid-template-columns: 1fr;
   }
+
+  .mt-25 {
+    margin-top: 15px;
+  }
 }
 
-@media (min-width: 751px) and (max-width: 1000px) {
+@media (min-width: 768px) and (max-width: 1000px) {
   .masonry-grid {
     grid-template-columns: repeat(2, 1fr);
   }

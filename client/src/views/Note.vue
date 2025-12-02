@@ -345,11 +345,14 @@ onBeforeUnmount(() => {
 
 .editor-container {
   height: calc(100vh - 60px);
+  height: calc(100dvh - 60px); /* Dynamic viewport height for mobile */
   width: 100%;
   display: flex;
   flex-direction: row;
   border: none;
   outline: none;
+  padding: 0 12px;
+  box-sizing: border-box;
 }
 
 .split-view {
@@ -366,5 +369,30 @@ onBeforeUnmount(() => {
 
 .editor-split {
   border-right: 1px solid #404854;
+}
+
+/* Mobile styles */
+@media screen and (max-width: 767px) {
+  .editor-container {
+    height: calc(100vh - 52px);
+    height: calc(100dvh - 52px);
+    padding: 0 4px;
+  }
+
+  /* On mobile, split view stacks vertically */
+  .split-view {
+    flex-direction: column;
+  }
+
+  .editor-split,
+  .preview-split {
+    width: 100%;
+    height: 50%;
+  }
+
+  .editor-split {
+    border-right: none;
+    border-bottom: 1px solid #404854;
+  }
 }
 </style>

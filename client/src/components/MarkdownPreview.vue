@@ -495,4 +495,39 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   text-decoration: line-through;
   opacity: 0.7;
 }
+
+/* Mobile styles */
+@media screen and (max-width: 767px) {
+  .markdown-preview {
+    padding: 8px 12px;
+  }
+
+  .frontmatter-card {
+    margin-bottom: 16px;
+  }
+
+  .frontmatter-header {
+    padding: 8px 12px;
+    font-size: 0.85em;
+  }
+
+  .frontmatter-content {
+    padding: 10px 12px;
+  }
+
+  .frontmatter-key {
+    min-width: 80px;
+    margin-right: 8px;
+  }
+
+  .preview-content :deep(pre) {
+    padding: 12px;
+    font-size: 0.9em;
+  }
+
+  .preview-content :deep(table th),
+  .preview-content :deep(table td) {
+    padding: 6px 8px;
+  }
+}
 </style>

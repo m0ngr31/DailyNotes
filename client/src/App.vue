@@ -32,15 +32,16 @@ onMounted(() => {
 </script>
 
 <style lang="scss">
-// Set custom variables before importing Bulma
-$family-primary: 'Montserrat', sans-serif;
-$family-code: 'Fira Code', monospace;
-
-// Import Bulma framework
-@import '~bulma/bulma';
+// Import Bulma CSS (compiled version to avoid SASS module conflicts)
+@import '~bulma/css/bulma.css';
 
 html, body {
   background-color: #263238;
+  font-family: 'Montserrat', sans-serif;
+}
+
+code, pre {
+  font-family: 'Fira Code', monospace;
 }
 </style>
 
@@ -73,9 +74,20 @@ html, body {
 }
 
 html, body {
-  overflow: hidden;
-  font-family: 'Fira Code', monospace;
   font-family: 'Montserrat', sans-serif;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+
+/* Mobile viewport fixes */
+@media screen and (max-width: 767px) {
+  html, body {
+    /* Allow scrolling within containers on mobile */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
 }
 
 *:focus {
@@ -248,5 +260,42 @@ html, body {
 
 .datepicker-table .datepicker-body .datepicker-cell.has-event .events .event {
   background-color: #4a90a4;
+}
+
+/* Make datepicker fit in sidebar */
+.datepicker {
+  width: 100%;
+  max-width: 100%;
+}
+
+.datepicker .dropdown-content {
+  width: 100%;
+  max-width: 100%;
+}
+
+.datepicker-table {
+  width: 100%;
+}
+
+.datepicker-header {
+  padding: 0 8px;
+}
+
+/* Mobile datepicker adjustments */
+@media screen and (max-width: 767px) {
+  .datepicker-table .datepicker-body .datepicker-cell {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .datepicker-header .pagination-previous,
+  .datepicker-header .pagination-next {
+    min-width: 2rem;
+  }
+
+  .datepicker-header select,
+  .datepicker-header .select select {
+    font-size: 0.85rem;
+  }
 }
 </style>

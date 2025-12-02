@@ -886,4 +886,20 @@ defineExpose({
   border: none;
   outline: none;
 }
+
+/* Mobile styles for editor */
+@media screen and (max-width: 767px) {
+  .editor :deep(.cm-content) {
+    padding: 8px 8px 8px 12px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  .editor :deep(.cm-foldGutter) {
+    width: 16px;
+  }
+
+  .editor :deep(.cm-gutters) {
+    padding-left: 4px;
+  }
+}
 </style>

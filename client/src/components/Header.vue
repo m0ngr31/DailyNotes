@@ -1,30 +1,33 @@
 <template>
   <div class="header-wrapper light-white" @click="prevent($event)">
-    <div class="main-header level is-mobile">
-      <div class="level-left">
-        <div class="level-item alt-button" @click="toggleSidebar(true)">
+    <div class="main-header">
+      <!-- Left section - sidebar toggle and actions -->
+      <div class="header-left">
+        <div class="header-item alt-button" @click="toggleSidebar(true)">
           <b-icon
             v-show="!sidebar.hide"
             icon="grip-lines"
           >
           </b-icon>
         </div>
-        <div class="level-item alt-button" @click="toggleSidebar()">
+        <div class="header-item alt-button" @click="toggleSidebar()">
           <b-icon
             v-show="sidebar.hide"
             icon="grip-lines-vertical"
           >
           </b-icon>
         </div>
-        <div class="level-item alt-button" v-if="!options.hideCreate">
+        <div class="header-item alt-button hide-mobile" v-if="!options.hideCreate">
           <div @click="newNote()">
             <b-tooltip label="Create new note" position="is-bottom">
               <b-icon icon="plus"></b-icon>
             </b-tooltip>
           </div>
         </div>
-        <Tasks></Tasks>
-        <div class="level-item alt-button">
+        <div class="hide-mobile">
+          <Tasks></Tasks>
+        </div>
+        <div class="header-item alt-button hide-mobile">
           <div @click="goToSearch()">
             <b-tooltip label="Search notes" position="is-bottom">
               <b-icon icon="search"></b-icon>
@@ -32,24 +35,28 @@
           </div>
         </div>
       </div>
-      <div class="level-item has-text-primary">
-        <div @click="prevDay()" class="alt-button" v-if="options.showDateNavs">
+
+      <!-- Center section - title and date navigation -->
+      <div class="header-center">
+        <div @click="prevDay()" class="alt-button nav-button" v-if="options.showDateNavs">
           <b-icon icon="chevron-left"></b-icon>
         </div>
         <div class="header-title light-white">{{ options.title }}</div>
-        <div @click="nextDay()" class="alt-button" v-if="options.showDateNavs">
+        <div @click="nextDay()" class="alt-button nav-button" v-if="options.showDateNavs">
           <b-icon icon="chevron-right"></b-icon>
         </div>
       </div>
-      <div class="level-right">
-        <div class="level-item" v-if="isSaving">
+
+      <!-- Right section - save, delete, menu -->
+      <div class="header-right">
+        <div class="header-item" v-if="isSaving">
           <div class="header-loading">
             <b-loading :is-full-page="false" :active="true"></b-loading>
           </div>
         </div>
         <div
           v-show="options.showPreview"
-          class="level-item alt-button"
+          class="header-item alt-button hide-mobile"
           v-bind:class="{ 'preview-active': options.previewMode !== 'none' }"
         >
           <b-dropdown position="is-bottom-left">
@@ -76,7 +83,7 @@
         </div>
         <div
           v-show="options.saveFn"
-          class="level-item alt-button"
+          class="header-item alt-button"
           v-bind:class="{ 'save-disabled': options.saveDisabled }"
           @click="save()"
         >
@@ -85,7 +92,7 @@
           </b-tooltip>
         </div>
         <div
-          class="level-item alt-button"
+          class="header-item alt-button hide-mobile"
           v-show="options.showDelete"
           @click="deleteNote()"
         >
@@ -93,11 +100,30 @@
             <b-icon icon="trash-alt"></b-icon>
           </b-tooltip>
         </div>
-        <div class="level-item alt-button">
+        <div class="header-item alt-button">
           <b-dropdown position="is-bottom-left">
             <template #trigger>
               <b-icon icon="ellipsis-v"></b-icon>
             </template>
+            <!-- Mobile-only menu items -->
+            <b-dropdown-item class="show-mobile-only" v-if="!options.hideCreate" @click="newNote()">
+              <b-icon icon="plus" size="is-small"></b-icon>
+              <span class="dropdown-text">New Note</span>
+            </b-dropdown-item>
+            <b-dropdown-item class="show-mobile-only" @click="goToSearch()">
+              <b-icon icon="search" size="is-small"></b-icon>
+              <span class="dropdown-text">Search</span>
+            </b-dropdown-item>
+            <b-dropdown-item class="show-mobile-only" v-if="options.showPreview" @click="togglePreview('replace')">
+              <b-icon icon="eye" size="is-small"></b-icon>
+              <span class="dropdown-text">Preview</span>
+            </b-dropdown-item>
+            <b-dropdown-item class="show-mobile-only" v-if="options.showDelete" @click="deleteNote()">
+              <b-icon icon="trash-alt" size="is-small"></b-icon>
+              <span class="dropdown-text">Delete</span>
+            </b-dropdown-item>
+            <hr class="dropdown-divider show-mobile-only" v-if="options.showDelete || options.showPreview || !options.hideCreate" />
+            <!-- Always visible menu items -->
             <b-dropdown-item @click="openSettings()">Settings</b-dropdown-item>
             <b-dropdown-item @click="exportNotes()">Export Notes</b-dropdown-item>
             <b-dropdown-item @click="triggerImport()">Import Notes</b-dropdown-item>
@@ -323,7 +349,7 @@ const logout = () => {
 <style scoped>
 .header-wrapper {
   width: 100%;
-  padding: 10px 20px 0px 20px;
+  padding: 10px 12px 0px 12px;
   border-bottom: 2px solid var(--main-bg-darker);
   position: sticky;
   z-index: 30;
@@ -332,15 +358,49 @@ const logout = () => {
 }
 
 .main-header {
-  margin-right: auto;
-  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   height: 3em;
+  gap: 8px;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+  overflow: hidden;
+}
+
+.header-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.nav-button {
+  padding: 4px;
+  flex-shrink: 0;
 }
 
 .header-title {
-  margin-left: 1em;
-  margin-right: 1em;
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-size: 0.95rem;
 }
 
 .save-disabled {
@@ -362,5 +422,51 @@ const logout = () => {
   font-size: 0.85em;
   margin-left: auto;
   float: right;
+}
+
+/* Mobile-only items in dropdown - hidden by default */
+.show-mobile-only {
+  display: none !important;
+}
+
+/* Hide elements on mobile */
+@media screen and (max-width: 767px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .show-mobile-only {
+    display: flex !important;
+  }
+
+  .header-wrapper {
+    padding: 8px 8px 0px 8px;
+  }
+
+  .main-header {
+    gap: 4px;
+  }
+
+  .header-title {
+    font-size: 0.85rem;
+    padding: 0 4px;
+  }
+}
+
+/* Tablet and up */
+@media screen and (min-width: 768px) {
+  .header-wrapper {
+    padding: 10px 20px 0px 20px;
+  }
+
+  .header-title {
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+  }
+
+  .header-left,
+  .header-right {
+    gap: 8px;
+  }
 }
 </style>
