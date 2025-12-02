@@ -23,7 +23,7 @@ if (!global) {
 }
 
 const updateTask = () => {
-  global.taskList.splice(props.index, 1, props.task);
+  global.taskList.value.splice(props.index, 1, props.task);
 };
 </script>
 
