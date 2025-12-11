@@ -21,11 +21,11 @@ This project continues in his memory. Every commit, every feature, every bug fix
 
 ---
 
-Current version: **1.0.0-beta.22**
-
 ## About
 
 The idea for this app came from using my Hobonichi Techo planner every morning to write down what I needed to accomplish that day & using it for scratching down random thoughts and notes as the day went on. The closest thing I've seen to an app for replacing this system is Noteplan, but I don't use a Mac or an iOS device, and it's not self-hostable, so I decided to write my own.
+
+To check your current version, open **Settings** in the app and look in the **About** section.
 
 Since I had the need for keeping track of to-dos throughout the day, regular Markdown didn't work for me since it doesn't natively support tasks. So as an alternative I'm using Github Flavored Markdown (GFM). I really wanted it to feel like an actual text editor and not just a textbox, so I decided to use CodeMirror to handle all the input. Fira Code is used to provide font ligatures. Some other nice features include code highlighting, text/code folding, and a task list where you can toggle the status of any task from any date or note.
 

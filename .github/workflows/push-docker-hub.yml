@@ -40,18 +40,6 @@ jobs:
           echo "Version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Update version in files
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Update README.md
-          sed -i "s/Current version: \*\*[^*]*\*\*/Current version: **${VERSION}**/" README.md
-
-          # Update package.json
-          cd client
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
-          cd ..
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
