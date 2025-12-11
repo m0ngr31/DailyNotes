@@ -31,10 +31,10 @@ Since I had the need for keeping track of to-dos throughout the day, regular Mar
 
 ## Roadmap
 
-I'd like to try add include at least of some the following features to get to a final v1.0 release:
+I'd like to try to include at least some of the following features to get to a final v1.0 release:
 
-- iCal support
-- HTML preview (instead of just markdown)
+- ~~iCal support~~ ✅ Done! See [Calendar feed](#calendar-feed-ics) section
+- ~~HTML preview~~ ✅ Done! Use `Cmd+K V` for side-by-side or `Shift+Cmd+V` for preview-only
 - Kanban board for tasks (and new syntax to attach meta info like swimlane and project for each task)
 - Nested tagging
 
@@ -48,7 +48,7 @@ I'd like to try add include at least of some the following features to get to a 
 
 ## In Action
 
-Here is some screenshots of what it looks like:
+Here are some screenshots of what it looks like:
 
 Main editor:
 
@@ -147,7 +147,7 @@ services:
 
     # Optional: Health check
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8000/']
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
       interval: 30s
       timeout: 10s
       retries: 3
