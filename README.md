@@ -420,7 +420,7 @@ If you're on Windows or prefer to set up manually:
 
 #### Installing dependencies
 
-You need Python (works on 2 and 3) and Node.js 16 installed.
+You need Python 3.8+ and Node.js 16 installed.
 
 **Recommended:** Use [nvm](https://github.com/nvm-sh/nvm) (macOS/Linux) or [nvm-windows](https://github.com/coreybutler/nvm-windows) to manage Node.js versions. The project includes a `.nvmrc` file that specifies Node.js 16.
 
