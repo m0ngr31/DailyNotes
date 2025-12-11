@@ -103,7 +103,7 @@ Task list:
 
 ## Running
 
-The recommended way of running is to pull the image from [Docker Hub](https://hub.docker.com/r/m0ngr31/dailynotes).
+The recommended way of running is to pull the image from [Docker Hub](https://hub.docker.com/r/xhenxhe/dailynotes).
 
 ### Docker Setup
 
@@ -132,12 +132,6 @@ By default, the easiest way to get running is:
 
 ```bash
 docker run -p 8000:8000 -v /config_dir:/app/config xhenxhe/dailynotes
-```
-
-Or with the original image:
-
-```bash
-docker run -p 8000:8000 -v /config_dir:/app/config m0ngr31/dailynotes
 ```
 
 #### Docker Compose

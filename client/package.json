@@ -4,9 +4,9 @@
   "private": true,
   "license": "MIT",
   "repository": {
-    "url": "https://github.com/m0ngr31/DailyNotes"
+    "url": "https://github.com/djedi/DailyNotes"
   },
-  "readme": "https://github.com/m0ngr31/DailyNotes/blob/master/README.md",
+  "readme": "https://github.com/djedi/DailyNotes/blob/master/README.md",
   "scripts": {
     "dev": "nvm use && npm run serve",
     "serve": "vue-cli-service serve",
