@@ -191,6 +191,110 @@ services:
 - The `./dailynotes-data` directory will store your database and configuration
 - The default port is now `8000` for better compatibility
 
+### Reverse Proxy
+
+If you're running DailyNotes behind a reverse proxy, here are example configurations for popular web servers.
+
+<details>
+<summary><strong>Caddy</strong></summary>
+
+Caddy automatically handles HTTPS certificates. Add to your `Caddyfile`:
+
+```caddyfile
+dailynotes.example.com {
+    reverse_proxy localhost:8000
+}
+```
+
+For a subfolder setup:
+
+```caddyfile
+example.com {
+    handle_path /notes/* {
+        reverse_proxy localhost:8000
+    }
+}
+```
+
+Set `BASE_URL=/notes` in your DailyNotes environment when using a subfolder.
+
+</details>
+
+<details>
+<summary><strong>Nginx</strong></summary>
+
+```nginx
+server {
+    listen 80;
+    server_name dailynotes.example.com;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+For a subfolder setup:
+
+```nginx
+location /notes/ {
+    proxy_pass http://localhost:8000/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Set `BASE_URL=/notes` in your DailyNotes environment when using a subfolder.
+
+For HTTPS, add SSL configuration or use Certbot: `sudo certbot --nginx -d dailynotes.example.com`
+
+</details>
+
+<details>
+<summary><strong>Apache</strong></summary>
+
+Enable required modules:
+
+```bash
+sudo a2enmod proxy proxy_http headers
+```
+
+Virtual host configuration:
+
+```apache
+<VirtualHost *:80>
+    ServerName dailynotes.example.com
+
+    ProxyPreserveHost On
+    ProxyPass / http://localhost:8000/
+    ProxyPassReverse / http://localhost:8000/
+
+    RequestHeader set X-Forwarded-Proto "http"
+</VirtualHost>
+```
+
+For a subfolder setup:
+
+```apache
+<Location /notes>
+    ProxyPass http://localhost:8000
+    ProxyPassReverse http://localhost:8000
+    RequestHeader set X-Forwarded-Proto "http"
+</Location>
+```
+
+Set `BASE_URL=/notes` in your DailyNotes environment when using a subfolder.
+
+For HTTPS, use Certbot: `sudo certbot --apache -d dailynotes.example.com`
+
+</details>
+
 ## Development setup
 
 ### Option 1: Docker Development Environment (Recommended)
