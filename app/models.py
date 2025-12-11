@@ -205,6 +205,10 @@ class User(db.Model):
     auto_save = db.Column(db.Boolean, nullable=True)
     vim_mode = db.Column(db.Boolean, nullable=True, default=False)
     calendar_token = db.Column(db.String(64), unique=True, nullable=True)
+    kanban_enabled = db.Column(db.Boolean, nullable=True, default=False)
+    kanban_columns = db.Column(
+        db.String(512), nullable=True, default='["todo", "done"]'
+    )
     notes = db.relationship(
         "Note", lazy="dynamic", cascade="all, delete, delete-orphan"
     )
@@ -226,6 +230,7 @@ class Meta(db.Model):
     name_encrypted = db.Column("name", db.LargeBinary)
     name_compare = db.Column(db.LargeBinary)
     kind = db.Column(db.String)
+    task_column = db.Column(db.String(64), nullable=True)  # Kanban column for tasks
 
     @hybrid_property
     def name(self):
@@ -240,12 +245,15 @@ class Meta(db.Model):
 
     @property
     def serialize(self):
-        return {
+        result = {
             "uuid": self.uuid,
             "name": self.name,
             "kind": self.kind,
             "note_id": self.note_id,
         }
+        if self.kind == "task":
+            result["task_column"] = self.task_column
+        return result
 
 
 class Upload(db.Model):
@@ -316,6 +324,36 @@ class Note(db.Model):
             "is_date": self.is_date,
         }
 
+    def get_kanban_columns(self, user_default_columns=None):
+        """
+        Get effective kanban columns for this note.
+
+        Priority:
+        1. Frontmatter 'kanban:' array (per-note override)
+        2. User's default columns
+        3. System default: ["todo", "done"]
+        """
+        import json
+
+        # Try to get from frontmatter
+        data = frontmatter.loads(self.text)
+        frontmatter_columns = data.get("kanban")
+
+        if isinstance(frontmatter_columns, list) and len(frontmatter_columns) > 0:
+            return frontmatter_columns
+
+        # Use user default or system default
+        if user_default_columns:
+            if isinstance(user_default_columns, str):
+                try:
+                    return json.loads(user_default_columns)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            elif isinstance(user_default_columns, list):
+                return user_default_columns
+
+        return ["todo", "done"]
+
 
 # Update title automatically
 def before_change_note(mapper, connection, target):
@@ -351,6 +389,54 @@ def before_change_note(mapper, connection, target):
         target.name = title
 
 
+# Task regex pattern: captures checkbox state, task text, and optional >>column
+# Examples:
+#   "- [ ] Buy groceries" -> (' ', 'Buy groceries', None)
+#   "- [x] Done task >>done" -> ('x', 'Done task', 'done')
+#   "- [ ] In review >>review" -> (' ', 'In review', 'review')
+# Note: Use [ \t]* instead of \s* to avoid capturing newlines (which \s includes)
+TASK_PATTERN = re.compile(
+    r"^- \[([x ])\] (.+?)(?:[ \t]*>>([a-zA-Z0-9-]+))?[ \t]*$", re.MULTILINE
+)
+
+
+def parse_tasks_with_columns(content):
+    """
+    Parse tasks from markdown content, extracting column info.
+
+    Returns list of tuples: (full_match, is_completed, task_text, column)
+    - full_match: the entire task line (for storage/comparison)
+    - is_completed: True if checkbox is [x]
+    - task_text: the task text without column suffix
+    - column: the kanban column name or None
+    """
+    tasks = []
+    for match in TASK_PATTERN.finditer(content):
+        checkbox = match.group(1)
+        task_text = match.group(2).strip()
+        column = match.group(3)  # None if no :column: present
+
+        # Full match includes the column syntax for proper storage
+        full_match = match.group(0)
+
+        is_completed = checkbox == "x"
+        tasks.append((full_match, is_completed, task_text, column))
+
+    return tasks
+
+
+def get_task_column(is_completed, explicit_column):
+    """
+    Determine the effective column for a task.
+
+    - If explicit column provided, use it
+    - Otherwise, default based on checkbox state
+    """
+    if explicit_column:
+        return explicit_column
+    return "done" if is_completed else "todo"
+
+
 # Handle changes to tasks, projects, and tags
 def after_change_note(mapper, connection, target):
     tags = []
@@ -370,7 +456,16 @@ def after_change_note(mapper, connection, target):
         projects = list(set(map(str.strip, data["projects"].split(","))))
     projects = [x for x in projects if x]
 
-    tasks = re.findall("- \[[x| ]\] .*$", data.content, re.MULTILINE)
+    # Parse tasks with column info: list of (full_match, is_completed, task_text, column)
+    parsed_tasks = parse_tasks_with_columns(data.content)
+    # Build dict mapping full task line to column for easy lookup
+    task_columns = {}
+    for full_match, is_completed, task_text, explicit_column in parsed_tasks:
+        column = get_task_column(is_completed, explicit_column)
+        task_columns[full_match] = column
+
+    # List of task full matches (for compatibility with existing logic)
+    tasks = list(task_columns.keys())
 
     existing_tags = []
     existing_projects = []
@@ -439,14 +534,25 @@ def after_change_note(mapper, connection, target):
                 {"uuid": "{}".format(task.uuid).replace("-", "")},
             )
         else:
+            # Task still exists - check if column needs update
+            new_column = task_columns.get(task.name)
+            if new_column and new_column != task.task_column:
+                connection.execute(
+                    text("UPDATE meta SET task_column = :column WHERE uuid = :uuid"),
+                    {
+                        "column": new_column,
+                        "uuid": "{}".format(task.uuid).replace("-", ""),
+                    },
+                )
             tasks.remove(task.name)
 
     for task in tasks:
         encrypted_task = aes_encrypt(task)
+        task_column = task_columns.get(task)
 
         connection.execute(
             text(
-                "INSERT INTO meta (uuid, user_id, note_id, name, name_compare, kind) VALUES (:uuid, :user_id, :note_id, :name, :name_compare, :kind)"
+                "INSERT INTO meta (uuid, user_id, note_id, name, name_compare, kind, task_column) VALUES (:uuid, :user_id, :note_id, :name, :name_compare, :kind, :task_column)"
             ),
             {
                 "uuid": "{}".format(uuid.uuid4()).replace("-", ""),
@@ -455,6 +561,7 @@ def after_change_note(mapper, connection, target):
                 "name": encrypted_task,
                 "name_compare": encrypted_task,
                 "kind": "task",
+                "task_column": task_column,
             },
         )
 

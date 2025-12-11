@@ -45,6 +45,7 @@ import Tags from '@/components/Tags.vue';
 import eventHub from '../services/eventHub';
 
 import SidebarInst from '../services/sidebar';
+import { sseService } from '../services/sse';
 import { updateJWT } from '../services/user';
 
 useHead({
@@ -96,6 +97,9 @@ onMounted(() => {
   // Check initial mobile state
   checkMobile();
   window.addEventListener('resize', checkMobile);
+
+  // Connect to SSE for real-time updates
+  sseService.connect();
 });
 
 onBeforeUnmount(() => {
@@ -103,6 +107,9 @@ onBeforeUnmount(() => {
     clearInterval(auth_timer);
   }
   window.removeEventListener('resize', checkMobile);
+
+  // Disconnect SSE
+  sseService.disconnect();
 });
 </script>
 

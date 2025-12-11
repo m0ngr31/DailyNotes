@@ -35,9 +35,9 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { IGlobal } from '../interfaces';
 
 import { newDay, newNote } from '../services/consts';
-import themeService from '../services/theme';
 import eventHub from '../services/eventHub';
 import { SharedBuefy } from '../services/sharedBuefy';
+import themeService from '../services/theme';
 import { UploadService } from '../services/uploads';
 
 interface Props {
@@ -216,6 +216,10 @@ const customTheme = EditorView.theme({
   '.cm-task-checked': {
     color: 'var(--syntax-keyword) !important',
     fontWeight: '400 !important',
+  },
+  '.cm-kanban-column': {
+    color: 'var(--syntax-string) !important',
+    fontWeight: '500 !important',
   },
   '.cm-url-link': {
     color: 'var(--syntax-keyword) !important',
@@ -422,6 +426,16 @@ function decorateCheckboxes(state: EditorState): DecorationSet {
             class: isChecked ? 'cm-task-checked' : 'cm-task-unchecked',
           }).range(checkboxStart, checkboxStart + 3)
         );
+
+        // Kanban column syntax >>column-name at end of task line
+        const columnMatch = line.match(/>>([a-zA-Z0-9-]+)\s*$/);
+        if (columnMatch) {
+          const columnStart = pos + line.lastIndexOf('>>' + columnMatch[1]);
+          const columnEnd = columnStart + columnMatch[0].trimEnd().length;
+          decorations.push(
+            Decoration.mark({ class: 'cm-kanban-column' }).range(columnStart, columnEnd)
+          );
+        }
       }
 
       // URLs

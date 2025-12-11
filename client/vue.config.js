@@ -11,6 +11,23 @@ module.exports = {
   assetsDir: 'static',
   devServer: {
     proxy: {
+      '^/api/events/stream': {
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+        // SSE-specific settings to prevent buffering
+        headers: {
+          Connection: 'keep-alive',
+        },
+        onProxyReq: (proxyReq, req, res) => {
+          // Disable request buffering
+          proxyReq.setHeader('Cache-Control', 'no-cache');
+        },
+        onProxyRes: (proxyRes, req, res) => {
+          // Ensure streaming response is not buffered
+          proxyRes.headers['cache-control'] = 'no-cache';
+          proxyRes.headers['x-accel-buffering'] = 'no';
+        },
+      },
       '^/api': {
         target: 'http://localhost:5001',
         changeOrigin: true,

@@ -28,6 +28,8 @@ export interface IMeta {
   uuid: string;
   name: string;
   note_id: string;
+  kind?: string;
+  task_column?: string;
 }
 
 export interface ITask {

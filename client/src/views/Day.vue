@@ -52,6 +52,8 @@ import { getFoldState, saveFoldState } from '../services/localstorage';
 import { NoteService } from '../services/notes';
 import { SharedBuefy } from '../services/sharedBuefy';
 import SidebarInst from '../services/sidebar';
+import type { SSEEventData } from '../services/sse';
+import { markNoteUpdatedLocally, wasRecentlyUpdatedLocally } from '../services/sse';
 
 const router = useRouter();
 const route = useRoute();
@@ -129,6 +131,9 @@ const getDayData = async () => {
     // Set current note ID for fold state (use date as identifier for daily notes)
     currentNoteId = `day-${route.params.id}`;
 
+    // Set current note ID for Kanban filtering
+    sidebar.currentNoteId = day.value.uuid || null;
+
     headerOptions.showDelete = !!day.value.uuid;
 
     // Restore fold state after content is loaded
@@ -169,9 +174,16 @@ const saveDay = async (isAutoSave: boolean = false) => {
 
   try {
     const res = await NoteService.saveDay(updatedDay);
+    // Mark as locally updated to prevent SSE duplicate processing
+    if (res.uuid) {
+      markNoteUpdatedLocally(res.uuid);
+    }
     text.value = modifiedText.value;
     // Don't reset modifiedText - it's already correct and resetting causes editor glitches
     day.value.uuid = res.uuid;
+
+    // Update sidebar with current note ID for Kanban filtering
+    sidebar.currentNoteId = day.value.uuid || null;
 
     // Update the UI state directly
     unsavedChanges.value = false;
@@ -320,6 +332,89 @@ const handleTaskUpdate = (data: { note_id: string; task: string; completed: bool
   modifiedText.value = modifiedText.value.replace(original, task);
 };
 
+const handleTaskColumnUpdate = (data: { note_id: string; old_task: string; new_task: string }) => {
+  const { note_id, old_task, new_task } = data;
+
+  if (note_id !== day.value.uuid) {
+    return;
+  }
+
+  text.value = text.value.replace(old_task, new_task);
+  modifiedText.value = modifiedText.value.replace(old_task, new_task);
+};
+
+// Handle SSE events for real-time sync from other browsers/devices
+const handleSSENoteUpdated = async (data: SSEEventData) => {
+  // Only handle updates for the current note
+  if (data.note_uuid !== day.value.uuid) {
+    return;
+  }
+
+  // Skip if this was a local update (prevents duplicate processing)
+  if (data.note_uuid && wasRecentlyUpdatedLocally(data.note_uuid)) {
+    return;
+  }
+
+  // If we have unsaved changes, don't overwrite - notify user instead
+  if (unsavedChanges.value) {
+    buefy?.toast.open({
+      duration: 5000,
+      message: 'Note updated elsewhere. Save your changes to sync.',
+      position: 'is-top',
+      type: 'is-warning',
+    });
+    return;
+  }
+
+  // Reload the note content
+  try {
+    const res = await NoteService.getDate(route.params.id as string);
+    day.value = res;
+    text.value = day.value.data || '';
+    modifiedText.value = text.value;
+
+    buefy?.toast.open({
+      duration: 2000,
+      message: 'Note synced from another device',
+      position: 'is-bottom-right',
+      type: 'is-info',
+    });
+  } catch (_e) {
+    console.error('Failed to sync note update:', _e);
+  }
+};
+
+const handleSSETaskColumnUpdated = (data: SSEEventData) => {
+  // Handle task column updates from other browsers/devices
+  if (data.note_uuid !== day.value.uuid) {
+    return;
+  }
+
+  // Skip if this was a local update (prevents duplicate processing)
+  if (data.note_uuid && wasRecentlyUpdatedLocally(data.note_uuid)) {
+    return;
+  }
+
+  if (data.old_task && data.new_task) {
+    // If we have unsaved changes, check if the task line exists
+    if (unsavedChanges.value) {
+      // Only update if the old task line exists (not already modified locally)
+      if (modifiedText.value.includes(data.old_task)) {
+        modifiedText.value = modifiedText.value.replace(data.old_task, data.new_task);
+      }
+      if (text.value.includes(data.old_task)) {
+        text.value = text.value.replace(data.old_task, data.new_task);
+      }
+    } else {
+      text.value = text.value.replace(data.old_task, data.new_task);
+      modifiedText.value = text.value;
+    }
+
+    // Refresh sidebar to update Kanban
+    sidebar.getSidebarInfo();
+  }
+};
+
 const togglePreview = (mode: 'side' | 'replace' | 'none') => {
   const wasHidden = previewMode.value === 'replace';
 
@@ -447,6 +542,9 @@ onMounted(() => {
   title.value = headerOptions.title;
 
   eventHub.on('taskUpdated', handleTaskUpdate);
+  eventHub.on('taskColumnUpdated', handleTaskColumnUpdate);
+  eventHub.on('sseNoteUpdated', handleSSENoteUpdated);
+  eventHub.on('sseTaskColumnUpdated', handleSSETaskColumnUpdated);
 });
 
 onBeforeUnmount(() => {
@@ -456,6 +554,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', unsavedAlert);
   window.removeEventListener('keydown', handleKeydown);
   eventHub.off('taskUpdated', handleTaskUpdate);
+  eventHub.off('taskColumnUpdated', handleTaskColumnUpdate);
+  eventHub.off('sseNoteUpdated', handleSSENoteUpdated);
+  eventHub.off('sseTaskColumnUpdated', handleSSETaskColumnUpdated);
   // Cancel any pending autosaves when component is destroyed
   autoSaveThrottle.cancel();
 });

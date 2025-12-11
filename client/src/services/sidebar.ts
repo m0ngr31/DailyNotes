@@ -25,6 +25,9 @@ class SidebarSerivce {
   public externalEventsLoading: boolean = false;
   public autoSave: boolean = false;
   public vimMode: boolean = false;
+  public kanbanEnabled: boolean = false;
+  public kanbanColumns: string[] = ['todo', 'done'];
+  public currentNoteId: string | null = null;
   public date: Date | null = null;
   public sidebarLoading: boolean = false;
   public searchLoading: boolean = false;
@@ -134,6 +137,8 @@ class SidebarSerivce {
         this.notes = res.data.notes;
         this.autoSave = res.data.auto_save;
         this.vimMode = res.data.vim_mode;
+        this.kanbanEnabled = res.data.kanban_enabled || false;
+        this.kanbanColumns = res.data.kanban_columns || ['todo', 'done'];
       }
 
       if (this.selectedSearch.length && this.searchString.length) {
@@ -202,6 +207,33 @@ class SidebarSerivce {
       await Requests.post('/toggle_vim_mode', { vim_mode: vimMode });
       this.getSidebarInfo();
     } catch (_e) {}
+  }
+
+  public async toggleKanban(enabled: boolean) {
+    try {
+      await Requests.put('/settings', { kanban_enabled: enabled });
+      this.kanbanEnabled = enabled;
+    } catch (_e) {}
+  }
+
+  public async updateKanbanColumns(columns: string[]) {
+    try {
+      await Requests.put('/settings', { kanban_columns: columns });
+      this.kanbanColumns = columns;
+    } catch (_e) {}
+  }
+
+  public async updateTaskColumn(
+    taskUuid: string,
+    column: string
+  ): Promise<{ note_uuid: string; old_task: string; new_task: string }> {
+    const res = await Requests.put('/task_column', { uuid: taskUuid, column });
+    this.getSidebarInfo();
+    return {
+      note_uuid: res.data.note_uuid,
+      old_task: res.data.old_task,
+      new_task: res.data.new_task,
+    };
   }
 }
 

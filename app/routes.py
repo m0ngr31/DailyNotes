@@ -2,12 +2,16 @@ import os
 import zipfile
 import re
 import time
+import queue
+import threading
 from uuid import uuid4
 import frontmatter
 import datetime
 import requests
 from dateutil import rrule, tz
 from urllib.parse import urlparse, parse_qs, quote
+
+import json
 
 from app import app, db, argon2
 from app.models import (
@@ -19,6 +23,8 @@ from app.models import (
     aes_encrypt,
     aes_encrypt_legacy_cfb,
     aes_encrypt_old,
+    parse_tasks_with_columns,
+    get_task_column,
 )
 from flask import (
     render_template,
@@ -29,6 +35,7 @@ from flask import (
     send_from_directory,
     Response,
     url_for,
+    stream_with_context,
 )
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from sqlalchemy import text
@@ -211,6 +218,42 @@ def _collect_referenced_uploads_for_user(user):
 _ICS_CACHE = {}
 _ICS_CACHE_TTL_SECONDS = 300
 _ICS_CACHE_MAX_SIZE = 100  # Limit cache size to prevent memory exhaustion
+
+# SSE (Server-Sent Events) infrastructure for real-time sync
+_SSE_CLIENTS = {}  # user_id -> list of queue.Queue
+_SSE_CLIENTS_LOCK = threading.Lock()
+
+
+def _sse_add_client(user_id, client_queue):
+    """Register a new SSE client for a user."""
+    with _SSE_CLIENTS_LOCK:
+        if user_id not in _SSE_CLIENTS:
+            _SSE_CLIENTS[user_id] = []
+        _SSE_CLIENTS[user_id].append(client_queue)
+
+
+def _sse_remove_client(user_id, client_queue):
+    """Unregister an SSE client."""
+    with _SSE_CLIENTS_LOCK:
+        if user_id in _SSE_CLIENTS:
+            try:
+                _SSE_CLIENTS[user_id].remove(client_queue)
+                if not _SSE_CLIENTS[user_id]:
+                    del _SSE_CLIENTS[user_id]
+            except ValueError:
+                pass
+
+
+def _sse_broadcast(user_id, event_type, data):
+    """Broadcast an event to all connected clients for a user."""
+    with _SSE_CLIENTS_LOCK:
+        clients = _SSE_CLIENTS.get(user_id, [])
+        for client_queue in clients:
+            try:
+                client_queue.put_nowait({"event": event_type, "data": data})
+            except queue.Full:
+                # Client queue is full, skip this message
+                pass
 
 
 def _normalize_calendar_url(raw_url):
@@ -714,6 +757,17 @@ def save_day():
     # Update upload references for this user based on all notes
     _collect_referenced_uploads_for_user(user)
 
+    # Broadcast SSE event for real-time sync
+    _sse_broadcast(
+        str(user.uuid),
+        "note_updated",
+        {
+            "note_uuid": str(note.uuid),
+            "is_date": True,
+            "title": note.name,
+        },
+    )
+
     return jsonify(note=note.serialize), 200
 
 
@@ -745,12 +799,32 @@ def create_note():
     # Update upload references for this user based on all notes
     _collect_referenced_uploads_for_user(user)
 
+    # Broadcast SSE event for real-time sync
+    _sse_broadcast(
+        str(user.uuid),
+        "note_updated",
+        {
+            "note_uuid": str(note.uuid),
+            "is_date": False,
+            "title": note.name,
+        },
+    )
+
     return jsonify(note=note.serialize), 200
 
 
 @app.route("/api/save_task", methods=["PUT"])
 @jwt_required()
 def save_task():
+    """
+    Update a task's checkbox status by rewriting the markdown.
+
+    Request body:
+        - uuid: Task UUID
+        - name: New task line (e.g., "- [x] Task text")
+
+    This will update the task in the note markdown.
+    """
     req = request.get_json()
     uuid = req.get("uuid")
     name = req.get("name")
@@ -773,13 +847,50 @@ def save_task():
     if not task:
         abort(400)
 
+    # Get the note containing this task
+    note = Note.query.get(task.note_id)
+
+    if not note:
+        abort(404)
+
+    # Get the old task line from the note
+    old_task_line = task.name
+
+    # Update the note content
+    if old_task_line not in note.text:
+        # Task line not found in note - may have been modified externally
+        abort(400)
+
+    # Replace the old task line with the new one
+    new_text = note.text.replace(old_task_line, name, 1)
+    note.text = new_text
+
+    # The task.name will be updated automatically by the after_change_note hook
+    # when the note is committed, but we update it here too for consistency
     task.name = name
 
+    # Capture values before commit (task may be expired after commit due to note hooks)
+    user_uuid = str(user.uuid)
+    note_uuid = str(note.uuid)
+    task_uuid_str = str(task.uuid)
+
+    db.session.add(note)
     db.session.add(task)
     db.session.flush()
     db.session.commit()
 
-    return jsonify({}), 200
+    # Broadcast SSE event for real-time sync
+    _sse_broadcast(
+        user_uuid,
+        "task_updated",
+        {
+            "note_uuid": note_uuid,
+            "task_uuid": task_uuid_str,
+            "task_name": name,
+        },
+    )
+
+    return jsonify(note_uuid=note_uuid), 200
 
 
 @app.route("/api/save_note", methods=["PUT"])
@@ -812,6 +923,17 @@ def save_note():
     db.session.add(note)
     db.session.flush()
     db.session.commit()
+
+    # Broadcast SSE event for real-time sync
+    _sse_broadcast(
+        str(user.uuid),
+        "note_updated",
+        {
+            "note_uuid": str(note.uuid),
+            "is_date": note.is_date,
+            "title": note.name,
+        },
+    )
 
     return jsonify(note=note.serialize), 200
 
@@ -1136,6 +1258,15 @@ def sidebar_data():
     )
     auto_save = user.auto_save
     vim_mode = user.vim_mode
+    kanban_enabled = user.kanban_enabled or False
+
+    # Parse kanban_columns from JSON string
+    try:
+        kanban_columns = (
+            json.loads(user.kanban_columns) if user.kanban_columns else ["todo", "done"]
+        )
+    except (json.JSONDecodeError, TypeError):
+        kanban_columns = ["todo", "done"]
 
     return (
         jsonify(
@@ -1145,6 +1276,8 @@ def sidebar_data():
             tasks=tasks,
             auto_save=auto_save,
             vim_mode=vim_mode,
+            kanban_enabled=kanban_enabled,
+            kanban_columns=kanban_columns,
         ),
         200,
     )
@@ -1198,6 +1331,224 @@ def toggle_vim_mode():
     db.session.commit()
 
     return jsonify({}), 200
+
+
+@app.route("/api/settings", methods=["GET"])
+@jwt_required()
+def get_settings():
+    """Get all user settings including kanban configuration."""
+    username = get_jwt_identity()
+
+    if not username:
+        abort(401)
+
+    user = User.query.filter_by(username=username.lower()).first()
+
+    if not user:
+        abort(400)
+
+    # Parse kanban_columns from JSON string
+    try:
+        kanban_columns = (
+            json.loads(user.kanban_columns) if user.kanban_columns else ["todo", "done"]
+        )
+    except (json.JSONDecodeError, TypeError):
+        kanban_columns = ["todo", "done"]
+
+    return (
+        jsonify(
+            auto_save=user.auto_save or False,
+            vim_mode=user.vim_mode or False,
+            kanban_enabled=user.kanban_enabled or False,
+            kanban_columns=kanban_columns,
+        ),
+        200,
+    )
+
+
+@app.route("/api/settings", methods=["PUT"])
+@jwt_required()
+def update_settings():
+    """Update user settings. Only updates fields that are provided."""
+    req = request.get_json()
+
+    username = get_jwt_identity()
+
+    if not username:
+        abort(401)
+
+    user = User.query.filter_by(username=username.lower()).first()
+
+    if not user:
+        abort(400)
+
+    # Update only provided fields
+    if "auto_save" in req:
+        user.auto_save = req["auto_save"]
+
+    if "vim_mode" in req:
+        user.vim_mode = req["vim_mode"]
+
+    if "kanban_enabled" in req:
+        user.kanban_enabled = req["kanban_enabled"]
+
+    if "kanban_columns" in req:
+        columns = req["kanban_columns"]
+        if isinstance(columns, list):
+            # Validate columns - must be non-empty strings
+            valid_columns = [
+                c.strip() for c in columns if isinstance(c, str) and c.strip()
+            ]
+            if valid_columns:
+                user.kanban_columns = json.dumps(valid_columns)
+
+    db.session.add(user)
+    db.session.flush()
+    db.session.commit()
+
+    # Return updated settings
+    try:
+        kanban_columns = (
+            json.loads(user.kanban_columns) if user.kanban_columns else ["todo", "done"]
+        )
+    except (json.JSONDecodeError, TypeError):
+        kanban_columns = ["todo", "done"]
+
+    return (
+        jsonify(
+            auto_save=user.auto_save or False,
+            vim_mode=user.vim_mode or False,
+            kanban_enabled=user.kanban_enabled or False,
+            kanban_columns=kanban_columns,
+        ),
+        200,
+    )
+
+
+@app.route("/api/task_column", methods=["PUT"])
+@jwt_required()
+def update_task_column():
+    """
+    Update a task's kanban column by rewriting the markdown.
+
+    Request body:
+        - uuid: Task UUID
+        - column: New column name
+
+    This will update the task's :column: syntax in the note markdown.
+    """
+    req = request.get_json()
+    task_uuid = req.get("uuid")
+    new_column = req.get("column")
+
+    if not task_uuid or not new_column:
+        abort(400)
+
+    username = get_jwt_identity()
+
+    if not username:
+        abort(401)
+
+    user = User.query.filter_by(username=username.lower()).first()
+
+    if not user:
+        abort(400)
+
+    # Find the task
+    task = user.meta.filter_by(uuid=task_uuid, kind="task").first()
+
+    if not task:
+        abort(404)
+
+    # Get the note containing this task
+    note = Note.query.get(task.note_id)
+
+    if not note:
+        abort(404)
+
+    # Get the current task text (the full line like "- [ ] Task text :old_column:")
+    # Strip to handle legacy data that may have captured trailing newlines
+    old_task_line = task.name.rstrip("\n\r")
+
+    # Parse the task to understand its structure
+    parsed = parse_tasks_with_columns(old_task_line)
+
+    if not parsed:
+        # Task line doesn't match expected pattern, abort
+        abort(400)
+
+    full_match, is_completed, task_text, old_column = parsed[0]
+
+    # Auto-update checkbox based on column:
+    # - Moving to "todo" should uncheck the task
+    # - Moving to "done" should check the task
+    if new_column == "todo":
+        is_completed = False
+    elif new_column == "done":
+        is_completed = True
+
+    # Build the new task line
+    checkbox = "[x]" if is_completed else "[ ]"
+
+    # Determine if we need to add >>column syntax
+    # If column is "todo" and unchecked, or "done" and checked, we can omit it
+    if (new_column == "todo" and not is_completed) or (
+        new_column == "done" and is_completed
+    ):
+        new_task_line = f"- {checkbox} {task_text}"
+    else:
+        new_task_line = f"- {checkbox} {task_text} >>{new_column}"
+
+    # Update the note content
+    if old_task_line not in note.text:
+        # Task line not found in note - may have been modified
+        abort(400)
+
+    new_text = note.text.replace(
+        old_task_line, new_task_line, 1
+    )  # Replace only first occurrence
+
+    # Update task name to match the new line BEFORE updating the note
+    # This ensures the after_change_note hook sees the task as unchanged (same name)
+    # and won't delete/recreate it with a new UUID
+    task.name = new_task_line
+    task.task_column = new_column
+    db.session.add(task)
+    db.session.flush()  # Flush task update first
+
+    # Now update the note - the hook will see the matching task name
+    note.text = new_text
+
+    # Capture values before commit
+    user_uuid = str(user.uuid)
+    note_uuid = str(note.uuid)
+    task_uuid_str = str(task_uuid)  # Use the input parameter, not task.uuid
+
+    db.session.add(note)
+    db.session.flush()
+    db.session.commit()
+
+    # Broadcast SSE event for real-time sync
+    _sse_broadcast(
+        user_uuid,
+        "task_column_updated",
+        {
+            "note_uuid": note_uuid,
+            "task_uuid": task_uuid_str,
+            "old_task": old_task_line,
+            "new_task": new_task_line,
+            "column": new_column,
+        },
+    )
+
+    return (
+        jsonify(
+            note_uuid=note_uuid,
+            old_task=old_task_line,
+            new_task=new_task_line,
+        ),
+        200,
+    )
 
 
 @app.route("/api/search", methods=["POST"])
@@ -1613,6 +1964,82 @@ def cleanup_orphan_uploads():
     db.session.commit()
 
     return jsonify({"deleted": deleted, "count": len(deleted)}), 200
+
+
+@app.route("/api/events/stream", methods=["GET", "OPTIONS"])
+def sse_stream():
+    # Handle CORS preflight request
+    if request.method == "OPTIONS":
+        response = Response()
+        response.headers["Access-Control-Allow-Origin"] = request.headers.get(
+            "Origin", "*"
+        )
+        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Authorization, Content-Type, Accept"
+        )
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Max-Age"] = "86400"
+        return response
+
+    # JWT validation for actual SSE request
+    from flask_jwt_extended import verify_jwt_in_request
+
+    try:
+        verify_jwt_in_request()
+    except Exception:
+        abort(401)
+
+    username = get_jwt_identity()
+
+    if not username:
+        abort(401)
+
+    user = User.query.filter_by(username=username.lower()).first()
+
+    if not user:
+        abort(400)
+
+    user_id = str(user.uuid)
+
+    def generate():
+        # Create a queue for this client
+        client_queue = queue.Queue(maxsize=50)
+        _sse_add_client(user_id, client_queue)
+
+        try:
+            # Send initial connection event
+            yield f"event: connected\ndata: {json.dumps({'user': username})}\n\n"
+
+            while True:
+                try:
+                    # Wait for messages with timeout to allow checking connection
+                    message = client_queue.get(timeout=30)
+                    event_type = message.get("event", "message")
+                    data = message.get("data", {})
+                    yield f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+                except queue.Empty:
+                    # Send heartbeat to keep connection alive
+                    yield f": heartbeat\n\n"
+        except GeneratorExit:
+            pass
+        finally:
+            _sse_remove_client(user_id, client_queue)
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "Connection": "keep-alive",
+            # CORS headers for development (Vue dev server on different port)
+            "Access-Control-Allow-Origin": request.headers.get("Origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
 
 
 @app.route("/", defaults={"path": ""})

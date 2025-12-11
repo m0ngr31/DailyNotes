@@ -45,6 +45,8 @@ import eventHub from '../services/eventHub';
 import { getFoldState, saveFoldState } from '../services/localstorage';
 import { NoteService } from '../services/notes';
 import SidebarInst from '../services/sidebar';
+import type { SSEEventData } from '../services/sse';
+import { markNoteUpdatedLocally, wasRecentlyUpdatedLocally } from '../services/sse';
 
 const router = useRouter();
 const route = useRoute();
@@ -127,6 +129,10 @@ const saveNote = async (isAutoSave: boolean = false) => {
 
   try {
     note.value = await NoteService.saveNote(updatedNote);
+    // Mark as locally updated to prevent SSE duplicate processing
+    if (note.value.uuid) {
+      markNoteUpdatedLocally(note.value.uuid);
+    }
     text.value = modifiedText.value;
     // Don't reset modifiedText - it's already correct and resetting causes editor glitches
     headerOptions.title = note.value.title || '';
@@ -289,6 +295,88 @@ const handleTaskUpdate = (data: { note_id: string; task: string; completed: bool
   modifiedText.value = modifiedText.value.replace(original, task);
 };
 
+const handleTaskColumnUpdate = (data: { note_id: string; old_task: string; new_task: string }) => {
+  const { note_id, old_task, new_task } = data;
+
+  if (note_id !== note.value.uuid) {
+    return;
+  }
+
+  text.value = text.value.replace(old_task, new_task);
+  modifiedText.value = modifiedText.value.replace(old_task, new_task);
+};
+
+// Handle SSE events for real-time sync from other browsers/devices
+const handleSSENoteUpdated = async (data: SSEEventData) => {
+  // Only handle updates for the current note
+  if (data.note_uuid !== note.value.uuid) {
+    return;
+  }
+
+  // Skip if this was a local update (prevents duplicate processing)
+  if (data.note_uuid && wasRecentlyUpdatedLocally(data.note_uuid)) {
+    return;
+  }
+
+  // If we have unsaved changes, don't overwrite - notify user instead
+  if (unsavedChanges.value) {
+    buefy?.toast.open({
+      duration: 5000,
+      message: 'Note updated elsewhere. Save your changes to sync.',
+      position: 'is-top',
+      type: 'is-warning',
+    });
+    return;
+  }
+
+  // Reload the note content
+  try {
+    note.value = await NoteService.getNote(route.params.uuid as string);
+    text.value = note.value.data;
+    modifiedText.value = text.value;
+
+    buefy?.toast.open({
+      duration: 2000,
+      message: 'Note synced from another device',
+      position: 'is-bottom-right',
+      type: 'is-info',
+    });
+  } catch (_e) {
+    console.error('Failed to sync note update:', _e);
+  }
+};
+
+const handleSSETaskColumnUpdated = (data: SSEEventData) => {
+  // Handle task column updates from other browsers/devices
+  if (data.note_uuid !== note.value.uuid) {
+    return;
+  }
+
+  // Skip if this was a local update (prevents duplicate processing)
+  if (data.note_uuid && wasRecentlyUpdatedLocally(data.note_uuid)) {
+    return;
+  }
+
+  if (data.old_task && data.new_task) {
+    // If we have unsaved changes, check if the task line exists
+    if (unsavedChanges.value) {
+      // Only update if the old task line exists (not already modified locally)
+      if (modifiedText.value.includes(data.old_task)) {
+        modifiedText.value = modifiedText.value.replace(data.old_task, data.new_task);
+      }
+      if (text.value.includes(data.old_task)) {
+        text.value = text.value.replace(data.old_task, data.new_task);
+      }
+    } else {
+      text.value = text.value.replace(data.old_task, data.new_task);
+      modifiedText.value = text.value;
+    }
+
+    // Refresh sidebar to update Kanban
+    sidebar.getSidebarInfo();
+  }
+};
+
 const unsavedAlert = (e: Event) => {
   // Save fold state before page unload
   saveCurrentFoldState();
@@ -343,6 +431,9 @@ onMounted(async () => {
     // Set current note ID for fold state
     currentNoteId = `note-${note.value.uuid}`;
 
+    // Set current note ID for Kanban filtering
+    sidebar.currentNoteId = note.value.uuid || null;
+
     headerOptions.title = note.value.title || '';
     title.value = note.value.title || '';
 
@@ -357,6 +448,9 @@ onMounted(async () => {
   isLoading.value = false;
 
   eventHub.on('taskUpdated', handleTaskUpdate);
+  eventHub.on('taskColumnUpdated', handleTaskColumnUpdate);
+  eventHub.on('sseNoteUpdated', handleSSENoteUpdated);
+  eventHub.on('sseTaskColumnUpdated', handleSSETaskColumnUpdated);
 });
 
 onBeforeUnmount(() => {
@@ -366,6 +460,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', unsavedAlert);
   window.removeEventListener('keydown', handleKeydown);
   eventHub.off('taskUpdated', handleTaskUpdate);
+  eventHub.off('taskColumnUpdated', handleTaskColumnUpdate);
+  eventHub.off('sseNoteUpdated', handleSSENoteUpdated);
+  eventHub.off('sseTaskColumnUpdated', handleSSETaskColumnUpdated);
   // Cancel any pending autosaves when component is destroyed
   autoSaveThrottle.cancel();
 });

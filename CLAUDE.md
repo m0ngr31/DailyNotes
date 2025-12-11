@@ -589,6 +589,131 @@ The editor uses CSS variables where possible. For HighlightStyle (which doesn't 
 - **Values:** `"light"`, `"dark"`, `"system"`
 - **Default:** `"system"` (falls back to dark if system preference unavailable)
 
+## Kanban Board Feature
+
+The Kanban feature provides an optional board view for organizing tasks across customizable columns with drag-and-drop support.
+
+### Enabling Kanban
+
+1. Go to Settings (gear icon in header menu)
+2. Find the "Kanban" section
+3. Toggle "Enable Kanban board"
+4. When enabled, the Tasks icon in the header changes to a columns icon and opens the Kanban modal
+
+### Task Syntax
+
+Tasks use standard GFM checkbox syntax with an optional `>>column` suffix:
+
+```markdown
+- [ ] Plain task                    → defaults to "todo" column
+- [x] Completed task                → defaults to "done" column
+- [ ] Task in review >>review       → explicit "review" column
+- [x] Done but still in review >>review  → stays in "review" (explicit wins)
+```
+
+**Column Assignment Rules:**
+- Explicit `>>column` syntax always takes precedence over checkbox state
+- Tasks without explicit column: unchecked → "todo", checked → "done"
+- Column names support letters, numbers, and hyphens: `>>in-progress`, `>>stage2`
+
+### Default Columns
+
+- Default columns: `["todo", "done"]`
+- Configure custom columns in Settings under the Kanban section
+- Add/remove columns, reorder by editing in Settings
+
+### Per-Note Column Override
+
+Override default columns for a specific note using frontmatter:
+
+```markdown
+---
+title: Sprint Planning
+kanban:
+  - backlog
+  - in-progress
+  - review
+  - done
+---
+
+- [ ] Task one :backlog:
+- [ ] Task two :in-progress:
+```
+
+### Auto-Column Creation
+
+If a task uses a column that doesn't exist in the configuration:
+- The column is automatically added before "done"
+- Example: Using `:staging:` when columns are `[todo, done]` results in `[todo, staging, done]`
+- To reorder, update the columns in Settings or note frontmatter
+
+### Implementation Details
+
+**Backend (`app/models.py`):**
+
+- `User.kanban_enabled` - Boolean to enable/disable Kanban view
+- `User.kanban_columns` - JSON string storing column array
+- `Meta.task_column` - Stores the effective column for each task
+- `TASK_PATTERN` regex captures: checkbox state, task text, optional column
+- `parse_tasks_with_columns()` - Extracts task info including column
+- `get_task_column()` - Determines effective column (explicit > checkbox default)
+- `Note.get_kanban_columns()` - Returns effective columns (frontmatter > user > system default)
+
+**Backend (`app/routes.py`):**
+
+- `GET /api/settings` - Returns kanban settings
+- `PUT /api/settings` - Updates kanban_enabled and kanban_columns
+- `PUT /api/task_column` - Updates task's column by rewriting markdown
+- `/api/sidebar` - Includes `kanban_enabled`, `kanban_columns`, and `task_column` on tasks
+
+**Frontend (`client/src/services/sidebar.ts`):**
+
+- `kanbanEnabled` - Reactive state for kanban toggle
+- `kanbanColumns` - Reactive array of column names
+- `toggleKanban()` - Enable/disable kanban
+- `updateKanbanColumns()` - Save new column configuration
+- `updateTaskColumn()` - Move task to different column via API
+
+**Frontend (`client/src/components/Kanban.vue`):**
+
+- Modal component with column layout
+- Native HTML5 drag-and-drop between columns
+- Props: `noteId` (filter to single note), `columns` (override columns)
+- Parses task text to extract display text and completion state
+- Shows note title on tasks when viewing all notes
+- Responsive design (stacks on mobile)
+
+**Frontend (`client/src/components/Tasks.vue`):**
+
+- Conditionally renders dropdown (list) or opens Kanban modal
+- Uses `sidebar.kanbanEnabled` to determine mode
+- Shows columns icon when kanban is enabled
+
+**Frontend (`client/src/components/Settings.vue`):**
+
+- Kanban section with enable toggle
+- Column management UI (add/remove/edit columns)
+- Syntax hint for `>>column` usage
+
+### Database Schema
+
+```sql
+-- User table additions
+kanban_enabled BOOLEAN DEFAULT FALSE
+kanban_columns VARCHAR(512) DEFAULT '["todo", "done"]'
+
+-- Meta table addition
+task_column VARCHAR(64)  -- Stores effective column for tasks
+```
+
+### CSS Styling
+
+The Kanban board uses CSS variables for theme compatibility:
+- `--card-bg` for column backgrounds
+- `--border-color` for borders
+- `--text-primary`, `--text-muted` for text
+- `--accent-primary` for drag-over highlighting
+
 ## Notes for Contributors
 
 - **Python version:** Works with Python 2.7+ and Python 3.3+ (though dated)

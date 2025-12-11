@@ -36,7 +36,7 @@ I'd like to try to include at least some of the following features to get to a f
 - ~~iCal support~~ ✅ Done! See [Calendar feed](#calendar-feed-ics) section
 - ~~HTML preview~~ ✅ Done! Use `Cmd+K V` for side-by-side or `Shift+Cmd+V` for preview-only
 - ~~Light/Dark themes~~ ✅ Done! See [Themes](#themes) section
-- Kanban board for tasks (and new syntax to attach meta info like swimlane and project for each task)
+- ~~Kanban board for tasks~~ ✅ Done! See [Kanban Board](#kanban-board) section
 - Nested tagging
 
 ## Themes
@@ -106,6 +106,88 @@ DailyNotes features a powerful syntax-based search that lets you quickly find no
 - **Keyboard navigation**: Use arrow keys to select, Tab/Enter to confirm
 - **Result highlighting**: Matching text is highlighted in search results with context snippets
 - **Syntax help**: Click the `?` button for a quick reference
+
+## Kanban Board
+
+DailyNotes includes an optional Kanban board view for organizing tasks with drag-and-drop support.
+
+### Enabling Kanban
+
+1. Click the **menu icon** (⋮) in the header
+2. Select **Settings**
+3. Find the **Kanban** section
+4. Toggle **Enable Kanban board**
+
+When enabled, the Tasks icon in the header changes to a columns icon. Click it to open the Kanban modal.
+
+### Task Syntax
+
+Use the `>>column` syntax at the end of any task to assign it to a specific column:
+
+| Task Syntax                         | Column Assignment                 |
+| ----------------------------------- | --------------------------------- |
+| `- [ ] Plain task`                  | Defaults to "todo"                |
+| `- [x] Completed task`              | Defaults to "done"                |
+| `- [ ] In progress >>doing`         | Explicit "doing" column           |
+| `- [x] Done but in review >>review` | Stays in "review" (explicit wins) |
+
+**Column names** support letters, numbers, and hyphens: `>>in-progress`, `>>stage-2`, `>>Q4`
+
+### Default Columns
+
+| Setting         | Default Value     |
+| --------------- | ----------------- |
+| Default columns | `todo`, `done`    |
+| Configurable in | Settings → Kanban |
+
+Add, remove, or reorder columns in the Settings panel.
+
+### Per-Note Column Override
+
+Override columns for a specific note using YAML frontmatter:
+
+```markdown
+---
+title: Sprint Planning
+kanban:
+  - backlog
+  - in-progress
+  - review
+  - done
+---
+
+- [ ] Design mockups >>backlog
+- [ ] Implement API >>in-progress
+- [ ] Write tests >>review
+```
+
+### Auto-Column Creation
+
+If you use a column that doesn't exist in your configuration:
+
+| Scenario                | Result                                         |
+| ----------------------- | ---------------------------------------------- |
+| Columns: `[todo, done]` | Default setup                                  |
+| Task uses `>>staging`   | Columns become `[todo, staging, done]`         |
+| Task uses `>>review`    | Columns become `[todo, staging, review, done]` |
+
+New columns are automatically inserted **before "done"**. To reorder, update the columns in Settings or note frontmatter.
+
+### Drag and Drop
+
+- **Drag** any task card to move it between columns
+- The task's `>>column` syntax is automatically updated in the markdown
+- Changes are saved immediately to the note
+
+### Column Assignment Rules
+
+| Condition                                | Resulting Column     |
+| ---------------------------------------- | -------------------- |
+| No `>>column` + unchecked `[ ]`          | `todo`               |
+| No `>>column` + checked `[x]`            | `done`               |
+| Explicit `>>column` (any checkbox state) | The specified column |
+
+**Key point**: Explicit `>>column` syntax always takes precedence over the checkbox state. This lets you have completed tasks in a "review" column.
 
 ## In Action
 

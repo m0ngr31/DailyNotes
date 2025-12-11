@@ -49,9 +49,9 @@ cleanup() {
 
 trap cleanup SIGTERM SIGINT
 
-# Start Flask backend with auto-reload
+# Start Flask backend with auto-reload and threading (needed for SSE)
 echo "🐍 Starting Flask backend on port 5001 (with auto-reload)..."
-flask run --host=0.0.0.0 --port=5001 --reload &
+flask run --host=0.0.0.0 --port=5001 --reload --with-threads &
 FLASK_PID=$!
 
 # Wait a moment for Flask to start

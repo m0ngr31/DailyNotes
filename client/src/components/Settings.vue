@@ -117,6 +117,56 @@
           </div>
         </div>
 
+        <div class="settings-card">
+          <p class="section-title">Kanban</p>
+          <p class="section-hint">Organize tasks in a kanban board view.</p>
+          <div class="setting-row">
+            <b-switch v-model="localKanbanEnabled" @update:modelValue="onKanbanToggle">
+              Enable Kanban board
+            </b-switch>
+            <p class="setting-hint">
+              When enabled, the Tasks modal shows a kanban board instead of a list.
+              Use <code>&gt;&gt;column</code> syntax in tasks to assign columns.
+            </p>
+          </div>
+
+          <div v-if="localKanbanEnabled" class="kanban-columns-section">
+            <div class="columns-header">
+              <span class="columns-label">Default columns</span>
+              <b-button size="is-small" @click="addColumn">Add column</b-button>
+            </div>
+            <div class="columns-list">
+              <div
+                v-for="(column, index) in localKanbanColumns"
+                :key="index"
+                class="column-item"
+              >
+                <span class="column-handle">
+                  <i class="fas fa-grip-vertical"></i>
+                </span>
+                <b-input
+                  v-model="localKanbanColumns[index]"
+                  size="is-small"
+                  @blur="saveColumns"
+                  @keyup.enter="saveColumns"
+                />
+                <b-button
+                  size="is-small"
+                  type="is-text"
+                  :disabled="localKanbanColumns.length <= 2"
+                  @click="removeColumn(index)"
+                >
+                  <i class="fas fa-times"></i>
+                </b-button>
+              </div>
+            </div>
+            <p class="setting-hint columns-hint">
+              Tasks default to "todo" when unchecked and "done" when checked.
+              Custom columns are inserted before "done".
+            </p>
+          </div>
+        </div>
+
         <div class="settings-card about-card">
           <p class="section-title">About</p>
           <div class="about-info">
@@ -137,7 +187,7 @@
 </template>
 
 <script setup lang="ts">
-import { getCurrentInstance, onMounted, ref, computed } from 'vue';
+import { computed, getCurrentInstance, onMounted, ref } from 'vue';
 import type { IExternalCalendar } from '../interfaces';
 import { CalendarService } from '../services/calendars';
 import { Requests } from '../services/requests';
@@ -155,6 +205,8 @@ const buefy = (instance?.appContext.config.globalProperties as { $buefy?: BuefyI
 const localAutoSave = ref(false);
 const localVimMode = ref(false);
 const localTheme = ref<ThemePreference>('system');
+const localKanbanEnabled = ref(false);
+const localKanbanColumns = ref<string[]>(['todo', 'done']);
 
 const themeOptions = [
   { value: 'light', label: 'Light', icon: 'fas fa-sun' },
@@ -177,6 +229,8 @@ onMounted(() => {
   localAutoSave.value = sidebar.autoSave;
   localVimMode.value = sidebar.vimMode;
   localTheme.value = themeService.preference;
+  localKanbanEnabled.value = sidebar.kanbanEnabled;
+  localKanbanColumns.value = [...sidebar.kanbanColumns];
 
   fetchCalendarUrl();
   fetchExternalCalendars();
@@ -220,6 +274,44 @@ const onThemeChange = (value: ThemePreference) => {
     type: 'is-success',
     duration: 2000,
   });
+};
+
+const onKanbanToggle = (value: boolean) => {
+  sidebar.toggleKanban(value);
+
+  buefy?.toast.open({
+    message: `Kanban board ${value ? 'enabled' : 'disabled'}`,
+    type: 'is-success',
+    duration: 2000,
+  });
+};
+
+const addColumn = () => {
+  // Insert new column before "done" (last column)
+  const newColumnName = `column-${localKanbanColumns.value.length}`;
+  const doneIndex = localKanbanColumns.value.length - 1;
+  localKanbanColumns.value.splice(doneIndex, 0, newColumnName);
+  saveColumns();
+};
+
+const removeColumn = (index: number) => {
+  if (localKanbanColumns.value.length <= 2) return;
+  localKanbanColumns.value.splice(index, 1);
+  saveColumns();
+};
+
+const saveColumns = () => {
+  // Filter out empty columns and save
+  const validColumns = localKanbanColumns.value.map((c) => c.trim()).filter((c) => c.length > 0);
+
+  if (validColumns.length >= 2) {
+    sidebar.updateKanbanColumns(validColumns);
+    buefy?.toast.open({
+      message: 'Columns updated',
+      type: 'is-success',
+      duration: 1500,
+    });
+  }
 };
 
 const fetchCalendarUrl = async () => {
@@ -636,5 +728,70 @@ const close = () => {
 
 .about-links a:hover {
   text-decoration: underline;
+}
+
+/* Kanban settings */
+.kanban-columns-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.columns-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.columns-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.columns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.column-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.column-handle {
+  color: var(--text-muted);
+  cursor: grab;
+  padding: 4px;
+}
+
+.column-handle:active {
+  cursor: grabbing;
+}
+
+.column-item :deep(.input) {
+  flex: 1;
+}
+
+.columns-hint {
+  margin-top: 12px;
+}
+
+.columns-hint code {
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+.setting-hint code {
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9em;
 }
 </style>
