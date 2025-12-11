@@ -19,6 +19,23 @@
           </div>
 
           <div class="settings-card">
+            <p class="section-title">Appearance</p>
+            <p class="section-hint">Choose your preferred theme.</p>
+            <div class="theme-selector">
+              <button
+                v-for="option in themeOptions"
+                :key="option.value"
+                class="theme-option"
+                :class="{ active: localTheme === option.value }"
+                @click="localTheme = option.value as ThemePreference; onThemeChange(option.value as ThemePreference)"
+              >
+                <i :class="option.icon"></i>
+                <span>{{ option.label }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-card">
             <p class="section-title">Calendar sharing</p>
             <p class="section-hint">Expose daily notes as all-day events via a private ICS link.</p>
             <div class="setting-row">
@@ -120,12 +137,13 @@
 </template>
 
 <script setup lang="ts">
-import { getCurrentInstance, onMounted, ref } from 'vue';
+import { getCurrentInstance, onMounted, ref, computed } from 'vue';
 import type { IExternalCalendar } from '../interfaces';
 import { CalendarService } from '../services/calendars';
 import { Requests } from '../services/requests';
 import type { BuefyInstance } from '../services/sharedBuefy';
 import sidebar from '../services/sidebar';
+import themeService, { type ThemePreference } from '../services/theme';
 
 const emit = defineEmits<{
   close: [];
@@ -136,6 +154,13 @@ const buefy = (instance?.appContext.config.globalProperties as { $buefy?: BuefyI
 
 const localAutoSave = ref(false);
 const localVimMode = ref(false);
+const localTheme = ref<ThemePreference>('system');
+
+const themeOptions = [
+  { value: 'light', label: 'Light', icon: 'fas fa-sun' },
+  { value: 'dark', label: 'Dark', icon: 'fas fa-moon' },
+  { value: 'system', label: 'System', icon: 'fas fa-laptop' },
+];
 const calendarEnabled = ref(false);
 const calendarUrl = ref('');
 const calendarLoading = ref(false);
@@ -151,6 +176,7 @@ onMounted(() => {
   // Initialize with current values from sidebar
   localAutoSave.value = sidebar.autoSave;
   localVimMode.value = sidebar.vimMode;
+  localTheme.value = themeService.preference;
 
   fetchCalendarUrl();
   fetchExternalCalendars();
@@ -175,6 +201,22 @@ const onVimModeChange = (value: boolean) => {
   // Show success toast
   buefy?.toast.open({
     message: `Vim mode ${value ? 'enabled' : 'disabled'}`,
+    type: 'is-success',
+    duration: 2000,
+  });
+};
+
+const onThemeChange = (value: ThemePreference) => {
+  themeService.preference = value;
+
+  const labels: Record<ThemePreference, string> = {
+    light: 'Light theme',
+    dark: 'Dark theme',
+    system: 'System theme (auto)',
+  };
+
+  buefy?.toast.open({
+    message: `${labels[value]} activated`,
     type: 'is-success',
     duration: 2000,
   });
@@ -340,17 +382,17 @@ const close = () => {
 
 .modal-card-head {
   background-color: var(--main-bg-color);
-  border-bottom: 1px solid #404854;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-card-title {
-  color: #eeffff;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .modal-card-body {
-  background-color: #263238;
-  color: #eeffff;
+  background-color: var(--main-bg-color);
+  color: var(--text-primary);
   min-height: 200px;
 }
 
@@ -360,7 +402,7 @@ const close = () => {
 
 .modal-card-foot {
   background-color: var(--main-bg-color);
-  border-top: 1px solid #404854;
+  border-top: 1px solid var(--border-color);
   justify-content: flex-end;
 }
 
@@ -371,37 +413,37 @@ const close = () => {
 }
 
 .settings-card {
-  background: #1f2733;
-  border: 1px solid #304254;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 16px;
 }
 
 :deep(.input),
 :deep(.textarea) {
-  background-color: #1b222c !important;
-  border-color: #304254 !important;
-  color: #e5ecf3 !important;
+  background-color: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
 }
 
 :deep(.input:focus),
 :deep(.textarea:focus) {
-  border-color: #82aaff !important;
+  border-color: var(--text-link) !important;
   box-shadow: 0 0 0 0.2rem rgba(130, 170, 255, 0.15);
 }
 
 :deep(.label) {
-  color: #9fb3c8 !important;
+  color: var(--text-muted) !important;
 }
 
 .section-title {
-  color: #82aaff;
+  color: var(--text-link);
   font-weight: 600;
   margin: 0 0 4px;
 }
 
 .section-hint {
-  color: #9fb3c8;
+  color: var(--text-muted);
   margin: 0 0 12px;
   font-size: 14px;
 }
@@ -413,14 +455,55 @@ const close = () => {
 }
 
 .setting-hint {
-  color: #9fb3c8;
+  color: var(--text-muted);
   font-size: 13px;
   margin: 0;
 }
 
+/* Theme selector */
+.theme-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.theme-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-option:hover {
+  border-color: var(--border-color-light);
+  background: var(--main-bg-lighter);
+}
+
+.theme-option.active {
+  border-color: var(--accent-primary);
+  background: var(--main-bg-lighter);
+  color: var(--text-primary);
+}
+
+.theme-option i {
+  font-size: 1.5em;
+}
+
+.theme-option span {
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
 .calendar-share__controls {
-  background: #141b23;
-  border: 1px solid #304254;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px;
   margin-top: 12px;
@@ -438,13 +521,13 @@ const close = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #c8d5e0;
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
 .pill {
-  background: #2f3f52;
-  color: #c8d5e0;
+  background: var(--tag-bg);
+  color: var(--text-secondary);
   border-radius: 999px;
   padding: 2px 10px;
   font-size: 12px;
@@ -477,8 +560,8 @@ const close = () => {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #141b23;
-  border: 1px solid #243241;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -499,16 +582,16 @@ const close = () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  color: #cfd8e3;
+  color: var(--text-secondary);
 }
 
 .connected-item__title small {
-  color: #8fa1b5;
+  color: var(--text-muted);
   word-break: break-all;
 }
 
 .connected-empty {
-  color: #8fa1b5;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -534,11 +617,11 @@ const close = () => {
 }
 
 .about-label {
-  color: #9fb3c8;
+  color: var(--text-muted);
 }
 
 .about-value {
-  color: #eeffff;
+  color: var(--text-primary);
   font-family: 'Fira Code', monospace;
 }
 
@@ -547,7 +630,7 @@ const close = () => {
 }
 
 .about-links a {
-  color: #82aaff;
+  color: var(--text-link);
   text-decoration: none;
 }
 

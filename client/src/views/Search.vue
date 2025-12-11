@@ -398,10 +398,10 @@ onMounted(() => {
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #dbdbdb;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
   z-index: 100;
   max-height: 300px;
   overflow-y: auto;
@@ -418,15 +418,15 @@ onMounted(() => {
 
 .autocomplete-item:hover,
 .autocomplete-item.is-active {
-  background-color: #f5f5f5;
+  background-color: var(--calendar-hover-bg);
 }
 
 .autocomplete-type {
   font-size: 0.75rem;
   padding: 2px 6px;
   border-radius: 4px;
-  background-color: #e8e8e8;
-  color: #666;
+  background-color: var(--tag-bg);
+  color: var(--text-muted);
   text-transform: uppercase;
 }
 
@@ -436,19 +436,20 @@ onMounted(() => {
 }
 
 .autocomplete-value {
-  color: #363636;
+  color: var(--text-primary);
 }
 
 /* Syntax help dropdown styles */
 .syntax-help {
   padding: 16px;
   min-width: 280px;
+  background: var(--dropdown-bg);
 }
 
 .syntax-help h4 {
   font-weight: 600;
   margin-bottom: 8px;
-  color: #363636;
+  color: var(--text-primary);
 }
 
 .syntax-help h4:not(:first-child) {
@@ -462,6 +463,7 @@ onMounted(() => {
 
 .syntax-help table td {
   padding: 4px 0;
+  color: var(--text-secondary);
 }
 
 .syntax-help table td:first-child {
@@ -469,7 +471,8 @@ onMounted(() => {
 }
 
 .syntax-help code {
-  background-color: #f5f5f5;
+  background-color: var(--code-bg);
+  color: var(--code-text);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Fira Code', monospace;
@@ -484,12 +487,13 @@ onMounted(() => {
 
 .syntax-help ul li {
   padding: 2px 0;
+  color: var(--text-secondary);
 }
 
 .syntax-help .help-note {
   margin-top: 12px;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-muted);
   line-height: 1.4;
 }
 </style>

@@ -39,7 +39,7 @@ useHead({
 
 .wrapper {
   min-height: 100px;
-  border-color: white;
+  border-color: var(--border-color-light);
   border-width: 1px;
   padding-top: 55px;
   border-style: solid;

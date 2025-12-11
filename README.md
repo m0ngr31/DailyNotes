@@ -35,8 +35,30 @@ I'd like to try to include at least some of the following features to get to a f
 
 - ~~iCal support~~ ✅ Done! See [Calendar feed](#calendar-feed-ics) section
 - ~~HTML preview~~ ✅ Done! Use `Cmd+K V` for side-by-side or `Shift+Cmd+V` for preview-only
+- ~~Light/Dark themes~~ ✅ Done! See [Themes](#themes) section
 - Kanban board for tasks (and new syntax to attach meta info like swimlane and project for each task)
 - Nested tagging
+
+## Themes
+
+DailyNotes supports **Light**, **Dark**, and **System** themes to match your preferred working environment.
+
+### Theme Options
+
+| Theme     | Description                                                        |
+| --------- | ------------------------------------------------------------------ |
+| 🌙 Dark   | Default dark interface, optimized for low-light environments       |
+| ☀️ Light  | Clean, bright interface with light backgrounds                     |
+| 💻 System | Automatically follows your operating system's color scheme setting |
+
+### How to Change Themes
+
+1. Click the **menu icon** (⋮) in the header
+2. Select **Settings**
+3. In the **Appearance** section, click your preferred theme
+4. The theme changes instantly and is saved for future sessions
+
+The **System** option automatically switches between light and dark themes based on your OS settings (e.g., macOS Dark Mode, Windows Dark Theme). This is perfect if you prefer dark mode at night and light mode during the day.
 
 ## Calendar feed (ICS)
 

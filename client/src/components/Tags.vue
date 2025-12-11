@@ -60,6 +60,6 @@ const goToSearch = (searchType: string, tag: string) => {
 }
 
 .note-tag {
-  background-color: #eea26f !important;
+  background-color: var(--accent-warning) !important;
 }
 </style>

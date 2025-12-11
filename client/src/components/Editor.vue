@@ -35,6 +35,7 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { IGlobal } from '../interfaces';
 
 import { newDay, newNote } from '../services/consts';
+import themeService from '../services/theme';
 import eventHub from '../services/eventHub';
 import { SharedBuefy } from '../services/sharedBuefy';
 import { UploadService } from '../services/uploads';
@@ -59,10 +60,11 @@ const editorContainer = ref<HTMLDivElement>();
 let editorView: EditorView;
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // Keep in sync with backend limit
 
-// Custom theme for CodeMirror 6
+// Theme-aware CodeMirror 6 theme using CSS variables
+// The actual colors are defined in App.vue and switch based on .theme-light/.theme-dark class
 const customTheme = EditorView.theme({
   '&': {
-    backgroundColor: '#263238',
+    backgroundColor: 'var(--editor-bg)',
     height: '100%',
     width: '100%',
     fontFamily: "'Fira Code', monospace",
@@ -77,41 +79,41 @@ const customTheme = EditorView.theme({
   },
   '.cm-content': {
     padding: '10px 0px 10px 20px',
-    caretColor: '#80CBC4',
+    caretColor: 'var(--editor-cursor)',
     fontSize: '16px',
     fontWeight: '400',
-    color: '#EEFFFF', // Default text color - light gray/white
+    color: 'var(--text-primary)',
     width: '100%',
     maxWidth: 'none',
   },
   '.cm-line': {
-    color: '#EEFFFF', // Ensure all lines have readable color
+    color: 'var(--text-primary)',
   },
   '&.cm-focused .cm-cursor': {
-    borderLeftColor: '#80CBC4',
+    borderLeftColor: 'var(--editor-cursor)',
   },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-    backgroundColor: '#545454',
+    backgroundColor: 'var(--editor-selection)',
   },
   '.cm-gutters': {
-    backgroundColor: '#263238',
-    color: '#546E7A',
+    backgroundColor: 'var(--editor-gutter-bg)',
+    color: 'var(--editor-gutter-text)',
     border: 'none',
   },
   '.cm-activeLine': {
-    backgroundColor: 'transparent',
+    backgroundColor: 'var(--editor-line-highlight)',
   },
   '.cm-foldPlaceholder': {
-    backgroundColor: '#37474F',
+    backgroundColor: 'var(--tag-bg)',
     border: 'none',
-    color: '#80CBC4',
+    color: 'var(--accent-primary)',
   },
   '.cm-foldGutter': {
     width: '20px',
   },
   '.cm-foldGutter span': {
     fontSize: '16px !important',
-    color: '#80CBC4 !important',
+    color: 'var(--accent-primary) !important',
     cursor: 'pointer',
     padding: '0 4px',
   },
@@ -120,184 +122,180 @@ const customTheme = EditorView.theme({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Syntax highlighting
+  // Syntax highlighting using CSS variables
   '.cm-header': {
-    color: '#aaa',
+    color: 'var(--syntax-heading)',
   },
   '.cm-strong': {
-    color: '#aaa',
+    color: 'var(--syntax-string)',
     fontSize: '140%',
   },
   '.cm-em': {
     fontStyle: 'italic',
   },
   '.cm-link': {
-    color: '#82AAFF',
+    color: 'var(--syntax-link)',
     textDecoration: 'none',
   },
   '.cm-url': {
-    color: '#C792EA',
+    color: 'var(--syntax-keyword)',
   },
   '.cm-strikethrough': {
     textDecoration: 'line-through',
   },
   '.cm-keyword': {
-    color: '#C792EA',
+    color: 'var(--syntax-keyword)',
   },
   '.cm-atom': {
-    color: '#F78C6C',
+    color: 'var(--syntax-number)',
   },
   '.cm-number': {
-    color: '#F78C6C',
+    color: 'var(--syntax-number)',
   },
   '.cm-comment': {
-    color: '#546E7A',
+    color: 'var(--syntax-comment)',
   },
   '.cm-meta': {
-    color: '#FFCB6B',
+    color: 'var(--syntax-meta)',
   },
   '.cm-variable-2': {
-    color: '#EEFFFF',
+    color: 'var(--syntax-variable)',
   },
   '.cm-variable-3': {
-    color: '#DECB6B',
+    color: 'var(--syntax-attribute)',
   },
   '.cm-string': {
-    color: '#C3E88D',
+    color: 'var(--syntax-string)',
   },
   '.cm-quote': {
-    color: '#546E7A',
+    color: 'var(--syntax-comment)',
   },
   // Front matter - force normal size and weight
   '.cm-processingInstruction': {
-    color: '#89DDFF',
-    fontSize: '16px !important',
-    fontWeight: '400 !important',
-  },
-  '.cm-meta': {
-    color: '#89DDFF',
+    color: 'var(--syntax-operator)',
     fontSize: '16px !important',
     fontWeight: '400 !important',
   },
   '.cm-propertyName': {
-    color: '#F78C6C',
+    color: 'var(--syntax-number)',
     fontSize: '16px !important',
     fontWeight: '400 !important',
   },
   // Custom markdown styling
   '.cm-frontmatter-delimiter': {
-    color: '#89DDFF !important', // Cyan for ---
+    color: 'var(--syntax-operator) !important',
     fontSize: '14px !important',
     fontWeight: '400 !important',
   },
   '.cm-frontmatter-key': {
-    color: '#FF5370 !important', // Red for keys like "projects:"
+    color: 'var(--syntax-tag) !important',
     fontSize: '14px !important',
     fontWeight: '400 !important',
   },
   '.cm-frontmatter-value': {
-    color: '#C3E88D !important', // Green for values
+    color: 'var(--syntax-string) !important',
     fontSize: '12px !important',
     fontWeight: '400 !important',
   },
   '.cm-heading-mark': {
-    color: '#FFCB6B !important', // Orange for ##
+    color: 'var(--syntax-meta) !important',
     fontSize: '1.4em !important',
     fontWeight: '700 !important',
     lineHeight: '1.5em !important',
   },
   '.cm-heading-text': {
-    color: '#FFCB6B !important', // Orange for heading text
+    color: 'var(--syntax-meta) !important',
     fontSize: '1.4em !important',
     fontWeight: '700 !important',
     lineHeight: '1.5em !important',
   },
   '.cm-task-unchecked': {
-    color: '#FFCB6B !important', // Yellow for unchecked [ ]
+    color: 'var(--syntax-meta) !important',
     fontWeight: '400 !important',
   },
   '.cm-task-checked': {
-    color: 'rgb(199, 146, 234) !important', // Purple for checked [x]
+    color: 'var(--syntax-keyword) !important',
     fontWeight: '400 !important',
   },
   '.cm-url-link': {
-    color: '#C792EA !important', // Purple for URLs
-    textDecoration: 'none !important', // No underline by default
+    color: 'var(--syntax-keyword) !important',
+    textDecoration: 'none !important',
   },
   // Link hover effect when Cmd/Ctrl is pressed
   '&.link-hover': {
     cursor: 'pointer !important',
   },
   '&.link-hover .cm-url-link': {
-    color: '#2196F3 !important', // Bright blue on hover
+    color: 'var(--text-link) !important',
     textDecoration: 'underline !important',
     cursor: 'pointer !important',
   },
   '&.link-hover .cm-link': {
-    color: '#2196F3 !important', // Bright blue on hover
+    color: 'var(--text-link) !important',
     textDecoration: 'underline',
     cursor: 'pointer !important',
   },
   '&.link-hover .cm-url': {
-    color: '#2196F3 !important', // Bright blue on hover
+    color: 'var(--text-link) !important',
     textDecoration: 'underline',
     cursor: 'pointer !important',
   },
   // Code block styling
   '.cm-line.cm-codeblock': {
-    backgroundColor: '#1e272e',
+    backgroundColor: 'var(--code-bg)',
     fontFamily: "'Fira Code', monospace",
   },
   '.cm-codeInfo': {
-    color: '#546E7A', // Language identifier
+    color: 'var(--syntax-comment)',
     fontStyle: 'italic',
   },
   '.tok-keyword': {
-    color: '#C792EA',
+    color: 'var(--syntax-keyword)',
   },
   '.tok-string': {
-    color: '#C3E88D',
+    color: 'var(--syntax-string)',
   },
   '.tok-comment': {
-    color: '#546E7A',
+    color: 'var(--syntax-comment)',
     fontStyle: 'italic',
   },
   '.tok-variableName': {
-    color: '#EEFFFF',
+    color: 'var(--syntax-variable)',
   },
   '.tok-typeName': {
-    color: '#FFCB6B',
+    color: 'var(--syntax-meta)',
   },
   '.tok-function': {
-    color: '#82AAFF',
+    color: 'var(--syntax-function)',
   },
   '.tok-number': {
-    color: '#F78C6C',
+    color: 'var(--syntax-number)',
   },
   '.tok-operator': {
-    color: '#89DDFF',
+    color: 'var(--syntax-operator)',
   },
   '.tok-punctuation': {
-    color: '#89DDFF',
+    color: 'var(--syntax-operator)',
   },
   '.tok-propertyName': {
-    color: '#F07178',
+    color: 'var(--syntax-tag)',
   },
   '.tok-bool': {
-    color: '#FF5370',
+    color: 'var(--accent-error)',
   },
   '.tok-constant': {
-    color: '#F78C6C',
+    color: 'var(--syntax-number)',
   },
   '.tok-className': {
-    color: '#FFCB6B',
+    color: 'var(--syntax-meta)',
   },
 });
 
 // Syntax highlighting theme for code blocks only
 // We don't style markdown elements here since we use custom decorators
-const markdownHighlighting = HighlightStyle.define([
-  // Don't style headings - handled by custom decorator
+// Note: HighlightStyle doesn't support CSS variables, so we keep these
+// hardcoded for now. The main theme colors are handled by customTheme above.
+const markdownHighlightingDark = HighlightStyle.define([
   { tag: t.strong, color: '#C3E88D', fontWeight: 'bold' },
   { tag: t.emphasis, color: '#82AAFF', fontStyle: 'italic' },
   { tag: t.strikethrough, textDecoration: 'line-through', color: '#546E7A' },
@@ -306,8 +304,6 @@ const markdownHighlighting = HighlightStyle.define([
   { tag: t.quote, color: '#546E7A', fontStyle: 'italic' },
   { tag: t.list, color: '#F78C6C' },
   { tag: t.monospace, color: '#C3E88D', fontFamily: "'Fira Code', monospace" },
-  // Don't style front matter - handled by custom decorator
-  // Code block syntax highlighting
   { tag: t.comment, color: '#546E7A', fontStyle: 'italic' },
   { tag: t.keyword, color: '#C792EA' },
   { tag: t.string, color: '#C3E88D' },
@@ -323,6 +319,36 @@ const markdownHighlighting = HighlightStyle.define([
   { tag: t.constant(t.variableName), color: '#F78C6C' },
   { tag: t.className, color: '#FFCB6B' },
 ]);
+
+const markdownHighlightingLight = HighlightStyle.define([
+  { tag: t.strong, color: '#718c00', fontWeight: 'bold' },
+  { tag: t.emphasis, color: '#4271ae', fontStyle: 'italic' },
+  { tag: t.strikethrough, textDecoration: 'line-through', color: '#8e908c' },
+  { tag: t.link, color: '#4271ae', textDecoration: 'underline' },
+  { tag: t.url, color: '#8959a8' },
+  { tag: t.quote, color: '#8e908c', fontStyle: 'italic' },
+  { tag: t.list, color: '#f5871f' },
+  { tag: t.monospace, color: '#718c00', fontFamily: "'Fira Code', monospace" },
+  { tag: t.comment, color: '#8e908c', fontStyle: 'italic' },
+  { tag: t.keyword, color: '#8959a8' },
+  { tag: t.string, color: '#718c00' },
+  { tag: t.number, color: '#f5871f' },
+  { tag: t.operator, color: '#3e999f' },
+  { tag: t.punctuation, color: '#3e999f' },
+  { tag: t.bracket, color: '#4d4d4c' },
+  { tag: t.variableName, color: '#4d4d4c' },
+  { tag: t.typeName, color: '#c99e00' },
+  { tag: t.function(t.variableName), color: '#4271ae' },
+  { tag: t.propertyName, color: '#c82829' },
+  { tag: t.bool, color: '#c82829' },
+  { tag: t.constant(t.variableName), color: '#f5871f' },
+  { tag: t.className, color: '#c99e00' },
+]);
+
+// Get the appropriate highlighting based on current theme
+const getMarkdownHighlighting = () => {
+  return themeService.isDark ? markdownHighlightingDark : markdownHighlightingLight;
+};
 
 // Decorator for checkbox styling
 const checkboxDecorator = StateField.define<DecorationSet>({
@@ -756,7 +782,7 @@ const getExtensions = (): Extension[] => {
       codeLanguages: languages,
       addKeymap: true,
     }),
-    syntaxHighlighting(markdownHighlighting),
+    syntaxHighlighting(getMarkdownHighlighting()),
     foldGutter(),
     checkboxDecorator, // Apply custom decorations after syntax highlighting
     customTheme, // Apply custom theme last to override any default styles
@@ -905,11 +931,12 @@ defineExpose({
 
 <style scoped>
 .editor {
-  background-color: #263238;
+  background-color: var(--editor-bg);
   height: 100%;
   width: 100%;
   border: none;
   outline: none;
+  transition: background-color 0.2s ease;
 }
 
 .editor :deep(.cm-editor) {

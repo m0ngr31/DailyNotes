@@ -232,31 +232,32 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 
 <style scoped>
 .markdown-preview {
-  background-color: #263238;
+  background-color: var(--editor-bg);
   height: 100%;
   overflow-y: auto;
   padding: 10px 20px;
   font-family: 'Fira Code', monospace;
-  color: #eeffff;
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Frontmatter Card */
 .frontmatter-card {
   width: 100%;
   margin-bottom: 24px;
-  background-color: #1e272e;
-  border: 1px solid #404854;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .frontmatter-header {
-  background-color: #2a3642;
+  background-color: var(--card-bg);
   padding: 10px 16px;
   font-weight: bold;
   font-size: 0.9em;
-  color: #82aaff;
-  border-bottom: 1px solid #404854;
+  color: var(--text-link);
+  border-bottom: 1px solid var(--border-color);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -276,7 +277,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 }
 
 .frontmatter-key {
-  color: #c792ea;
+  color: var(--syntax-keyword);
   font-weight: 600;
   min-width: 100px;
   margin-right: 12px;
@@ -284,7 +285,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 }
 
 .frontmatter-value {
-  color: #c3e88d;
+  color: var(--syntax-string);
   flex: 1;
   word-break: break-word;
 }
@@ -299,8 +300,8 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   font-weight: bold;
   margin-top: 0.67em;
   margin-bottom: 0.67em;
-  color: #aaa;
-  border-bottom: 1px solid #404854;
+  color: var(--syntax-heading);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.3em;
 }
 
@@ -309,8 +310,8 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   font-weight: bold;
   margin-top: 0.83em;
   margin-bottom: 0.83em;
-  color: #aaa;
-  border-bottom: 1px solid #404854;
+  color: var(--syntax-heading);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.3em;
 }
 
@@ -319,7 +320,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   font-weight: bold;
   margin-top: 1em;
   margin-bottom: 1em;
-  color: #aaa;
+  color: var(--syntax-heading);
 }
 
 .preview-content :deep(h4) {
@@ -327,7 +328,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   font-weight: bold;
   margin-top: 1.33em;
   margin-bottom: 1.33em;
-  color: #aaa;
+  color: var(--syntax-heading);
 }
 
 .preview-content :deep(h5) {
@@ -335,7 +336,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   font-weight: bold;
   margin-top: 1.67em;
   margin-bottom: 1.67em;
-  color: #aaa;
+  color: var(--syntax-heading);
 }
 
 .preview-content :deep(h6) {
@@ -343,7 +344,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   font-weight: bold;
   margin-top: 2.33em;
   margin-bottom: 2.33em;
-  color: #aaa;
+  color: var(--syntax-heading);
 }
 
 /* Paragraphs */
@@ -355,12 +356,13 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 
 /* Links */
 .preview-content :deep(a) {
-  color: #82aaff;
+  color: var(--text-link);
   text-decoration: none;
 }
 
 .preview-content :deep(a:hover) {
   text-decoration: underline;
+  color: var(--text-link-hover);
 }
 
 /* Lists */
@@ -402,6 +404,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   margin-right: 0.5em;
   vertical-align: middle;
   cursor: pointer;
+  accent-color: var(--accent-primary);
 }
 
 .preview-content :deep(.task-list-item input[type="checkbox"]:hover) {
@@ -410,8 +413,8 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 
 /* Code blocks */
 .preview-content :deep(pre) {
-  background-color: #1e272e;
-  border: 1px solid #404854;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border-color);
   border-radius: 3px;
   padding: 16px;
   overflow: auto;
@@ -419,26 +422,27 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 }
 
 .preview-content :deep(code) {
-  background-color: #1e272e;
+  background-color: var(--code-bg);
   border-radius: 3px;
   padding: 2px 4px;
   font-family: 'Fira Code', monospace;
-  color: #c3e88d;
+  color: var(--syntax-string);
 }
 
 .preview-content :deep(pre code) {
   background-color: transparent;
   padding: 0;
   border-radius: 0;
+  color: var(--code-text);
 }
 
 /* Blockquotes */
 .preview-content :deep(blockquote) {
-  border-left: 4px solid #82aaff;
+  border-left: 4px solid var(--text-link);
   padding-left: 16px;
   margin-left: 0;
   margin-bottom: 16px;
-  color: #b0bec5;
+  color: var(--text-muted);
 }
 
 /* Tables */
@@ -450,24 +454,24 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 
 .preview-content :deep(table th),
 .preview-content :deep(table td) {
-  border: 1px solid #404854;
+  border: 1px solid var(--border-color);
   padding: 8px 12px;
   text-align: left;
 }
 
 .preview-content :deep(table th) {
-  background-color: #1e272e;
+  background-color: var(--code-bg);
   font-weight: bold;
 }
 
 .preview-content :deep(table tr:nth-child(even)) {
-  background-color: #2a3642;
+  background-color: var(--card-bg);
 }
 
 /* Horizontal rule */
 .preview-content :deep(hr) {
   border: 0;
-  border-top: 2px solid #404854;
+  border-top: 2px solid var(--border-color);
   margin: 24px 0;
 }
 
@@ -481,7 +485,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 /* Strong/Bold */
 .preview-content :deep(strong) {
   font-weight: bold;
-  color: #aaa;
+  color: var(--syntax-heading);
   font-size: 1.1em;
 }
 

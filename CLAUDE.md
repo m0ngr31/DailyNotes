@@ -58,6 +58,7 @@ DailyNotes/
 │   │   │   ├── notes.ts         # Note/day API service methods
 │   │   │   ├── user.ts          # User auth service
 │   │   │   ├── sidebar.ts       # Sidebar state management
+│   │   │   ├── theme.ts         # Theme service (light/dark/system)
 │   │   │   ├── localstorage.ts  # Local storage utilities
 │   │   │   ├── consts.ts        # Template constants
 │   │   │   ├── eventHub.ts      # Vue event bus
@@ -345,6 +346,7 @@ docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
 9. **Syntax-Based Search** - Query parser with tag/project filters and text search
 10. **Export** - Download all notes as ZIP with markdown files
 11. **HTML Preview** - Real-time markdown preview with VS Code-style hotkeys
+12. **Theming** - Light/Dark/System theme support via CSS variables
 
 ## Search Feature
 
@@ -513,6 +515,79 @@ The preview renders all GitHub Flavored Markdown (GFM) features:
 - Tables
 - Horizontal rules
 - Line breaks (GFM mode)
+
+## Theme System
+
+The application supports Light, Dark, and System themes with automatic detection of system color scheme preferences.
+
+### Theme Modes
+
+1. **Light Theme** - Clean, bright interface with light backgrounds
+2. **Dark Theme** - Default dark interface optimized for low-light environments
+3. **System Theme** - Automatically follows the operating system's color scheme preference
+
+### Implementation Details
+
+**Theme Service (`client/src/services/theme.ts`):**
+
+- Singleton service managing theme state
+- Persists preference to localStorage (`dn-theme-preference`)
+- Listens for system `prefers-color-scheme` changes
+- Applies theme class (`theme-light` or `theme-dark`) to `<html>` and `<body>`
+- Exports `ThemePreference` type: `'light' | 'dark' | 'system'`
+
+**CSS Variables (`App.vue`):**
+
+All colors are defined as CSS custom properties:
+
+```css
+/* Key CSS Variables */
+--main-bg-color: /* Primary background */
+--text-primary: /* Main text color */
+--text-secondary: /* Secondary text */
+--text-link: /* Link color */
+--border-color: /* Border color */
+--editor-bg: /* Editor background */
+--code-bg: /* Code block background */
+--syntax-keyword: /* Syntax highlighting */
+/* ... and more */
+```
+
+**Theme Switcher (`Settings.vue`):**
+
+- Located in Settings modal under "Appearance" section
+- Three-button selector for Light/Dark/System
+- Visual icons: sun, moon, laptop
+- Instant theme switching with toast notification
+
+### Usage in Components
+
+Components should use CSS variables instead of hardcoded colors:
+
+```css
+/* Good */
+.my-component {
+  background-color: var(--main-bg-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+/* Avoid */
+.my-component {
+  background-color: #263238;
+  color: #EEFFFF;
+}
+```
+
+**CodeMirror Theme:**
+
+The editor uses CSS variables where possible. For HighlightStyle (which doesn't support CSS variables), separate light and dark highlight styles are defined and swapped based on theme.
+
+### Storage
+
+- **Key:** `dn-theme-preference`
+- **Values:** `"light"`, `"dark"`, `"system"`
+- **Default:** `"system"` (falls back to dark if system preference unavailable)
 
 ## Notes for Contributors
 

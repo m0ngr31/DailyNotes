@@ -400,12 +400,12 @@ const logout = () => {
 }
 
 .save-disabled {
-  color: #888;
+  color: var(--text-disabled);
   cursor: unset;
 }
 
 .preview-active {
-  color: #82aaff;
+  color: var(--text-link);
 }
 
 .dropdown-text {

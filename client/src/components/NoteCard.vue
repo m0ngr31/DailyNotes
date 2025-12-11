@@ -85,20 +85,24 @@ function escapeRegex(text: string): string {
 <style scoped>
 .note-card {
   min-height: 100px;
-  background-color: var(--main-bg-darker);
-  color: #ddd;
+  background-color: var(--card-bg);
+  color: var(--text-secondary);
   padding: 1em;
   border-radius: 10px;
   cursor: pointer;
   margin-bottom: 1em;
+  border: 1px solid var(--border-color);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .note-card:hover {
   transform: translateY(0.05em);
+  border-color: var(--border-color-light);
 }
 
 .note-card > h1 {
   text-align: center;
+  color: var(--text-primary);
 }
 
 .tag-margin {
@@ -108,17 +112,17 @@ function escapeRegex(text: string): string {
 .search-snippet {
   margin-top: 0.75em;
   padding: 0.5em 0.75em;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--code-bg);
   border-radius: 4px;
   font-size: 0.9em;
   line-height: 1.4;
-  color: #bbb;
+  color: var(--text-muted);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .search-snippet :deep(mark) {
-  background-color: #f1c40f;
+  background-color: var(--accent-warning);
   color: #333;
   padding: 0 2px;
   border-radius: 2px;
