@@ -14,4 +14,4 @@ pre-commit==4.5.0
 # Database drivers (optional - install based on your database choice)
 psycopg2-binary==2.9.10  # PostgreSQL driver
 pymysql==1.1.1           # MySQL driver (pure Python)
-cryptography==44.0.0     # Required for MySQL 8 caching_sha2_password auth
+cryptography>=44.0.1    # Required for MySQL 8 caching_sha2_password auth (>=44.0.1 fixes OpenSSL CVE)

@@ -49,7 +49,7 @@ RUN apk add --no-cache \
         python-dateutil==2.9.0.post0 \
         psycopg2-binary==2.9.10 \
         pymysql==1.1.1 \
-        cryptography==44.0.0 \
+        cryptography>=44.0.1 \
     && apk del .build-deps
 
 # Copy application files
