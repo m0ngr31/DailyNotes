@@ -13,211 +13,221 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import { marked } from 'marked';
-import { Component, Prop, Vue, Watch } from 'vue-property-decorator';
+import { onMounted, ref, watch } from 'vue';
 
 interface CheckboxInfo {
   lineIndex: number;
   checkboxIndex: number;
 }
 
-@Component
-export default class MarkdownPreview extends Vue {
-  @Prop({ type: String, default: '' })
-  public value!: string;
+interface Props {
+  value: string;
+}
 
-  public renderedMarkdown: string = '';
-  public frontmatter: Record<string, string> | null = null;
-  private contentLines: string[] = [];
-  private frontmatterLineCount: number = 0;
+const props = withDefaults(defineProps<Props>(), {
+  value: '',
+});
 
-  created() {
-    // Configure marked for GitHub Flavored Markdown
-    marked.setOptions({
-      gfm: true,
-      breaks: true,
-    });
+const emit = defineEmits<{
+  'checkbox-toggled': [value: string];
+}>();
 
-    this.updatePreview();
+const renderedMarkdown = ref('');
+const frontmatter = ref<Record<string, string> | null>(null);
+const contentLines = ref<string[]>([]);
+const frontmatterLineCount = ref(0);
+
+onMounted(() => {
+  // Configure marked for GitHub Flavored Markdown
+  marked.setOptions({
+    gfm: true,
+    breaks: true,
+  });
+
+  updatePreview();
+});
+
+watch(
+  () => props.value,
+  () => {
+    updatePreview();
+  }
+);
+
+const parseFrontmatter = (
+  text: string
+): { frontmatter: Record<string, string> | null; content: string } => {
+  // Check if text starts with frontmatter delimiters
+  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
+  const match = text.match(frontmatterRegex);
+
+  if (!match) {
+    frontmatterLineCount.value = 0;
+    return { frontmatter: null, content: text };
   }
 
-  @Watch('value')
-  onValueChanged() {
-    this.updatePreview();
-  }
+  const frontmatterText = match[1];
+  const content = match[2];
+  const fm: Record<string, string> = {};
 
-  parseFrontmatter(text: string): { frontmatter: Record<string, string> | null; content: string } {
-    // Check if text starts with frontmatter delimiters
-    const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
-    const match = text.match(frontmatterRegex);
+  // Calculate how many lines the frontmatter takes up (including delimiters)
+  frontmatterLineCount.value = frontmatterText.split('\n').length + 2; // +2 for the --- delimiters
 
-    if (!match) {
-      this.frontmatterLineCount = 0;
-      return { frontmatter: null, content: text };
-    }
-
-    const frontmatterText = match[1];
-    const content = match[2];
-    const frontmatter: Record<string, string> = {};
-
-    // Calculate how many lines the frontmatter takes up (including delimiters)
-    this.frontmatterLineCount = frontmatterText.split('\n').length + 2; // +2 for the --- delimiters
-
-    // Parse YAML-like frontmatter (simple key: value pairs)
-    const lines = frontmatterText.split('\n');
-    lines.forEach((line) => {
-      const colonIndex = line.indexOf(':');
-      if (colonIndex > 0) {
-        const key = line.substring(0, colonIndex).trim();
-        const value = line.substring(colonIndex + 1).trim();
-        if (key && value) {
-          frontmatter[key] = value;
-        }
+  // Parse YAML-like frontmatter (simple key: value pairs)
+  const lines = frontmatterText.split('\n');
+  lines.forEach((line) => {
+    const colonIndex = line.indexOf(':');
+    if (colonIndex > 0) {
+      const key = line.substring(0, colonIndex).trim();
+      const value = line.substring(colonIndex + 1).trim();
+      if (key && value) {
+        fm[key] = value;
       }
-    });
-
-    return { frontmatter, content };
-  }
-
-  updatePreview() {
-    try {
-      // Parse frontmatter and content
-      const { frontmatter, content } = this.parseFrontmatter(this.value || '');
-      this.frontmatter = frontmatter;
-      this.contentLines = content.split('\n');
-
-      // Parse markdown to HTML
-      let html = marked.parse(content) as string;
-
-      // Replace checkboxes with clickable versions and add data attributes
-      // Marked renders checkboxes in various formats, so we need to handle all cases
-      let currentCheckboxId = 0;
-
-      // Match: <input disabled="" type="checkbox"> or <input type="checkbox" disabled> or similar
-      // We'll replace them all with enabled checkboxes with data attributes
-      html = html.replace(/<input[^>]*type="checkbox"[^>]*>/gi, (match) => {
-        const isChecked = /checked/i.test(match);
-        const dataAttr = `data-checkbox-id="${currentCheckboxId}"`;
-        currentCheckboxId++;
-        // Return checkbox without disabled attribute
-        return `<input type="checkbox" ${isChecked ? 'checked' : ''} ${dataAttr}>`;
-      });
-
-      // Ensure task list items have proper class
-      html = html.replace(
-        /<li>\s*<input type="checkbox"/gi,
-        '<li class="task-list-item"><input type="checkbox"'
-      );
-
-      // Make all links open in a new tab/window
-      html = html.replace(/<a href=/gi, '<a target="_blank" rel="noopener noreferrer" href=');
-
-      this.renderedMarkdown = html;
-    } catch (e) {
-      console.error('Error rendering markdown:', e);
-      this.renderedMarkdown = '<p>Error rendering markdown preview</p>';
     }
-  }
+  });
 
-  handleCheckboxClick(event: Event) {
-    const target = event.target as HTMLElement;
+  return { frontmatter: fm, content };
+};
 
-    // Check if the clicked element is a checkbox
-    if (target.tagName !== 'INPUT' || (target as HTMLInputElement).type !== 'checkbox') {
-      return;
-    }
+const updatePreview = () => {
+  try {
+    // Parse frontmatter and content
+    const parsed = parseFrontmatter(props.value || '');
+    frontmatter.value = parsed.frontmatter;
+    contentLines.value = parsed.content.split('\n');
 
-    event.preventDefault();
-    event.stopPropagation();
+    // Parse markdown to HTML
+    let html = marked.parse(parsed.content) as string;
 
-    const checkbox = target as HTMLInputElement;
-    const checkboxId = parseInt(checkbox.getAttribute('data-checkbox-id') || '-1', 10);
-
-    if (checkboxId === -1) {
-      return;
-    }
-
-    // Find which line and position this checkbox is on
-    const checkboxInfo = this.findCheckboxPosition(checkboxId);
-
-    if (checkboxInfo === null) {
-      return;
-    }
-
-    // Toggle the checkbox in the markdown
-    const updatedMarkdown = this.toggleCheckboxInMarkdown(checkboxInfo);
-
-    // Emit the updated markdown to parent
-    this.$emit('checkbox-toggled', updatedMarkdown);
-  }
-
-  findCheckboxPosition(checkboxId: number): CheckboxInfo | null {
+    // Replace checkboxes with clickable versions and add data attributes
+    // Marked renders checkboxes in various formats, so we need to handle all cases
     let currentCheckboxId = 0;
 
-    for (let lineIndex = 0; lineIndex < this.contentLines.length; lineIndex++) {
-      const line = this.contentLines[lineIndex];
-      const checkboxRegex = /- \[([ xX])\]/g;
-      let match: RegExpExecArray | null;
-      let checkboxIndexOnLine = 0;
+    // Match: <input disabled="" type="checkbox"> or <input type="checkbox" disabled> or similar
+    // We'll replace them all with enabled checkboxes with data attributes
+    html = html.replace(/<input[^>]*type="checkbox"[^>]*>/gi, (match) => {
+      const isChecked = /checked/i.test(match);
+      const dataAttr = `data-checkbox-id="${currentCheckboxId}"`;
+      currentCheckboxId++;
+      // Return checkbox without disabled attribute
+      return `<input type="checkbox" ${isChecked ? 'checked' : ''} ${dataAttr}>`;
+    });
 
-      match = checkboxRegex.exec(line);
-      while (match !== null) {
-        if (currentCheckboxId === checkboxId) {
-          return {
-            lineIndex,
-            checkboxIndex: checkboxIndexOnLine,
-          };
-        }
-        currentCheckboxId++;
-        checkboxIndexOnLine++;
-        match = checkboxRegex.exec(line);
-      }
-    }
+    // Ensure task list items have proper class
+    html = html.replace(
+      /<li>\s*<input type="checkbox"/gi,
+      '<li class="task-list-item"><input type="checkbox"'
+    );
 
-    return null;
+    // Make all links open in a new tab/window
+    html = html.replace(/<a href=/gi, '<a target="_blank" rel="noopener noreferrer" href=');
+
+    renderedMarkdown.value = html;
+  } catch (e) {
+    console.error('Error rendering markdown:', e);
+    renderedMarkdown.value = '<p>Error rendering markdown preview</p>';
+  }
+};
+
+const handleCheckboxClick = (event: Event) => {
+  const target = event.target as HTMLElement;
+
+  // Check if the clicked element is a checkbox
+  if (target.tagName !== 'INPUT' || (target as HTMLInputElement).type !== 'checkbox') {
+    return;
   }
 
-  toggleCheckboxInMarkdown(checkboxInfo: CheckboxInfo): string {
-    const { lineIndex, checkboxIndex } = checkboxInfo;
-    const line = this.contentLines[lineIndex];
+  event.preventDefault();
+  event.stopPropagation();
 
-    // Find the specific checkbox on this line
+  const checkbox = target as HTMLInputElement;
+  const checkboxId = parseInt(checkbox.getAttribute('data-checkbox-id') || '-1', 10);
+
+  if (checkboxId === -1) {
+    return;
+  }
+
+  // Find which line and position this checkbox is on
+  const checkboxInfo = findCheckboxPosition(checkboxId);
+
+  if (checkboxInfo === null) {
+    return;
+  }
+
+  // Toggle the checkbox in the markdown
+  const updatedMarkdown = toggleCheckboxInMarkdown(checkboxInfo);
+
+  // Emit the updated markdown to parent
+  emit('checkbox-toggled', updatedMarkdown);
+};
+
+const findCheckboxPosition = (checkboxId: number): CheckboxInfo | null => {
+  let currentCheckboxId = 0;
+
+  for (let lineIndex = 0; lineIndex < contentLines.value.length; lineIndex++) {
+    const line = contentLines.value[lineIndex];
     const checkboxRegex = /- \[([ xX])\]/g;
     let match: RegExpExecArray | null;
-    let currentIndex = 0;
-    let updatedLine = line;
+    let checkboxIndexOnLine = 0;
 
     match = checkboxRegex.exec(line);
     while (match !== null) {
-      if (currentIndex === checkboxIndex) {
-        // Toggle the checkbox
-        const currentState = match[1].toLowerCase();
-        const newState = currentState === 'x' ? ' ' : 'x';
-        const before = line.substring(0, match.index);
-        const after = line.substring(match.index + match[0].length);
-        updatedLine = `${before}- [${newState}]${after}`;
-        break;
+      if (currentCheckboxId === checkboxId) {
+        return {
+          lineIndex,
+          checkboxIndex: checkboxIndexOnLine,
+        };
       }
-      currentIndex++;
+      currentCheckboxId++;
+      checkboxIndexOnLine++;
       match = checkboxRegex.exec(line);
     }
-
-    // Reconstruct the full markdown
-    const updatedContentLines = [...this.contentLines];
-    updatedContentLines[lineIndex] = updatedLine;
-
-    // Add frontmatter back if it exists
-    if (this.frontmatter && Object.keys(this.frontmatter).length > 0) {
-      const frontmatterText = Object.entries(this.frontmatter)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join('\n');
-      return `---\n${frontmatterText}\n---\n${updatedContentLines.join('\n')}`;
-    }
-
-    return updatedContentLines.join('\n');
   }
-}
+
+  return null;
+};
+
+const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
+  const { lineIndex, checkboxIndex } = checkboxInfo;
+  const line = contentLines.value[lineIndex];
+
+  // Find the specific checkbox on this line
+  const checkboxRegex = /- \[([ xX])\]/g;
+  let match: RegExpExecArray | null;
+  let currentIndex = 0;
+  let updatedLine = line;
+
+  match = checkboxRegex.exec(line);
+  while (match !== null) {
+    if (currentIndex === checkboxIndex) {
+      // Toggle the checkbox
+      const currentState = match[1].toLowerCase();
+      const newState = currentState === 'x' ? ' ' : 'x';
+      const before = line.substring(0, match.index);
+      const after = line.substring(match.index + match[0].length);
+      updatedLine = `${before}- [${newState}]${after}`;
+      break;
+    }
+    currentIndex++;
+    match = checkboxRegex.exec(line);
+  }
+
+  // Reconstruct the full markdown
+  const updatedContentLines = [...contentLines.value];
+  updatedContentLines[lineIndex] = updatedLine;
+
+  // Add frontmatter back if it exists
+  if (frontmatter.value && Object.keys(frontmatter.value).length > 0) {
+    const frontmatterText = Object.entries(frontmatter.value)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('\n');
+    return `---\n${frontmatterText}\n---\n${updatedContentLines.join('\n')}`;
+  }
+
+  return updatedContentLines.join('\n');
+};
 </script>
 
 <style scoped>
@@ -284,7 +294,7 @@ export default class MarkdownPreview extends Vue {
 }
 
 /* Headings */
-.preview-content >>> h1 {
+.preview-content :deep(h1) {
   font-size: 2em;
   font-weight: bold;
   margin-top: 0.67em;
@@ -294,7 +304,7 @@ export default class MarkdownPreview extends Vue {
   padding-bottom: 0.3em;
 }
 
-.preview-content >>> h2 {
+.preview-content :deep(h2) {
   font-size: 1.5em;
   font-weight: bold;
   margin-top: 0.83em;
@@ -304,7 +314,7 @@ export default class MarkdownPreview extends Vue {
   padding-bottom: 0.3em;
 }
 
-.preview-content >>> h3 {
+.preview-content :deep(h3) {
   font-size: 1.3em;
   font-weight: bold;
   margin-top: 1em;
@@ -312,7 +322,7 @@ export default class MarkdownPreview extends Vue {
   color: #aaa;
 }
 
-.preview-content >>> h4 {
+.preview-content :deep(h4) {
   font-size: 1.1em;
   font-weight: bold;
   margin-top: 1.33em;
@@ -320,7 +330,7 @@ export default class MarkdownPreview extends Vue {
   color: #aaa;
 }
 
-.preview-content >>> h5 {
+.preview-content :deep(h5) {
   font-size: 1em;
   font-weight: bold;
   margin-top: 1.67em;
@@ -328,7 +338,7 @@ export default class MarkdownPreview extends Vue {
   color: #aaa;
 }
 
-.preview-content >>> h6 {
+.preview-content :deep(h6) {
   font-size: 0.9em;
   font-weight: bold;
   margin-top: 2.33em;
@@ -337,69 +347,69 @@ export default class MarkdownPreview extends Vue {
 }
 
 /* Paragraphs */
-.preview-content >>> p {
+.preview-content :deep(p) {
   margin-top: 0;
   margin-bottom: 16px;
   line-height: 1.6;
 }
 
 /* Links */
-.preview-content >>> a {
+.preview-content :deep(a) {
   color: #82aaff;
   text-decoration: none;
 }
 
-.preview-content >>> a:hover {
+.preview-content :deep(a:hover) {
   text-decoration: underline;
 }
 
 /* Lists */
-.preview-content >>> ul {
+.preview-content :deep(ul) {
   padding-left: 2em;
   margin-top: 0;
   margin-bottom: 16px;
   list-style-type: disc;
 }
 
-.preview-content >>> ol {
+.preview-content :deep(ol) {
   padding-left: 2em;
   margin-top: 0;
   margin-bottom: 16px;
   list-style-type: decimal;
 }
 
-.preview-content >>> ul ul {
+.preview-content :deep(ul ul) {
   list-style-type: circle;
   margin-bottom: 0;
 }
 
-.preview-content >>> ul ul ul {
+.preview-content :deep(ul ul ul) {
   list-style-type: square;
 }
 
-.preview-content >>> li {
+.preview-content :deep(li) {
   margin-bottom: 0.25em;
   display: list-item;
 }
 
 /* Task lists */
-.preview-content >>> .task-list-item {
+.preview-content :deep(.task-list-item) {
   list-style-type: none;
   margin-left: -1.5em;
 }
 
-.preview-content >>> .task-list-item input[type="checkbox"] {
+.preview-content :deep(.task-list-item input[type="checkbox"]) {
   margin-right: 0.5em;
   vertical-align: middle;
   cursor: pointer;
 }
 
-.preview-content >>> .task-list-item input[type="checkbox"]:hover {
+.preview-content :deep(.task-list-item input[type="checkbox"]:hover) {
   transform: scale(1.1);
 }
 
 /* Code blocks */
-.preview-content >>> pre {
+.preview-content :deep(pre) {
   background-color: #1e272e;
   border: 1px solid #404854;
   border-radius: 3px;
@@ -408,7 +418,7 @@ export default class MarkdownPreview extends Vue {
   margin-bottom: 16px;
 }
 
-.preview-content >>> code {
+.preview-content :deep(code) {
   background-color: #1e272e;
   border-radius: 3px;
   padding: 2px 4px;
@@ -416,14 +426,14 @@ export default class MarkdownPreview extends Vue {
   color: #c3e88d;
 }
 
-.preview-content >>> pre code {
+.preview-content :deep(pre code) {
   background-color: transparent;
   padding: 0;
   border-radius: 0;
 }
 
 /* Blockquotes */
-.preview-content >>> blockquote {
+.preview-content :deep(blockquote) {
   border-left: 4px solid #82aaff;
   padding-left: 16px;
   margin-left: 0;
@@ -432,57 +442,92 @@ export default class MarkdownPreview extends Vue {
 }
 
 /* Tables */
-.preview-content >>> table {
+.preview-content :deep(table) {
   border-collapse: collapse;
   width: 100%;
   margin-bottom: 16px;
 }
 
-.preview-content >>> table th,
-.preview-content >>> table td {
+.preview-content :deep(table th),
+.preview-content :deep(table td) {
   border: 1px solid #404854;
   padding: 8px 12px;
   text-align: left;
 }
 
-.preview-content >>> table th {
+.preview-content :deep(table th) {
   background-color: #1e272e;
   font-weight: bold;
 }
 
-.preview-content >>> table tr:nth-child(even) {
+.preview-content :deep(table tr:nth-child(even)) {
   background-color: #2a3642;
 }
 
 /* Horizontal rule */
-.preview-content >>> hr {
+.preview-content :deep(hr) {
   border: 0;
   border-top: 2px solid #404854;
   margin: 24px 0;
 }
 
 /* Images */
-.preview-content >>> img {
+.preview-content :deep(img) {
   max-width: 100%;
   height: auto;
   margin-bottom: 16px;
 }
 
 /* Strong/Bold */
-.preview-content >>> strong {
+.preview-content :deep(strong) {
   font-weight: bold;
   color: #aaa;
   font-size: 1.1em;
 }
 
 /* Emphasis/Italic */
-.preview-content >>> em {
+.preview-content :deep(em) {
   font-style: italic;
 }
 
 /* Strikethrough */
-.preview-content >>> del {
+.preview-content :deep(del) {
   text-decoration: line-through;
   opacity: 0.7;
+}
+
+/* Mobile styles */
+@media screen and (max-width: 767px) {
+  .markdown-preview {
+    padding: 8px 12px;
+  }
+
+  .frontmatter-card {
+    margin-bottom: 16px;
+  }
+
+  .frontmatter-header {
+    padding: 8px 12px;
+    font-size: 0.85em;
+  }
+
+  .frontmatter-content {
+    padding: 10px 12px;
+  }
+
+  .frontmatter-key {
+    min-width: 80px;
+    margin-right: 8px;
+  }
+
+  .preview-content :deep(pre) {
+    padding: 12px;
+    font-size: 0.9em;
+  }
+
+  .preview-content :deep(table th),
+  .preview-content :deep(table td) {
+    padding: 6px 8px;
+  }
 }
 </style>

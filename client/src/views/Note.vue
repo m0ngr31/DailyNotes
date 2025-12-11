@@ -24,309 +24,351 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { useHead } from '@unhead/vue';
 import _ from 'lodash';
-import Vue from 'vue';
-import Component from 'vue-class-component';
-import type { Route } from 'vue-router';
+import {
+  computed,
+  getCurrentInstance,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+} from 'vue';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import Editor from '@/components/Editor.vue';
 import Header from '@/components/Header.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import type { IHeaderOptions, INote } from '../interfaces';
+import eventHub from '../services/eventHub';
+import { getFoldState, saveFoldState } from '../services/localstorage';
 import { NoteService } from '../services/notes';
 import SidebarInst from '../services/sidebar';
 
-Component.registerHooks(['metaInfo', 'beforeRouteUpdate', 'beforeRouteLeave']);
+const router = useRouter();
+const route = useRoute();
+const instance = getCurrentInstance();
+const buefy = (instance?.appContext.config.globalProperties as any).$buefy;
+const root = instance?.appContext.config.globalProperties as any;
 
-@Component({
-  components: {
-    Editor,
-    Header,
-    MarkdownPreview,
-  },
-})
-export default class Note extends Vue {
-  public sidebar = SidebarInst;
-  public text: string = '';
-  public modifiedText: string = '';
-  public unsavedChanges: boolean = false;
-  public title: string = 'Note';
-  public note!: INote;
-  public isLoading: boolean = false;
-  public isSaving: boolean = false;
-  public previewMode: 'none' | 'side' | 'replace' = 'none';
-  public headerOptions: IHeaderOptions = {
-    showDelete: true,
-    showPreview: true,
-    previewMode: 'none',
-    title: '',
-    saveDisabled: true,
-    saveFn: () => this.saveNote(),
-    deleteFn: () => this.deleteNote(),
-    togglePreviewFn: (mode) => this.togglePreview(mode),
-  };
+const sidebar = SidebarInst;
+const editor = ref<InstanceType<typeof Editor>>();
+const text = ref('');
+const modifiedText = ref('');
+const unsavedChanges = ref(false);
+const title = ref('Note');
+const note = ref<INote>({
+  data: '',
+  uuid: null,
+});
+const isLoading = ref(false);
+const isSaving = ref(false);
+const previewMode = ref<'none' | 'side' | 'replace'>('none');
 
-  public metaInfo(): { title: string } {
-    return {
-      title: this.title,
-    };
+useHead({
+  title: computed(() => title.value),
+});
+
+const headerOptions = reactive<IHeaderOptions>({
+  showDelete: true,
+  showPreview: true,
+  previewMode: 'none',
+  title: '',
+  saveDisabled: true,
+  saveFn: () => saveNote(),
+  deleteFn: () => deleteNote(),
+  togglePreviewFn: (mode) => togglePreview(mode),
+});
+
+let cmdKPressed = false;
+let cmdKTimeout: ReturnType<typeof setTimeout> | null = null;
+let currentNoteId: string | null = null;
+
+const autoSaveThrottle = _.debounce(() => saveNote(true), 3000, {
+  leading: false,
+  trailing: true,
+});
+
+const saveCurrentFoldState = () => {
+  if (currentNoteId && editor.value?.getFoldState) {
+    const folds = editor.value.getFoldState();
+    saveFoldState(currentNoteId, folds);
   }
+};
 
-  created() {
-    window.addEventListener('beforeunload', this.unsavedAlert);
-    window.addEventListener('keydown', this.handleKeydown);
-  }
-
-  async mounted() {
-    this.isLoading = true;
-
-    try {
-      this.note = await NoteService.getNote(this.$route.params.uuid);
-      this.text = this.note.data;
-
-      this.headerOptions.title = this.note.title || '';
-      this.title = this.note.title || '';
-    } catch (_e) {
-      this.$router.push({ name: 'Home Redirect' });
+const restoreFoldState = () => {
+  if (currentNoteId && editor.value?.setFoldState) {
+    const folds = getFoldState(currentNoteId);
+    if (folds.length) {
+      editor.value.setFoldState(folds);
     }
+  }
+};
 
-    this.isLoading = false;
+const saveNote = async (isAutoSave: boolean = false) => {
+  // Cancel any pending autosave when manually saving
+  if (!isAutoSave) {
+    autoSaveThrottle.cancel();
+  }
 
-    this.$root.$on('taskUpdated', (data: { note_id: string; task: string; completed: boolean }) => {
-      const { note_id, task, completed } = data;
+  // Prevent concurrent saves
+  if (isSaving.value) {
+    return;
+  }
 
-      if (note_id !== this.note.uuid) {
+  // Don't save if there are no changes
+  if (modifiedText.value === text.value) {
+    return;
+  }
+
+  isSaving.value = true;
+  const updatedNote = Object.assign(note.value, { data: modifiedText.value });
+
+  try {
+    note.value = await NoteService.saveNote(updatedNote);
+    text.value = modifiedText.value;
+    // Don't reset modifiedText - it's already correct and resetting causes editor glitches
+    headerOptions.title = note.value.title || '';
+
+    // Update the UI state directly
+    unsavedChanges.value = false;
+    title.value = note.value.title || '';
+    headerOptions.saveDisabled = true;
+
+    sidebar.getSidebarInfo();
+
+    // Show subtle feedback for autosave
+    if (isAutoSave) {
+      buefy?.toast.open({
+        duration: 1500,
+        message: 'Autosaved',
+        position: 'is-bottom-right',
+        type: 'is-success',
+      });
+    }
+  } catch (_e) {
+    buefy?.toast.open({
+      duration: 5000,
+      message: 'There was an error saving. Please try again.',
+      position: 'is-top',
+      type: 'is-danger',
+    });
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+const deleteNote = async () => {
+  buefy?.dialog.confirm({
+    title: 'Deleting Note',
+    message: 'Are you sure you want to <b>delete</b> this note? This action cannot be undone!',
+    confirmText: 'Delete',
+    focusOn: 'cancel',
+    type: 'is-danger',
+    hasIcon: true,
+    onConfirm: async () => {
+      if (!note.value.uuid) {
         return;
       }
-
-      let original = task;
-
-      if (!completed) {
-        original = original.replace('- [ ]', '- [x]');
-      } else {
-        original = original.replace('- [x]', '- [ ]');
-      }
-
-      this.text = this.text.replace(original, task);
-      this.modifiedText = this.modifiedText.replace(original, task);
-    });
-  }
-
-  beforeRouteUpdate(_to: Route, _from: Route, next: () => void) {
-    if (this.unsavedChanges) {
-      this.unsavedDialog(next);
-    } else {
-      next();
-    }
-  }
-
-  beforeRouteLeave(_to: Route, _from: Route, next: () => void) {
-    if (this.unsavedChanges) {
-      this.unsavedDialog(next);
-    } else {
-      next();
-    }
-  }
-
-  beforeDestroy() {
-    window.removeEventListener('beforeunload', this.unsavedAlert);
-    window.removeEventListener('keydown', this.handleKeydown);
-    // Cancel any pending autosaves when component is destroyed
-    this.autoSaveThrottle.cancel();
-  }
-
-  public async saveNote(isAutoSave: boolean = false) {
-    // Cancel any pending autosave when manually saving
-    if (!isAutoSave) {
-      this.autoSaveThrottle.cancel();
-    }
-
-    // Prevent concurrent saves
-    if (this.isSaving) {
-      return;
-    }
-
-    // Don't save if there are no changes
-    if (this.modifiedText === this.text) {
-      return;
-    }
-
-    this.isSaving = true;
-    const updatedNote = Object.assign(this.note, { data: this.modifiedText });
-
-    try {
-      this.note = await NoteService.saveNote(updatedNote);
-      this.text = this.modifiedText;
-      this.modifiedText = ''; // Reset so editor shows the saved text
-      this.headerOptions.title = this.note.title || '';
-
-      // Update the UI state directly
-      this.unsavedChanges = false;
-      this.title = this.note.title || '';
-      this.headerOptions.saveDisabled = true;
-
-      this.sidebar.getSidebarInfo();
-
-      // Show subtle feedback for autosave
-      if (isAutoSave) {
-        this.$buefy.toast.open({
-          duration: 1500,
-          message: 'Autosaved',
-          position: 'is-bottom-right',
-          type: 'is-success',
+      try {
+        await NoteService.deleteNote(note.value.uuid);
+        sidebar.getSidebarInfo();
+        router.push({ name: 'Home Redirect' });
+      } catch (_e) {
+        buefy?.toast.open({
+          duration: 5000,
+          message: 'There was an error deleting note. Please try again.',
+          position: 'is-top',
+          type: 'is-danger',
         });
       }
-    } catch (_e) {
-      this.$buefy.toast.open({
-        duration: 5000,
-        message: 'There was an error saving. Please try again.',
-        position: 'is-top',
-        type: 'is-danger',
+      buefy?.toast.open({
+        duration: 2000,
+        message: 'Note deleted!',
       });
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  public async deleteNote() {
-    this.$buefy.dialog.confirm({
-      title: 'Deleting Note',
-      message: 'Are you sure you want to <b>delete</b> this note? This action cannot be undone!',
-      confirmText: 'Delete',
-      focusOn: 'cancel',
-      type: 'is-danger',
-      hasIcon: true,
-      onConfirm: async () => {
-        if (!this.note.uuid) {
-          return;
-        }
-        try {
-          await NoteService.deleteNote(this.note.uuid);
-          this.sidebar.getSidebarInfo();
-          this.$router.push({ name: 'Home Redirect' });
-        } catch (_e) {
-          this.$buefy.toast.open({
-            duration: 5000,
-            message: 'There was an error deleting note. Please try again.',
-            position: 'is-top',
-            type: 'is-danger',
-          });
-        }
-        this.$buefy.toast.open({
-          duration: 2000,
-          message: 'Note deleted!',
-        });
-      },
-    });
-  }
-
-  public valChanged(data: string) {
-    this.modifiedText = data;
-
-    if (this.modifiedText !== this.text) {
-      this.unsavedChanges = true;
-      this.title = `* ${this.note.title}`;
-      this.headerOptions.saveDisabled = false;
-
-      if (this.sidebar.autoSave) {
-        this.autoSaveThrottle();
-      }
-    } else {
-      this.title = this.note.title || '';
-      this.headerOptions.saveDisabled = true;
-    }
-  }
-
-  public autoSaveThrottle = _.debounce(() => this.saveNote(true), 3000, {
-    leading: false,
-    trailing: true,
+    },
   });
+};
 
-  private cmdKPressed: boolean = false;
-  private cmdKTimeout: ReturnType<typeof setTimeout> | null = null;
+const valChanged = (data: string) => {
+  modifiedText.value = data;
 
-  public handleKeydown(e: KeyboardEvent) {
-    // Handle Cmd+K then V for side-by-side preview
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault();
-      this.cmdKPressed = true;
+  if (modifiedText.value !== text.value) {
+    unsavedChanges.value = true;
+    title.value = `* ${note.value.title}`;
+    headerOptions.saveDisabled = false;
 
-      // Reset after 1 second
-      if (this.cmdKTimeout) {
-        clearTimeout(this.cmdKTimeout);
+    if (sidebar.autoSave) {
+      autoSaveThrottle();
+    }
+  } else {
+    title.value = note.value.title || '';
+    headerOptions.saveDisabled = true;
+  }
+};
+
+const handleKeydown = (e: KeyboardEvent) => {
+  // Handle Cmd+K then V for side-by-side preview
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    cmdKPressed = true;
+
+    // Reset after 1 second
+    if (cmdKTimeout) {
+      clearTimeout(cmdKTimeout);
+    }
+    cmdKTimeout = setTimeout(() => {
+      cmdKPressed = false;
+    }, 1000);
+    return;
+  }
+
+  // V after Cmd+K
+  if (cmdKPressed && e.key === 'v') {
+    e.preventDefault();
+    cmdKPressed = false;
+    if (cmdKTimeout) {
+      clearTimeout(cmdKTimeout);
+    }
+    togglePreview('side');
+    return;
+  }
+
+  // Handle Shift+Cmd+V for preview only
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'v') {
+    e.preventDefault();
+    togglePreview('replace');
+    return;
+  }
+};
+
+const togglePreview = (mode: 'side' | 'replace' | 'none') => {
+  const wasHidden = previewMode.value === 'replace';
+
+  if (mode === 'none') {
+    previewMode.value = 'none';
+  } else if (previewMode.value === mode) {
+    previewMode.value = 'none';
+  } else {
+    previewMode.value = mode;
+  }
+  headerOptions.previewMode = previewMode.value;
+
+  // Refresh the editor when it becomes visible
+  if (wasHidden && previewMode.value !== 'replace') {
+    nextTick(() => {
+      if (editor.value?.refresh) {
+        editor.value.refresh();
       }
-      this.cmdKTimeout = setTimeout(() => {
-        this.cmdKPressed = false;
-      }, 1000);
-      return;
-    }
-
-    // V after Cmd+K
-    if (this.cmdKPressed && e.key === 'v') {
-      e.preventDefault();
-      this.cmdKPressed = false;
-      if (this.cmdKTimeout) {
-        clearTimeout(this.cmdKTimeout);
-      }
-      this.togglePreview('side');
-      return;
-    }
-
-    // Handle Shift+Cmd+V for preview only
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'v') {
-      e.preventDefault();
-      this.togglePreview('replace');
-      return;
-    }
-  }
-
-  public togglePreview(mode: 'side' | 'replace' | 'none') {
-    const wasHidden = this.previewMode === 'replace';
-
-    if (mode === 'none') {
-      this.previewMode = 'none';
-    } else if (this.previewMode === mode) {
-      this.previewMode = 'none';
-    } else {
-      this.previewMode = mode;
-    }
-    this.headerOptions.previewMode = this.previewMode;
-
-    // Refresh the editor when it becomes visible
-    if (wasHidden && this.previewMode !== 'replace') {
-      this.$nextTick(() => {
-        const editor = this.$refs.editor as { refresh?: () => void };
-        if (editor?.refresh) {
-          editor.refresh();
-        }
-      });
-    }
-  }
-
-  public handleCheckboxToggled(updatedMarkdown: string) {
-    // Update the text with the toggled checkbox
-    this.valChanged(updatedMarkdown);
-  }
-
-  unsavedAlert(e: Event) {
-    if (this.unsavedChanges) {
-      // Attempt to modify event will trigger Chrome/Firefox alert msg
-      e.returnValue = true;
-    }
-  }
-
-  async unsavedDialog(next: (arg?: boolean) => void) {
-    this.$buefy.dialog.confirm({
-      title: 'Unsaved Content',
-      message: 'Are you sure you want to discard the unsaved content?',
-      confirmText: 'Discard',
-      type: 'is-warning',
-      hasIcon: true,
-      onConfirm: () => next(),
-      onCancel: () => next(false),
     });
   }
-}
+};
+
+const handleCheckboxToggled = (updatedMarkdown: string) => {
+  // Update the text with the toggled checkbox
+  valChanged(updatedMarkdown);
+};
+
+const handleTaskUpdate = (data: { note_id: string; task: string; completed: boolean }) => {
+  const { note_id, task, completed } = data;
+
+  if (note_id !== note.value.uuid) {
+    return;
+  }
+
+  let original = task;
+
+  if (!completed) {
+    original = original.replace('- [ ]', '- [x]');
+  } else {
+    original = original.replace('- [x]', '- [ ]');
+  }
+
+  text.value = text.value.replace(original, task);
+  modifiedText.value = modifiedText.value.replace(original, task);
+};
+
+const unsavedAlert = (e: Event) => {
+  // Save fold state before page unload
+  saveCurrentFoldState();
+
+  if (unsavedChanges.value) {
+    // Attempt to modify event will trigger Chrome/Firefox alert msg
+    e.returnValue = true;
+  }
+};
+
+const unsavedDialog = async (next: (arg?: boolean) => void) => {
+  buefy?.dialog.confirm({
+    title: 'Unsaved Content',
+    message: 'Are you sure you want to discard the unsaved content?',
+    confirmText: 'Discard',
+    type: 'is-warning',
+    hasIcon: true,
+    onConfirm: () => next(),
+    onCancel: () => next(false),
+  });
+};
+
+onBeforeRouteUpdate((_to, _from, next) => {
+  if (unsavedChanges.value) {
+    unsavedDialog(next);
+  } else {
+    next();
+  }
+});
+
+onBeforeRouteLeave((_to, _from, next) => {
+  // Save fold state before leaving
+  saveCurrentFoldState();
+
+  if (unsavedChanges.value) {
+    unsavedDialog(next);
+  } else {
+    next();
+  }
+});
+
+onMounted(async () => {
+  window.addEventListener('beforeunload', unsavedAlert);
+  window.addEventListener('keydown', handleKeydown);
+
+  isLoading.value = true;
+
+  try {
+    note.value = await NoteService.getNote(route.params.uuid as string);
+    text.value = note.value.data;
+
+    // Set current note ID for fold state
+    currentNoteId = `note-${note.value.uuid}`;
+
+    headerOptions.title = note.value.title || '';
+    title.value = note.value.title || '';
+
+    // Restore fold state after content is loaded
+    nextTick(() => {
+      restoreFoldState();
+    });
+  } catch (_e) {
+    router.push({ name: 'Home Redirect' });
+  }
+
+  isLoading.value = false;
+
+  eventHub.on('taskUpdated', handleTaskUpdate);
+});
+
+onBeforeUnmount(() => {
+  // Save fold state before component is destroyed
+  saveCurrentFoldState();
+
+  window.removeEventListener('beforeunload', unsavedAlert);
+  window.removeEventListener('keydown', handleKeydown);
+  eventHub.off('taskUpdated', handleTaskUpdate);
+  // Cancel any pending autosaves when component is destroyed
+  autoSaveThrottle.cancel();
+});
 </script>
 
 <style scoped>
@@ -338,8 +380,14 @@ export default class Note extends Vue {
 
 .editor-container {
   height: calc(100vh - 60px);
+  height: calc(100dvh - 60px); /* Dynamic viewport height for mobile */
+  width: 100%;
   display: flex;
   flex-direction: row;
+  border: none;
+  outline: none;
+  padding: 0 12px;
+  box-sizing: border-box;
 }
 
 .split-view {
@@ -356,5 +404,30 @@ export default class Note extends Vue {
 
 .editor-split {
   border-right: 1px solid #404854;
+}
+
+/* Mobile styles */
+@media screen and (max-width: 767px) {
+  .editor-container {
+    height: calc(100vh - 52px);
+    height: calc(100dvh - 52px);
+    padding: 0 4px;
+  }
+
+  /* On mobile, split view stacks vertically */
+  .split-view {
+    flex-direction: column;
+  }
+
+  .editor-split,
+  .preview-split {
+    width: 100%;
+    height: 50%;
+  }
+
+  .editor-split {
+    border-right: none;
+    border-bottom: 1px solid #404854;
+  }
 }
 </style>

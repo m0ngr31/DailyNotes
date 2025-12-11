@@ -7,7 +7,7 @@
           <p class="modal-card-title">Unsaved Content</p>
         </header>
 
-        <section class="modal-card-body is-flex">
+        <section class="modal-card-body">
           <div class="media">
             <div class="media-left">
               <b-icon
@@ -18,18 +18,12 @@
               />
             </div>
             <div class="media-content">
-              <p>
-                <template>
-                  <div>
-                    You have unsaved changes changes. What would you like to do?
-                  </div>
-                </template>
-              </p>
+              <p>You have unsaved changes. What would you like to do?</p>
             </div>
           </div>
         </section>
 
-        <footer class="modal-card-foot">
+        <footer class="modal-card-foot" style="justify-content: flex-end;">
           <b-button ref="cancelButton" @click="cancel('button')"
             >Cancel</b-button
           >
@@ -49,46 +43,49 @@
   </transition>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
-import Component from 'vue-class-component';
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
-@Component
-export default class UnsavedForm extends Vue {
-  public isActive: boolean = false;
+const emit = defineEmits<{
+  cancel: [];
+  close: [];
+  discard: [];
+  save: [];
+}>();
 
-  mounted() {
-    this.isActive = true;
-    if (typeof window !== 'undefined') {
-      document.addEventListener('keyup', this.keyPress);
-    }
+const isActive = ref(false);
+
+const keyPress = ({ key }: { key: string }) => {
+  if (key === 'Enter') {
+    save();
   }
+};
 
-  beforeDestroy() {
-    if (typeof window !== 'undefined') {
-      document.removeEventListener('keyup', this.keyPress);
-    }
+onMounted(() => {
+  isActive.value = true;
+  if (typeof window !== 'undefined') {
+    document.addEventListener('keyup', keyPress);
   }
+});
 
-  keyPress({ key }: { key: string }) {
-    if (key === 'Enter') {
-      this.save();
-    }
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    document.removeEventListener('keyup', keyPress);
   }
+});
 
-  cancel() {
-    this.$emit('cancel');
-    this.$emit('close');
-  }
+const cancel = () => {
+  emit('cancel');
+  emit('close');
+};
 
-  discard() {
-    this.$emit('close');
-    this.$emit('discard');
-  }
+const discard = () => {
+  emit('discard');
+  emit('close');
+};
 
-  save() {
-    this.$emit('close');
-    this.$emit('save');
-  }
-}
+const save = () => {
+  emit('save');
+  emit('close');
+};
 </script>

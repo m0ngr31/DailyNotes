@@ -36,7 +36,7 @@ axios.interceptors.response.use(
       // Preventing dialogs from firing
       SharedBuefy.preventDialog = true;
 
-      if (router.currentRoute.path.indexOf('/auth') !== 0) {
+      if (router.currentRoute.value.path.indexOf('/auth') !== 0) {
         try {
           SharedBuefy.notifications?.open({
             duration: 5000,
@@ -66,6 +66,14 @@ axios.interceptors.response.use(
 export const Requests = {
   post: (url: string, data: unknown): AxiosPromise => {
     return axios.post(url, data);
+  },
+
+  upload: (url: string, data: FormData): AxiosPromise => {
+    return axios.post(url, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
   },
 
   get: (url: string, data?: Record<string, unknown>): AxiosPromise => {

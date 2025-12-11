@@ -7,6 +7,11 @@ interface BuefyNotifications {
   open: (options: { duration?: number; message: string; position?: string; type?: string }) => void;
 }
 
+export interface BuefyInstance {
+  toast: BuefyNotifications;
+  dialog: BuefyDialog;
+}
+
 export const SharedBuefy = {
   activeDialog: null as { close: () => void } | null,
   dialog: null as BuefyDialog | null,

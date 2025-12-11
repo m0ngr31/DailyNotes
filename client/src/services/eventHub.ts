@@ -1,5 +1,10 @@
-import Vue from 'vue';
+import mitt from 'mitt';
 
-const eventHub = new Vue();
+type Events = {
+  taskUpdated: { note_id: string; task: string; completed: boolean };
+  focusEditor: undefined;
+};
+
+const eventHub = mitt<Events>();
 
 export default eventHub;

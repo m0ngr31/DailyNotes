@@ -4,7 +4,7 @@
 # This Dockerfile is optimized for development with hot-reloading
 # Use docker-compose.dev.yml to run this with volume mounts
 
-FROM nikolaik/python-nodejs:python3.10-nodejs16
+FROM nikolaik/python-nodejs:python3.10-nodejs24
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install watchdog
 
 # Copy package files for frontend
-COPY client/package.json ./client/
+COPY client/package.json client/patch-buefy.sh ./client/
 # Note: package-lock.json is excluded by .dockerignore for production
 # For dev, we'll use npm install which regenerates the lock file
 RUN cd client && npm install --legacy-peer-deps
@@ -32,10 +32,13 @@ RUN chmod +x run.sh verify_env.py verify_data_migrations.py 2>/dev/null || true
 # Create config directory
 RUN mkdir -p /app/config
 
-# Install curl for healthcheck
-RUN apt-get update && \
-    apt-get install -y curl && \
-    rm -rf /var/lib/apt/lists/*
+# Install curl for healthcheck (skip if already present)
+# The base image likely has curl, but ensure it's available
+RUN which curl || (apt-get update --allow-releaseinfo-change 2>/dev/null || \
+    apt-get update --allow-insecure-repositories 2>/dev/null && \
+    apt-get install -y --no-install-recommends curl 2>/dev/null || \
+    apt-get install -y --allow-unauthenticated --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*) || true
 
 # Expose ports
 EXPOSE 5001 8080

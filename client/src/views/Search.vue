@@ -8,7 +8,7 @@
           <option value="tag">Tag</option>
           <option value="search">Text</option>
         </b-select>
-        <b-input placeholder="Searcy query" v-model="sidebar.searchString" expanded @keyup.native.enter="sidebar.searchNotes"></b-input>
+        <b-input placeholder="Searcy query" v-model="sidebar.searchString" expanded @keyup.enter="sidebar.searchNotes"></b-input>
         <p class="control">
           <button class="button is-success" type="button" @click="sidebar.searchNotes()">Search</button>
         </p>
@@ -22,13 +22,9 @@
             There are no notes that match that query.
           </b-notification>
         </div>
-        <masonry
-          :cols="{default: 4, 1250: 3, 1000: 2, 750: 1}"
-          :gutter="10"
-          class="mt-25"
-        >
+        <div class="masonry-grid mt-25">
           <NoteCard v-for="note in sidebar.filteredNotes" :key="note.uuid" :note="note"></NoteCard>
-        </masonry>
+        </div>
       </div>
       <div v-else class="loading-wrapper">
         <b-loading :is-full-page="false" :active="sidebar.searchLoading"></b-loading>
@@ -37,76 +33,118 @@
   </div>
 </template>
 
-<script lang="ts">
-import { Component, Vue, Watch } from 'vue-property-decorator';
+<script setup lang="ts">
+import { useHead } from '@unhead/vue';
+import { onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
 import Header from '@/components/Header.vue';
 import NoteCard from '@/components/NoteCard.vue';
 import type { IHeaderOptions } from '../interfaces';
 import SidebarInst from '../services/sidebar';
 
-@Component({
-  metaInfo: {
-    title: 'Search',
+useHead({
+  title: 'Search',
+});
+
+const route = useRoute();
+const sidebar = SidebarInst;
+const headerOptions: IHeaderOptions = {
+  title: 'Search',
+};
+
+const setSearch = () => {
+  const searchHash = `${sidebar.selectedSearch}:${sidebar.searchString}`;
+
+  let selectedSearch: string;
+  let searchString: string;
+
+  if (route.query.tag) {
+    selectedSearch = 'tag';
+    searchString = String(route.query.tag);
+  } else if (route.query.project) {
+    selectedSearch = 'project';
+    searchString = String(route.query.project);
+  } else if (route.query.search) {
+    selectedSearch = 'search';
+    searchString = String(route.query.search);
+  } else {
+    selectedSearch = 'search';
+    searchString = '';
+  }
+
+  if (searchHash !== `${selectedSearch}:${searchString}`) {
+    sidebar.selectedSearch = selectedSearch;
+    sidebar.searchString = searchString;
+
+    sidebar.searchNotes();
+  }
+};
+
+watch(
+  () => route.query,
+  () => {
+    setSearch();
   },
-  components: {
-    Header,
-    NoteCard,
-  },
-})
-export default class Search extends Vue {
-  public sidebar = SidebarInst;
-  public headerOptions: IHeaderOptions = {
-    title: 'Search',
-  };
+  { immediate: true, deep: true }
+);
 
-  @Watch('$route', { immediate: true, deep: true })
-  routeQueryChanged() {
-    this.setSearch();
-  }
-
-  mounted() {
-    this.setSearch();
-  }
-
-  public setSearch() {
-    const searchHash = `${this.sidebar.selectedSearch}:${this.sidebar.searchString}`;
-
-    let selectedSearch: string;
-    let searchString: string;
-
-    if (this.$route.query.tag) {
-      selectedSearch = 'tag';
-      searchString = String(this.$route.query.tag);
-    } else if (this.$route.query.project) {
-      selectedSearch = 'project';
-      searchString = String(this.$route.query.project);
-    } else if (this.$route.query.search) {
-      selectedSearch = 'search';
-      searchString = String(this.$route.query.search);
-    } else {
-      selectedSearch = 'search';
-      searchString = '';
-    }
-
-    if (searchHash !== `${selectedSearch}:${searchString}`) {
-      this.sidebar.selectedSearch = selectedSearch;
-      this.sidebar.searchString = searchString;
-
-      this.sidebar.searchNotes();
-    }
-  }
-}
+onMounted(() => {
+  setSearch();
+});
 </script>
 
 <style scoped>
 .search-container {
   padding: 1.5em;
-  height: 100%;
+  height: calc(100vh - 60px);
+  height: calc(100dvh - 60px);
+  overflow-y: auto;
 }
 
 .mt-25 {
   margin-top: 25px;
+}
+
+.masonry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+@media (max-width: 767px) {
+  .search-container {
+    padding: 0.75em;
+    height: calc(100vh - 52px);
+    height: calc(100dvh - 52px);
+  }
+
+  .masonry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mt-25 {
+    margin-top: 15px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1000px) {
+  .masonry-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1001px) and (max-width: 1250px) {
+  .masonry-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1251px) {
+  .masonry-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .loading-wrapper {

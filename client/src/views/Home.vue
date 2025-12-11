@@ -1,8 +1,15 @@
 <template>
-  <div class="columns no-margin is-mobile full-height">
+  <div class="home-layout">
+    <!-- Mobile sidebar overlay -->
     <div
-      class="column sidebar is-6-mobile is-6-tablet is-two-fifths-desktop is-4-widescreen is-3-fullhd"
-      v-show="!sidebar.hide"
+      class="sidebar-overlay"
+      v-show="!sidebar.hide && isMobile"
+      @click="closeSidebar"
+    ></div>
+
+    <div
+      class="sidebar"
+      :class="{ 'sidebar-visible': !sidebar.hide, 'sidebar-mobile': isMobile }"
     >
       <div class="columns light-white center-columns text-center">
         <div class="column">
@@ -22,15 +29,16 @@
       <Calendar />
       <Tags />
     </div>
-    <div class="column no-padding main-area" @click="focusEditor">
+    <div class="main-area" @click="handleMainAreaClick">
       <router-view :key="$route.path"></router-view>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
-import Component from 'vue-class-component';
+<script setup lang="ts">
+import { useHead } from '@unhead/vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import Calendar from '@/components/Calendar.vue';
 import Tags from '@/components/Tags.vue';
@@ -39,51 +47,71 @@ import eventHub from '../services/eventHub';
 import SidebarInst from '../services/sidebar';
 import { updateJWT } from '../services/user';
 
+useHead({
+  title: 'Home',
+});
+
 const MINUTES = 60;
 const SECONDS = 60;
 const HOUR = MINUTES * SECONDS * 1000; // MS in an hour
+const MOBILE_BREAKPOINT = 768;
 
-@Component({
-  components: {
-    Calendar,
-    Tags,
-  },
-  metaInfo: {
-    title: 'Home',
-  },
-})
-export default class Admin extends Vue {
-  public auth_timer: ReturnType<typeof setTimeout> | null = null;
-  public sidebar = SidebarInst;
+const router = useRouter();
+const sidebar = SidebarInst;
+let auth_timer: ReturnType<typeof setInterval> | null = null;
+const isMobile = ref(false);
 
-  mounted() {
-    // Get new JWT every hour
-    this.auth_timer = setInterval(() => updateJWT(), HOUR);
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < MOBILE_BREAKPOINT;
+  // Auto-hide sidebar on mobile
+  if (isMobile.value && !sidebar.hide) {
+    sidebar.hide = true;
   }
+};
 
-  today() {
-    this.$router.push({ name: 'Home Redirect' });
+const today = () => {
+  router.push({ name: 'Home Redirect' });
+  // Close sidebar on mobile after navigation
+  if (isMobile.value) {
+    sidebar.hide = true;
   }
+};
 
-  beforeDestroy() {
-    if (this.auth_timer) {
-      clearInterval(this.auth_timer);
-    }
-  }
+const closeSidebar = () => {
+  sidebar.hide = true;
+};
 
-  focusEditor() {
-    eventHub.$emit('focusEditor');
+const handleMainAreaClick = () => {
+  eventHub.emit('focusEditor');
+  // Close sidebar on mobile when clicking main area
+  if (isMobile.value && !sidebar.hide) {
+    sidebar.hide = true;
   }
-}
+};
+
+onMounted(() => {
+  // Get new JWT every hour
+  auth_timer = setInterval(() => updateJWT(), HOUR);
+
+  // Check initial mobile state
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+});
+
+onBeforeUnmount(() => {
+  if (auth_timer) {
+    clearInterval(auth_timer);
+  }
+  window.removeEventListener('resize', checkMobile);
+});
 </script>
 
 <style scoped>
-.no-margin {
-  margin: 0px;
-}
-
-.no-padding {
-  padding: 0px;
+.home-layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
 }
 
 .center-columns {
@@ -92,17 +120,65 @@ export default class Admin extends Vue {
 }
 
 .sidebar {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
   overflow-y: auto;
   overflow-x: hidden;
+  background-color: var(--main-bg-darker);
+  height: 100%;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  flex-shrink: 0;
 }
 
-.full-height {
-  height: 100vh;
+/* When sidebar is hidden on desktop */
+.sidebar:not(.sidebar-visible) {
+  display: none;
+}
+
+/* Mobile sidebar - slides in from left */
+.sidebar.sidebar-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  transform: translateX(-100%);
+  display: block;
+  width: min(320px, 85vw);
+  min-width: min(320px, 85vw);
+  max-width: min(320px, 85vw);
+}
+
+.sidebar.sidebar-mobile.sidebar-visible {
+  transform: translateX(0);
+}
+
+/* Overlay for mobile sidebar */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 99;
 }
 
 .main-area {
+  flex: 1;
   background-color: var(--main-bg-color);
   overflow-y: auto;
   overflow-x: hidden;
+  height: 100%;
+  min-width: 0; /* Prevents flex item from overflowing */
+}
+
+/* Wider sidebar on large screens */
+@media screen and (min-width: 1408px) {
+  .sidebar {
+    width: 360px;
+    min-width: 360px;
+    max-width: 360px;
+  }
 }
 </style>

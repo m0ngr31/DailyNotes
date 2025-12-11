@@ -6,3 +6,5 @@ flask-jwt-extended>4
 flask-argon2
 python-frontmatter
 pycryptodome
+requests
+python-dateutil
