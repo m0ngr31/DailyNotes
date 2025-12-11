@@ -66,13 +66,64 @@ jobs:
             xhenxhe/dailynotes:latest
             xhenxhe/dailynotes:${{ steps.version.outputs.version }}
 
-      - name: Create and push git tag
+      - name: Create and push unique git tag (recompute & retry)
+        id: tag
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"
+
+          # Try a few times in case of concurrent runners creating tags at the same time
+          MAX_ATTEMPTS=5
+          attempt=1
+          while [ $attempt -le $MAX_ATTEMPTS ]; do
+            echo "Attempt $attempt/$MAX_ATTEMPTS to create a unique tag..."
+
+            # Ensure we have up-to-date remote tags
+            git fetch --tags --prune origin
+
+            # Compute today's base and next available build number from the current tags
+            TODAY=$(date -u +%Y.%m.%d)
+            LATEST_BUILD=$(git tag --list "${TODAY}-*" | sed "s/${TODAY}-//" | sort -n | tail -1 || true)
+
+            if [ -z "$LATEST_BUILD" ]; then
+              BUILD_NUM="00"
+            else
+              NEXT_NUM=$((10#$LATEST_BUILD + 1))
+              BUILD_NUM=$(printf "%02d" "$NEXT_NUM")
+            fi
+
+            VERSION="${TODAY}-${BUILD_NUM}"
+            echo "Computed version: $VERSION"
+
+            # Check remote and local for existence
+            if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null 2>&1 || \
+               git ls-remote --exit-code --tags origin "refs/tags/${VERSION}" >/dev/null 2>&1; then
+              echo "Tag $VERSION already exists, will try again to compute a new one."
+              attempt=$((attempt+1))
+              # Small backoff to reduce contention
+              sleep $((attempt * 2))
+              continue
+            fi
+
+            # Create and push tag (do NOT force)
+            git tag -a "$VERSION" -m "Release $VERSION"
+            if git push origin "$VERSION"; then
+              echo "Successfully pushed tag $VERSION"
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "Push failed for $VERSION (maybe tag created concurrently). Removing local tag and retrying."
+              git tag -d "$VERSION" || true
+              attempt=$((attempt+1))
+              sleep $((attempt * 2))
+            fi
+          done
+
+          echo "Failed to create a unique tag after $MAX_ATTEMPTS attempts; skipping tag creation to avoid failing the workflow."
+          # Write output so downstream steps know tagging was skipped
+          echo "version=skipped" >> $GITHUB_OUTPUT
+        shell: bash
 
       - name: Update repo description
         uses: peter-evans/dockerhub-description@v4
