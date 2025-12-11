@@ -7,24 +7,26 @@ from app.models import Note, Meta
 ctx = app.test_request_context()
 ctx.push()
 
+
 def main():
-  needs_migration = False
+    needs_migration = False
 
-  first_note = Note.query.first()
-  meta = Meta.query.first()
+    first_note = Note.query.first()
+    meta = Meta.query.first()
 
-  if meta or not first_note or first_note.text is not first_note.data:
-    return
+    if meta or not first_note or first_note.text is not first_note.data:
+        return
 
-  # Notes need to be migrated
-  notes = Note.query.all()
+    # Notes need to be migrated
+    notes = Note.query.all()
 
-  for note in notes:
-    # Trigger a change
-    note.text = note.data + ''
-    note.name = note.title + ''
-    db.session.add(note)
+    for note in notes:
+        # Trigger a change
+        note.text = note.data + ""
+        note.name = note.title + ""
+        db.session.add(note)
 
-  db.session.commit()
+    db.session.commit()
+
 
 main()
