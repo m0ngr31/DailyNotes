@@ -50,9 +50,11 @@ def _is_allowed_file(filename, mimetype):
 def _ensure_upload_table():
     try:
         Upload.__table__.create(db.engine, checkfirst=True)
-    except Exception:
-        # If migrations handle this, ignore failures
-        pass
+    except Exception as e:
+        # If migrations handle this, ignore failures (e.g., table already exists)
+        import logging
+
+        logging.getLogger(__name__).debug(f"Upload table creation skipped: {e}")
 
 
 def _extract_upload_paths_from_text(text, username):
@@ -202,7 +204,10 @@ def _fetch_ics(url):
 
         _ICS_CACHE[url] = {"ts": now, "body": body}
         return body
-    except Exception:
+    except (requests.RequestException, ValueError, OSError) as e:
+        import logging
+
+        logging.getLogger(__name__).debug(f"Failed to fetch ICS from {url}: {e}")
         return None
 
 
@@ -261,20 +266,20 @@ def _parse_ics_datetime(value, params):
         try:
             dt = datetime.datetime.strptime(value, "%Y%m%d")
             return dt, True
-        except Exception:
+        except ValueError:
             return None, True
 
     for fmt in ("%Y%m%dT%H%M%SZ", "%Y%m%dT%H%M%S"):
         try:
             dt = datetime.datetime.strptime(value, fmt)
             return dt, False
-        except Exception:
+        except ValueError:
             continue
 
     try:
         dt = datetime.datetime.fromisoformat(value)
         return dt, False
-    except Exception:
+    except ValueError:
         return None, False
 
 
@@ -311,7 +316,12 @@ def _filter_events_for_date(events, target_date):
                 occurrences = rule.between(
                     target_start - datetime.timedelta(days=1), target_end, inc=True
                 )
-            except Exception:
+            except (ValueError, TypeError) as e:
+                import logging
+
+                logging.getLogger(__name__).debug(
+                    f"Failed to parse rrule '{rrule_str}': {e}"
+                )
                 occurrences = []
 
             for occ in occurrences:
@@ -465,7 +475,7 @@ def _note_to_ics_event(note, base_url=None):
     """
     try:
         day = datetime.datetime.strptime(note.name, "%m-%d-%Y").date()
-    except Exception:
+    except (ValueError, TypeError):
         return None
 
     dtstamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
@@ -478,7 +488,7 @@ def _note_to_ics_event(note, base_url=None):
     try:
         parsed = frontmatter.loads(note.text or "")
         description_source = parsed.content.strip()
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         description_source = (note.text or "").strip()
 
     description_plain = _markdown_to_plain(description_source, limit=800)
@@ -1343,7 +1353,10 @@ def upload_file():
         file.stream.seek(0, os.SEEK_END)
         file_size = file.stream.tell()
         file.stream.seek(0)
-    except Exception:
+    except (OSError, IOError) as e:
+        import logging
+
+        logging.getLogger(__name__).debug(f"Could not determine file size: {e}")
         file_size = 0
 
     if max_size and file_size and file_size > max_size:
@@ -1450,8 +1463,12 @@ def cleanup_orphan_uploads():
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
-            except Exception:
-                pass
+            except OSError as e:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    f"Failed to delete orphan file {file_path}: {e}"
+                )
 
         db.session.delete(upload)
         deleted.append(upload.path)

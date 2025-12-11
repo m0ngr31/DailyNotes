@@ -5,79 +5,176 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy import event, text
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
 import binascii
 import uuid
 import frontmatter
 import re
 import datetime
+import logging
 
+logger = logging.getLogger(__name__)
 
-key = app.config["DB_ENCRYPTION_KEY"]
+# AES block size and IV size
+AES_BLOCK_SIZE = 16
+IV_SIZE = 16
+
+# Magic bytes to identify new encryption format (random IV prepended)
+# Using bytes that are unlikely to appear in old CFB-encrypted data
+ENCRYPTION_V2_MARKER = b"\x00\x01\x02\x03"
+MARKER_SIZE = len(ENCRYPTION_V2_MARKER)
+
+_encryption_key = app.config["DB_ENCRYPTION_KEY"]
 
 # Ensure key is bytes
-if isinstance(key, str):
-    key = key.encode("utf-8")
+if isinstance(_encryption_key, str):
+    _encryption_key = _encryption_key.encode("utf-8")
 
 # Pad or truncate key to 32 bytes for AES-256
-key = (key + b"\0" * 32)[:32]
+_encryption_key = (_encryption_key + b"\0" * 32)[:32]
 
-# Derive IV from key - must be exactly 16 bytes
-iv = key[:16]
+# Legacy IV derived from key (for backwards compatibility with old data)
+_legacy_iv = _encryption_key[:16]
 
 
 def aes_encrypt(data):
+    """
+    Encrypt data using AES-256-CFB with a random IV.
+
+    Format: MARKER (4 bytes) + IV (16 bytes) + ciphertext
+
+    This provides semantic security - encrypting the same plaintext
+    twice produces different ciphertexts.
+    """
     # Ensure data is bytes
     if isinstance(data, str):
         data = data.encode("utf-8")
 
-    cipher = AES.new(key, AES.MODE_CFB, iv)
-    return cipher.encrypt(data)
+    # Generate a random IV for each encryption
+    iv = get_random_bytes(IV_SIZE)
+    cipher = AES.new(_encryption_key, AES.MODE_CFB, iv)
+    ciphertext = cipher.encrypt(data)
+
+    # Prepend marker and IV to ciphertext for later extraction during decryption
+    return ENCRYPTION_V2_MARKER + iv + ciphertext
 
 
 def aes_encrypt_old(data):
+    """
+    Legacy ECB encryption - ONLY used for querying old encrypted data.
+    DO NOT use for new encryptions. ECB mode is insecure.
+    """
     # Ensure data is bytes
     if isinstance(data, str):
         data = data.encode("utf-8")
 
-    cipher = AES.new(key, AES.MODE_ECB)
-    data = data + (b" " * (16 - (len(data) % 16)))
+    cipher = AES.new(_encryption_key, AES.MODE_ECB)
+    # Pad to block size
+    padding_len = AES_BLOCK_SIZE - (len(data) % AES_BLOCK_SIZE)
+    data = data + (b" " * padding_len)
     return binascii.hexlify(cipher.encrypt(data))
 
 
+def _decrypt_v2(data):
+    """
+    Decrypt data encrypted with the new format (random IV).
+
+    Expected format: MARKER (4 bytes) + IV (16 bytes) + ciphertext
+    """
+    # Extract IV and ciphertext (skip marker)
+    iv = data[MARKER_SIZE : MARKER_SIZE + IV_SIZE]
+    ciphertext = data[MARKER_SIZE + IV_SIZE :]
+
+    cipher = AES.new(_encryption_key, AES.MODE_CFB, iv)
+    return cipher.decrypt(ciphertext).decode("utf-8")
+
+
+def _decrypt_legacy_cfb(data):
+    """
+    Decrypt data encrypted with legacy CFB mode (static IV derived from key).
+    """
+    cipher = AES.new(_encryption_key, AES.MODE_CFB, _legacy_iv)
+    return cipher.decrypt(data).decode("utf-8")
+
+
+def _decrypt_legacy_ecb(data):
+    """
+    Decrypt data encrypted with legacy ECB mode.
+    """
+    # Ensure data is bytes for unhexlify
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+
+    cipher = AES.new(_encryption_key, AES.MODE_ECB)
+    return cipher.decrypt(binascii.unhexlify(data)).rstrip().decode("ascii")
+
+
 def aes_decrypt(data):
-    # From a new object
+    """
+    Decrypt data, automatically detecting the encryption format.
+
+    Supports three formats for backwards compatibility:
+    1. New format (v2): MARKER + random IV + ciphertext
+    2. Legacy CFB: ciphertext with static IV derived from key
+    3. Legacy ECB: hex-encoded ciphertext with padding
+    4. Unencrypted: plain text (returned as-is)
+    """
+    # From a new object (SQLAlchemy instrumented attribute)
     if type(data) is InstrumentedAttribute:
         return ""
+
+    # Handle None or empty data
+    if not data:
+        return "" if data is None else data
 
     # Ensure data is bytes
     if isinstance(data, str):
         data = data.encode("utf-8")
 
-    cipher = AES.new(key, AES.MODE_CFB, iv)
+    # Try new format first (check for marker)
+    if data.startswith(ENCRYPTION_V2_MARKER) and len(data) > MARKER_SIZE + IV_SIZE:
+        try:
+            return _decrypt_v2(data)
+        except (ValueError, UnicodeDecodeError) as e:
+            logger.debug(f"V2 decryption failed, trying legacy formats: {e}")
 
-    decrypted = cipher.decrypt(data)
-
+    # Try legacy CFB format (static IV)
     try:
-        return decrypted.decode("utf-8")
-    except:
-        # Data is in old encryption or it is unencrypted
-        return aes_decrypt_old(data)
+        decrypted = _decrypt_legacy_cfb(data)
+        return decrypted
+    except (ValueError, UnicodeDecodeError) as e:
+        logger.debug(f"Legacy CFB decryption failed: {e}")
+
+    # Try legacy ECB format
+    try:
+        return _decrypt_legacy_ecb(data)
+    except (ValueError, UnicodeDecodeError, binascii.Error) as e:
+        logger.debug(f"Legacy ECB decryption failed: {e}")
+
+    # Data might be unencrypted - try to return as string
+    if isinstance(data, bytes):
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError as e:
+            logger.warning(f"Could not decode data as UTF-8: {e}")
+
+    return data
 
 
 def aes_decrypt_old(data):
+    """
+    Legacy decryption function - tries ECB first, then falls back to raw data.
+    Kept for backwards compatibility with code that might call this directly.
+    """
     try:
-        # Ensure data is bytes for unhexlify
-        if isinstance(data, str):
-            data = data.encode("utf-8")
-
-        cipher = AES.new(key, AES.MODE_ECB)
-        return cipher.decrypt(binascii.unhexlify(data)).rstrip().decode("ascii")
-    except:
+        return _decrypt_legacy_ecb(data)
+    except (ValueError, UnicodeDecodeError, binascii.Error) as e:
+        logger.debug(f"ECB decryption failed in aes_decrypt_old: {e}")
         # If data is not encrypted, just return it
         if isinstance(data, bytes):
             try:
                 return data.decode("utf-8")
-            except:
+            except UnicodeDecodeError:
                 pass
         return data
 
