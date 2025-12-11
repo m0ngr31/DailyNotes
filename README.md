@@ -7,6 +7,20 @@
   </svg>
 </p>
 
+---
+
+### In Loving Memory of [Joe Ipson](https://github.com/m0ngr31)
+
+*This project is dedicated to [Joe Ipson](https://github.com/m0ngr31), the original creator of DailyNotes, who passed away in the summer of 2025 after a courageous battle with cancer.*
+
+Joe was a kindred spirit who believed in the simple power of writing things down. He built DailyNotes to bring the mindful experience of a physical planner into the digital world. His vision was to create something personal, self-hosted, and beautifully simple.
+
+This project continues in his memory. Every commit, every feature, every bug fix is a small tribute to a dear friend whose spirit lives on in the code he wrote and the ideas he shared.
+
+*Rest easy, Joe. We'll take it from here.*
+
+---
+
 Current version: **1.0.0-beta.22**
 
 ## About
