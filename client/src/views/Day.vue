@@ -48,6 +48,7 @@ import UnsavedForm from '@/components/UnsavedForm.vue';
 import type { IHeaderOptions, INote } from '../interfaces';
 import { newDay } from '../services/consts';
 import eventHub from '../services/eventHub';
+import { getFoldState, saveFoldState } from '../services/localstorage';
 import { NoteService } from '../services/notes';
 import { SharedBuefy } from '../services/sharedBuefy';
 import SidebarInst from '../services/sidebar';
@@ -90,11 +91,28 @@ const headerOptions = reactive<IHeaderOptions>({
 
 let cmdKPressed = false;
 let cmdKTimeout: ReturnType<typeof setTimeout> | null = null;
+let currentNoteId: string | null = null;
 
 const autoSaveThrottle = _.debounce(() => saveDay(true), 3000, {
   leading: false,
   trailing: true,
 });
+
+const saveCurrentFoldState = () => {
+  if (currentNoteId && editor.value?.getFoldState) {
+    const folds = editor.value.getFoldState();
+    saveFoldState(currentNoteId, folds);
+  }
+};
+
+const restoreFoldState = () => {
+  if (currentNoteId && editor.value?.setFoldState) {
+    const folds = getFoldState(currentNoteId);
+    if (folds.length) {
+      editor.value.setFoldState(folds);
+    }
+  }
+};
 
 const getDayData = async () => {
   if (isLoading.value) {
@@ -108,7 +126,15 @@ const getDayData = async () => {
     day.value = res;
     text.value = day.value.data || '';
 
+    // Set current note ID for fold state (use date as identifier for daily notes)
+    currentNoteId = `day-${route.params.id}`;
+
     headerOptions.showDelete = !!day.value.uuid;
+
+    // Restore fold state after content is loaded
+    nextTick(() => {
+      restoreFoldState();
+    });
   } catch (_e) {
     SharedBuefy.openConfirmDialog({
       message: 'Failed to fetch the selected date. Would you like to start fresh or try again?',
@@ -322,6 +348,9 @@ const handleCheckboxToggled = (updatedMarkdown: string) => {
 };
 
 const unsavedAlert = (e: Event) => {
+  // Save fold state before page unload
+  saveCurrentFoldState();
+
   if (unsavedChanges.value) {
     // Attempt to modify event will trigger Chrome/Firefox alert msg
     e.returnValue = true;
@@ -361,6 +390,9 @@ onBeforeRouteUpdate((_to, _from, next) => {
 });
 
 onBeforeRouteLeave((_to, _from, next) => {
+  // Save fold state before leaving
+  saveCurrentFoldState();
+
   if (unsavedChanges.value) {
     unsavedDialog(next);
   } else {
@@ -418,6 +450,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  // Save fold state before component is destroyed
+  saveCurrentFoldState();
+
   window.removeEventListener('beforeunload', unsavedAlert);
   window.removeEventListener('keydown', handleKeydown);
   eventHub.off('taskUpdated', handleTaskUpdate);

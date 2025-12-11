@@ -42,6 +42,7 @@ import Header from '@/components/Header.vue';
 import MarkdownPreview from '@/components/MarkdownPreview.vue';
 import type { IHeaderOptions, INote } from '../interfaces';
 import eventHub from '../services/eventHub';
+import { getFoldState, saveFoldState } from '../services/localstorage';
 import { NoteService } from '../services/notes';
 import SidebarInst from '../services/sidebar';
 
@@ -82,11 +83,28 @@ const headerOptions = reactive<IHeaderOptions>({
 
 let cmdKPressed = false;
 let cmdKTimeout: ReturnType<typeof setTimeout> | null = null;
+let currentNoteId: string | null = null;
 
 const autoSaveThrottle = _.debounce(() => saveNote(true), 3000, {
   leading: false,
   trailing: true,
 });
+
+const saveCurrentFoldState = () => {
+  if (currentNoteId && editor.value?.getFoldState) {
+    const folds = editor.value.getFoldState();
+    saveFoldState(currentNoteId, folds);
+  }
+};
+
+const restoreFoldState = () => {
+  if (currentNoteId && editor.value?.setFoldState) {
+    const folds = getFoldState(currentNoteId);
+    if (folds.length) {
+      editor.value.setFoldState(folds);
+    }
+  }
+};
 
 const saveNote = async (isAutoSave: boolean = false) => {
   // Cancel any pending autosave when manually saving
@@ -272,6 +290,9 @@ const handleTaskUpdate = (data: { note_id: string; task: string; completed: bool
 };
 
 const unsavedAlert = (e: Event) => {
+  // Save fold state before page unload
+  saveCurrentFoldState();
+
   if (unsavedChanges.value) {
     // Attempt to modify event will trigger Chrome/Firefox alert msg
     e.returnValue = true;
@@ -299,6 +320,9 @@ onBeforeRouteUpdate((_to, _from, next) => {
 });
 
 onBeforeRouteLeave((_to, _from, next) => {
+  // Save fold state before leaving
+  saveCurrentFoldState();
+
   if (unsavedChanges.value) {
     unsavedDialog(next);
   } else {
@@ -316,8 +340,16 @@ onMounted(async () => {
     note.value = await NoteService.getNote(route.params.uuid as string);
     text.value = note.value.data;
 
+    // Set current note ID for fold state
+    currentNoteId = `note-${note.value.uuid}`;
+
     headerOptions.title = note.value.title || '';
     title.value = note.value.title || '';
+
+    // Restore fold state after content is loaded
+    nextTick(() => {
+      restoreFoldState();
+    });
   } catch (_e) {
     router.push({ name: 'Home Redirect' });
   }
@@ -328,6 +360,9 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  // Save fold state before component is destroyed
+  saveCurrentFoldState();
+
   window.removeEventListener('beforeunload', unsavedAlert);
   window.removeEventListener('keydown', handleKeydown);
   eventHub.off('taskUpdated', handleTaskUpdate);

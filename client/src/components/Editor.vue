@@ -5,7 +5,14 @@
 <script setup lang="ts">
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { foldGutter, foldKeymap, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import {
+  foldEffect,
+  foldGutter,
+  foldKeymap,
+  foldedRanges,
+  HighlightStyle,
+  syntaxHighlighting,
+} from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import {
   EditorState,
@@ -585,6 +592,38 @@ const refresh = () => {
   });
 };
 
+const getFoldState = (): { from: number; to: number }[] => {
+  if (!editorView) return [];
+
+  const folds: { from: number; to: number }[] = [];
+  const ranges = foldedRanges(editorView.state);
+
+  // Use between() to iterate over all folded ranges in the document
+  const docLength = editorView.state.doc.length;
+  ranges.between(0, docLength, (from, to) => {
+    folds.push({ from, to });
+  });
+
+  return folds;
+};
+
+const setFoldState = (folds: { from: number; to: number }[]) => {
+  if (!editorView || !folds.length) return;
+
+  _.defer(() => {
+    if (!editorView) return;
+
+    const docLength = editorView.state.doc.length;
+    const validFolds = folds.filter((f) => f.from >= 0 && f.to <= docLength && f.from < f.to);
+
+    if (!validFolds.length) return;
+
+    const effects = validFolds.map((f) => foldEffect.of({ from: f.from, to: f.to }));
+
+    editorView.dispatch({ effects });
+  });
+};
+
 const extractUrl = (text: string, pos: number): string | null => {
   // Find the line containing the position
   const lines = text.split('\n');
@@ -863,6 +902,8 @@ watch(
 defineExpose({
   refresh,
   focus,
+  getFoldState,
+  setFoldState,
 });
 </script>
 
