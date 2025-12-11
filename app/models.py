@@ -59,6 +59,23 @@ def aes_encrypt(data):
     return ENCRYPTION_V2_MARKER + iv + ciphertext
 
 
+def aes_encrypt_legacy_cfb(data):
+    """
+    Legacy CFB encryption with static IV - ONLY used for querying existing data.
+
+    This produces deterministic ciphertext (same input = same output) which is
+    needed to look up records by encrypted field values in the database.
+
+    DO NOT use for storing new sensitive data - use aes_encrypt() instead.
+    """
+    # Ensure data is bytes
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+
+    cipher = AES.new(_encryption_key, AES.MODE_CFB, _legacy_iv)
+    return cipher.encrypt(data)
+
+
 def aes_encrypt_old(data):
     """
     Legacy ECB encryption - ONLY used for querying old encrypted data.
@@ -282,7 +299,9 @@ class Note(db.Model):
 
     @name.setter
     def name(self, value):
-        self.title = aes_encrypt(value)
+        # Use legacy CFB encryption for titles to allow database queries
+        # (titles need deterministic encryption for lookups by encrypted value)
+        self.title = aes_encrypt_legacy_cfb(value)
 
     def __repr__(self):
         return "<Note {}>".format(self.uuid)

@@ -17,6 +17,7 @@ from app.models import (
     Upload,
     ExternalCalendar,
     aes_encrypt,
+    aes_encrypt_legacy_cfb,
     aes_encrypt_old,
 )
 from flask import (
@@ -594,14 +595,17 @@ def save_day():
     if not user:
         abort(400)
 
-    enc_date = aes_encrypt(title)
+    # Try to find existing note with legacy CFB encryption (most common for existing data)
+    enc_date = aes_encrypt_legacy_cfb(title)
     note = user.notes.filter_by(title=enc_date).first()
 
     if not note:
-        # Check old encryption
+        # Check legacy ECB encryption
         enc_date = aes_encrypt_old(title)
         note = user.notes.filter_by(title=enc_date).first()
+
     if not note:
+        # Create new note (will be encrypted with new v2 format)
         note = Note(user_id=user.uuid, name=title, text=data, is_date=True)
     else:
         note.text = data
@@ -978,11 +982,12 @@ def get_date():
         "user_id": user.uuid,
     }
 
-    date_enc = aes_encrypt(date)
+    # Try to find existing note with legacy CFB encryption (most common for existing data)
+    date_enc = aes_encrypt_legacy_cfb(date)
     note = user.notes.filter_by(title=date_enc, is_date=True).first()
 
     if not note:
-        # Check old encryption
+        # Check legacy ECB encryption
         date_enc = aes_encrypt_old(date)
         note = user.notes.filter_by(title=date_enc, is_date=True).first()
 
