@@ -19,8 +19,11 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table("note", schema=None) as batch_op:
-        batch_op.drop_constraint("title_uniq", type_="unique")
+    # Skip on MySQL - the constraint was never created due to BLOB column limitations
+    bind = op.get_bind()
+    if bind.dialect.name != "mysql":
+        with op.batch_alter_table("note", schema=None) as batch_op:
+            batch_op.drop_constraint("title_uniq", type_="unique")
 
 
 def downgrade():

@@ -3,9 +3,11 @@
 # DailyNotes Docker Development Environment Startup Script
 # This script starts the Docker development environment and opens the app in your browser
 # Usage:
-#   ./dev           - Start the development environment
-#   ./dev --restart - Restart the webpack dev server
-#   ./dev --down    - Stop the development environment
+#   ./dev              - Start the development environment (SQLite)
+#   ./dev --postgres   - Start with PostgreSQL database
+#   ./dev --mysql      - Start with MySQL database
+#   ./dev --restart    - Restart the webpack dev server
+#   ./dev --down       - Stop the development environment
 
 set -e
 
@@ -23,6 +25,27 @@ else
   DOCKER_COMPOSE="docker-compose"
 fi
 
+# Default compose file and database type
+COMPOSE_FILE="docker-compose.dev.yml"
+DB_TYPE="SQLite"
+DB_INFO="Database stored in ./config/app.db"
+
+# Parse database option
+case "$1" in
+  --postgres)
+    COMPOSE_FILE="docker-compose-postgres.yml"
+    DB_TYPE="PostgreSQL"
+    DB_INFO="PostgreSQL database (dailynotes@postgres:5432)"
+    shift
+    ;;
+  --mysql)
+    COMPOSE_FILE="docker-compose-mysql.yml"
+    DB_TYPE="MySQL"
+    DB_INFO="MySQL database (dailynotes@mysql:3306)"
+    shift
+    ;;
+esac
+
 # Handle --restart option
 if [ "$1" == "--restart" ]; then
   echo -e "${BLUE}🔄 Restarting webpack dev server...${NC}"
@@ -35,7 +58,10 @@ fi
 # Handle --down option
 if [ "$1" == "--down" ]; then
   echo -e "${BLUE}🛑 Stopping development environment...${NC}"
-  $DOCKER_COMPOSE -f docker-compose.dev.yml down
+  # Stop all possible compose files
+  $DOCKER_COMPOSE -f docker-compose.dev.yml down 2>/dev/null || true
+  $DOCKER_COMPOSE -f docker-compose-postgres.yml down 2>/dev/null || true
+  $DOCKER_COMPOSE -f docker-compose-mysql.yml down 2>/dev/null || true
   echo -e "${GREEN}✅ Development environment stopped${NC}"
   exit 0
 fi
@@ -43,6 +69,7 @@ fi
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   DailyNotes Development Environment       ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+echo -e "${GREEN}  Database: ${DB_TYPE}${NC}"
 echo ""
 
 # Check if Docker is running
@@ -61,11 +88,11 @@ fi
 
 # Build and start the development environment
 echo -e "${GREEN}🔨 Building development Docker image...${NC}"
-$DOCKER_COMPOSE -f docker-compose.dev.yml build
+$DOCKER_COMPOSE -f $COMPOSE_FILE build
 
 echo ""
 echo -e "${GREEN}🚀 Starting development environment...${NC}"
-$DOCKER_COMPOSE -f docker-compose.dev.yml up -d
+$DOCKER_COMPOSE -f $COMPOSE_FILE up -d
 
 # Wait for services to be ready
 echo ""
@@ -88,39 +115,62 @@ check_service() {
   return 1
 }
 
-# Check if Vue dev server is ready
-if check_service "http://localhost:8080"; then
+# Determine URLs and container name based on compose file
+if [ "$COMPOSE_FILE" == "docker-compose.dev.yml" ]; then
+  CHECK_URL="http://localhost:8080"
+  FRONTEND_URL="http://localhost:8080"
+  BACKEND_URL="http://localhost:5001"
+  CONTAINER_NAME="dailynotes-dev"
+else
+  CHECK_URL="http://localhost:8000/health"
+  FRONTEND_URL="http://localhost:8000"
+  BACKEND_URL="http://localhost:8000/api"
+  CONTAINER_NAME="dailynotes-server-1"
+fi
+
+# Check if service is ready
+if check_service "$CHECK_URL"; then
   echo ""
   echo -e "${GREEN}✅ Development environment is ready!${NC}"
   echo ""
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  echo -e "${GREEN}  Frontend:${NC} http://localhost:8080"
-  echo -e "${GREEN}  Backend:${NC}  http://localhost:5001"
+  if [ "$COMPOSE_FILE" == "docker-compose.dev.yml" ]; then
+    echo -e "${GREEN}  Frontend:${NC} $FRONTEND_URL"
+    echo -e "${GREEN}  Backend:${NC}  $BACKEND_URL"
+  else
+    echo -e "${GREEN}  App:${NC}      $FRONTEND_URL"
+  fi
+  echo -e "${GREEN}  Database:${NC} $DB_TYPE"
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
   echo -e "${YELLOW}📝 Notes:${NC}"
-  echo -e "  • Changes to Python files will auto-reload the Flask server"
-  echo -e "  • Changes to Vue files will hot-reload in the browser"
-  echo -e "  • Database stored in ./config/app.db"
+  if [ "$COMPOSE_FILE" == "docker-compose.dev.yml" ]; then
+    echo -e "  • Changes to Python files will auto-reload the Flask server"
+    echo -e "  • Changes to Vue files will hot-reload in the browser"
+  else
+    echo -e "  • This is a production-like build for database testing"
+    echo -e "  • Rebuild required for code changes: ./dev $1"
+  fi
+  echo -e "  • $DB_INFO"
   echo ""
   echo -e "${BLUE}🛠️  Useful commands:${NC}"
-  echo -e "  • View logs:    ${YELLOW}$DOCKER_COMPOSE -f docker-compose.dev.yml logs -f${NC}"
-  echo -e "  • Stop:         ${YELLOW}$DOCKER_COMPOSE -f docker-compose.dev.yml down${NC}"
-  echo -e "  • Restart:      ${YELLOW}$DOCKER_COMPOSE -f docker-compose.dev.yml restart${NC}"
-  echo -e "  • Shell access: ${YELLOW}docker exec -it dailynotes-dev bash${NC}"
+  echo -e "  • View logs:    ${YELLOW}$DOCKER_COMPOSE -f $COMPOSE_FILE logs -f${NC}"
+  echo -e "  • Stop:         ${YELLOW}./dev --down${NC}"
+  echo -e "  • Restart:      ${YELLOW}$DOCKER_COMPOSE -f $COMPOSE_FILE restart${NC}"
+  echo -e "  • Shell access: ${YELLOW}docker exec -it $CONTAINER_NAME bash${NC}"
   echo ""
 
   # Open browser (macOS)
   if [[ "$OSTYPE" == "darwin"* ]]; then
     echo -e "${GREEN}🌐 Opening browser...${NC}"
     sleep 2
-    open "http://localhost:8080"
+    open "$FRONTEND_URL"
   else
-    echo -e "${YELLOW}🌐 Open http://localhost:8080 in your browser${NC}"
+    echo -e "${YELLOW}🌐 Open $FRONTEND_URL in your browser${NC}"
   fi
 else
   echo ""
   echo -e "${RED}❌ Services failed to start within expected time${NC}"
-  echo -e "${YELLOW}Check logs with: $DOCKER_COMPOSE -f docker-compose.dev.yml logs${NC}"
+  echo -e "${YELLOW}Check logs with: $DOCKER_COMPOSE -f $COMPOSE_FILE logs${NC}"
   exit 1
 fi

@@ -1,0 +1,41 @@
+services:
+  server:
+    build: .
+    ports:
+      - 8000:8000
+    volumes:
+      - ./dailynotes-volume:/app/config
+    environment:
+      API_SECRET_KEY: ${API_SECRET_KEY:-CHANGE_THIS_WITH_SECURE_PASSWORD}
+      DB_ENCRYPTION_KEY: ${DB_ENCRYPTION_KEY:-CHANGE_THIS_WITH_SECURE_PASSWORD}
+      DATABASE_URI: postgresql://dailynotes:dailynotes@postgres:5432/dailynotes
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dailynotes
+      POSTGRES_PASSWORD: dailynotes
+      POSTGRES_DB: dailynotes
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dailynotes -d dailynotes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Uncomment to expose PostgreSQL port for direct access
+    # ports:
+    #   - 5432:5432
+
+volumes:
+  postgres-data:

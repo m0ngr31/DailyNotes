@@ -19,8 +19,12 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table("note", schema=None) as batch_op:
-        batch_op.create_unique_constraint("title_uniq", ["title"])
+    # Skip unique constraint on MySQL - BLOB columns can't have unique constraints without key length
+    # This constraint is also not really needed since titles are encrypted and lookups use different logic
+    bind = op.get_bind()
+    if bind.dialect.name != "mysql":
+        with op.batch_alter_table("note", schema=None) as batch_op:
+            batch_op.create_unique_constraint("title_uniq", ["title"])
 
 
 def downgrade():

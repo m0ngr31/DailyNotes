@@ -183,8 +183,8 @@ services:
       # Optional: Database connection string
       # Default: SQLite database in /app/config/app.db
       # Examples:
-      #   PostgreSQL: postgresql://user:password@localhost:5432/dailynotes
-      #   MySQL: mysql://user:password@localhost:3306/dailynotes
+      #   PostgreSQL: postgresql://user:password@host:5432/dailynotes
+      #   MySQL:      mysql+pymysql://user:password@host:3306/dailynotes?charset=utf8mb4
       # DATABASE_URI: "sqlite:////app/config/app.db"
 
       # Optional: Prevent new user signups (set to any value to disable)
@@ -403,12 +403,30 @@ docker exec -it dailynotes-dev bash
 docker compose -f docker-compose.dev.yml build
 ```
 
+**Testing with PostgreSQL or MySQL:**
+
+DailyNotes supports PostgreSQL and MySQL in addition to SQLite. To test with these databases:
+
+```bash
+# Start with PostgreSQL
+./dev --postgres
+
+# Start with MySQL
+./dev --mysql
+
+# Stop any database environment
+./dev --down
+```
+
+These use production-like Docker Compose configurations (`docker-compose-postgres.yml` and `docker-compose-mysql.yml`) that include the database servers. The database data is persisted in Docker volumes.
+
 **File Structure:**
 
 - `Dockerfile.dev` - Development Docker image with both Python and Node.js
 - `docker-compose.dev.yml` - Development compose config with volume mounts
+- `docker-compose-postgres.yml` - PostgreSQL testing configuration
+- `docker-compose-mysql.yml` - MySQL testing configuration
 - `docker-entrypoint-dev.sh` - Startup script that runs both servers
-- `dev-docker` - Convenience script to start everything and open browser
 
 **What's Mounted:**
 

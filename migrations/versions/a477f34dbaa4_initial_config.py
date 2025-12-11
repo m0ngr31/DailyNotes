@@ -32,15 +32,15 @@ def upgrade():
     op.create_table(
         "note",
         sa.Column("uuid", app.model_types.GUID(), nullable=False),
-        sa.Column("tags", sa.String(), nullable=True),
-        sa.Column("projects", sa.String(), nullable=True),
+        sa.Column("tags", sa.Text(), nullable=True),
+        sa.Column("projects", sa.Text(), nullable=True),
         sa.Column("user_id", app.model_types.GUID(), nullable=False),
-        sa.Column("data", sa.String(), nullable=True),
-        sa.Column("title", sa.String(length=128), nullable=False),
+        sa.Column("data", sa.LargeBinary(), nullable=True),
+        sa.Column("title", sa.LargeBinary(), nullable=False),
         sa.Column(
             "date",
             sa.DateTime(timezone=True),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=True,
         ),
         sa.Column("is_date", sa.Boolean(), nullable=True),
@@ -49,7 +49,6 @@ def upgrade():
             ["user.uuid"],
         ),
         sa.PrimaryKeyConstraint("uuid"),
-        sa.UniqueConstraint("title"),
     )
     op.create_index(op.f("ix_note_uuid"), "note", ["uuid"], unique=True)
     # ### end Alembic commands ###

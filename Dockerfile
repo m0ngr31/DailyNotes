@@ -25,11 +25,17 @@ FROM python:3.12-alpine
 WORKDIR /app
 
 # Install build dependencies, Python packages, then clean up in one layer
+# Note: postgresql-libs and mariadb-connector-c are runtime deps for database drivers
 COPY requirements.txt ./
-RUN apk add --no-cache --virtual .build-deps \
+RUN apk add --no-cache \
+        postgresql-libs \
+        mariadb-connector-c \
+    && apk add --no-cache --virtual .build-deps \
         gcc \
         musl-dev \
         libffi-dev \
+        postgresql-dev \
+        mariadb-dev \
     && pip install --no-cache-dir \
         flask==3.1.2 \
         flask_sqlalchemy==3.1.1 \
@@ -41,6 +47,9 @@ RUN apk add --no-cache --virtual .build-deps \
         pycryptodome==3.23.0 \
         requests==2.32.5 \
         python-dateutil==2.9.0.post0 \
+        psycopg2-binary==2.9.10 \
+        pymysql==1.1.1 \
+        cryptography==44.0.0 \
     && apk del .build-deps
 
 # Copy application files
