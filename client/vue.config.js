@@ -3,6 +3,7 @@ var path = require('node:path');
 
 process.env.VUE_APP_PREVENT_SIGNUPS = process.env.PREVENT_SIGNUPS ? 'true' : '';
 process.env.VUE_APP_BASE_URL = process.env.BASE_URL ? process.env.BASE_URL : '';
+process.env.VUE_APP_VERSION = process.env.APP_VERSION || 'dev';
 
 module.exports = {
   lintOnSave: false,

@@ -3,6 +3,9 @@
 # ================================
 FROM nikolaik/python-nodejs:python3.10-nodejs24 AS builder
 
+# Version passed from CI
+ARG APP_VERSION=dev
+
 # Install build dependencies
 RUN apt-get update && \
     apt-get install -y build-essential libffi-dev && \
@@ -19,8 +22,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install Node dependencies (regenerate lock file to avoid version mismatch)
 RUN cd client && npm install --prefer-offline --no-audit --legacy-peer-deps
 
-# Build frontend (creates /app/dist/)
-RUN cd client && npm run build
+# Build frontend with version (creates /app/dist/)
+RUN cd client && APP_VERSION=$APP_VERSION npm run build
 
 # ================================
 # Stage 2: Runtime

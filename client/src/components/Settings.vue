@@ -99,6 +99,17 @@
             </b-switch>
           </div>
         </div>
+
+        <div class="settings-card about-card">
+          <p class="section-title">About</p>
+          <div class="about-info">
+            <span class="about-label">Version</span>
+            <span class="about-value">{{ appVersion }}</span>
+          </div>
+          <div class="about-links">
+            <a href="https://github.com/djedi/DailyNotes" target="_blank" rel="noopener">GitHub</a>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -315,6 +326,8 @@ const copyUrl = () => {
   }
 };
 
+const appVersion = process.env.VUE_APP_VERSION || 'dev';
+
 const close = () => {
   emit('close');
 };
@@ -506,5 +519,39 @@ const close = () => {
 
 .delete:hover {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* About section */
+.about-card {
+  margin-top: 16px;
+}
+
+.about-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.about-label {
+  color: #9fb3c8;
+}
+
+.about-value {
+  color: #eeffff;
+  font-family: 'Fira Code', monospace;
+}
+
+.about-links {
+  margin-top: 8px;
+}
+
+.about-links a {
+  color: #82aaff;
+  text-decoration: none;
+}
+
+.about-links a:hover {
+  text-decoration: underline;
 }
 </style>
