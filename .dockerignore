@@ -1,0 +1,69 @@
+# Git
+.git
+.github
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+*.egg-info
+.pytest_cache
+.mypy_cache
+
+# Node
+node_modules/
+client/node_modules/
+**/node_modules/
+client/package-lock.json
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+*.egg
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment & Config
+.env
+*.db
+config/*.db
+config/export.zip
+dailynotes-volume/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation & Development
+README.md
+LICENSE
+CLAUDE.md
+AGENTS.md
+dev-setup.sh
+.playwright-mcp
+
+# Tests
+tests/
+*.test.js
+*.spec.js
+
+# Client build artifacts (we'll build these in Docker)
+client/dist/
+client/.browserslistrc
+client/tests/

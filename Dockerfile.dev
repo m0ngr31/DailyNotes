@@ -1,0 +1,47 @@
+# ================================
+# Development Dockerfile
+# ================================
+# This Dockerfile is optimized for development with hot-reloading
+# Use docker-compose.dev.yml to run this with volume mounts
+
+FROM nikolaik/python-nodejs:python3.10-nodejs16
+
+WORKDIR /app
+
+# Install dependencies for both Python and Node
+# These will be cached unless requirements.txt or package.json change
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install watchdog for Flask auto-reloading
+RUN pip install watchdog
+
+# Copy package files for frontend
+COPY client/package.json ./client/
+# Note: package-lock.json is excluded by .dockerignore for production
+# For dev, we'll use npm install which regenerates the lock file
+RUN cd client && npm install --legacy-peer-deps
+
+# Copy the rest of the application
+# (In dev mode, this will be overridden by volume mounts)
+COPY . .
+
+# Make scripts executable
+RUN chmod +x run.sh verify_env.py verify_data_migrations.py 2>/dev/null || true
+
+# Create config directory
+RUN mkdir -p /app/config
+
+# Install curl for healthcheck
+RUN apt-get update && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Expose ports
+EXPOSE 5001 8080
+
+# Use a dev-specific entrypoint that starts both services
+COPY docker-entrypoint-dev.sh /docker-entrypoint-dev.sh
+RUN chmod +x /docker-entrypoint-dev.sh
+
+ENTRYPOINT ["/docker-entrypoint-dev.sh"]

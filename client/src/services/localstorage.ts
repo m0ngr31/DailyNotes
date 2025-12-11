@@ -1,19 +1,19 @@
-export function getItemOrDefault(key: string, _default: any = null) {
-  if (!typeof(Storage)) {
+export function getItemOrDefault<T = unknown>(key: string, _default: T | null = null): T | null {
+  if (typeof Storage === 'undefined') {
     return _default;
   }
 
   const value = localStorage.getItem(key);
 
-  if (!value){
+  if (!value) {
     return _default;
   }
 
-  return JSON.parse(value);
+  return JSON.parse(value) as T;
 }
 
-export function setItem(key: string, data: any) {
-  if (!typeof(Storage)) {
+export function setItem(key: string, data: unknown) {
+  if (typeof Storage === 'undefined') {
     return;
   }
 

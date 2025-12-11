@@ -1,6 +1,5 @@
-import {Requests} from './requests';
-
-import {INote} from '../interfaces';
+import type { INote } from '../interfaces';
+import { Requests } from './requests';
 
 export const NoteService = {
   /**
@@ -15,16 +14,16 @@ export const NoteService = {
 
     try {
       const res = await Requests.get('/date', {
-        date
+        date,
       });
 
-      if (res.data && res.data.day) {
+      if (res.data?.day) {
         return res.data.day as INote;
       }
 
       throw new Error('no matching data');
     } catch (e) {
-      throw new Error(e);
+      throw new Error(String(e));
     }
   },
 
@@ -45,7 +44,7 @@ export const NoteService = {
 
       return res.data.note as INote;
     } catch (e) {
-      throw new Error(e);
+      throw new Error(String(e));
     }
   },
 
@@ -63,13 +62,13 @@ export const NoteService = {
 
       return res.data as INote[];
     } catch (e) {
-      throw new Error(e);
+      throw new Error(String(e));
     }
   },
 
   /**
    * Save an individual date
-   * 
+   *
    * @param noteData INote object
    */
   saveDay: async (noteData: INote): Promise<INote> => {
@@ -79,7 +78,7 @@ export const NoteService = {
 
   /**
    * Save an individual note
-   * 
+   *
    * @param noteData INote object
    */
   saveNote: async (noteData: INote): Promise<INote> => {
@@ -98,6 +97,30 @@ export const NoteService = {
    * Exports all notes to a zip file and downloads
    */
   exportNotes: async (): Promise<void> => {
-    Requests.download("/export", "export.zip");
-  }
+    Requests.download('/export', 'export.zip');
+  },
+
+  /**
+   * Imports notes from a zip file
+   *
+   * @param file The zip file to import
+   */
+  importNotes: async (
+    file: File
+  ): Promise<{ imported: number; skipped: number; errors: number }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await Requests.post('/import', formData);
+
+      return {
+        imported: res.data.imported,
+        skipped: res.data.skipped,
+        errors: res.data.errors,
+      };
+    } catch (e) {
+      throw new Error(String(e));
+    }
+  },
 };

@@ -5,9 +5,10 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Watch } from 'vue-property-decorator';
 import * as CodeMirror from 'codemirror';
 import _ from 'lodash';
+import { Component, Inject, Vue, Watch } from 'vue-property-decorator';
+import type { IGlobal } from '../interfaces';
 
 // Modes
 import 'codemirror/mode/gfm/gfm.js';
@@ -44,49 +45,132 @@ import 'codemirror/addon/fold/indent-fold.js';
 import 'codemirror/addon/fold/markdown-fold.js';
 import 'codemirror/addon/fold/comment-fold.js';
 
-import {newNote, newDay} from '../services/consts';
+// Vim keymap
+import 'codemirror/keymap/vim.js';
+
+import { newDay, newNote } from '../services/consts';
 import eventHub from '../services/eventHub';
 
 @Component({
   props: {
-    value: String
-  }
+    value: String,
+    useVimMode: Boolean,
+  },
 })
 export default class Editor extends Vue {
+  @Inject()
+  private global!: IGlobal;
   public editor!: CodeMirror.Editor;
   public value!: string;
+  public useVimMode!: boolean;
 
-  public config: CodeMirror.EditorConfiguration = {
-    tabSize: 2,
-    lineNumbers: false,
-    lineWrapping: true,
-    mode: {
-      name: "yaml-frontmatter",
-      tokenTypeOverrides: {
-        emoji: "emoji"
-      }
-    },
-    foldGutter: true,
-    gutters: ['CodeMirror-foldgutter'],
-    theme: 'material',
-    autofocus: true,
-    autoCloseBrackets: true,
-    extraKeys: {
-      'Enter': 'newlineAndIndentContinueMarkdownList',
-      'Ctrl-S': () => this.save(),
-      'Cmd-S': () => this.save(),
-    },
-  };
+  public get config(): CodeMirror.EditorConfiguration {
+    return {
+      tabSize: 2,
+      lineNumbers: false,
+      lineWrapping: true,
+      mode: {
+        name: 'yaml-frontmatter',
+        tokenTypeOverrides: {
+          emoji: 'emoji',
+        },
+      },
+      foldGutter: true,
+      gutters: ['CodeMirror-foldgutter'],
+      theme: 'material',
+      autofocus: true,
+      autoCloseBrackets: true,
+      keyMap: this.useVimMode ? 'vim' : 'default',
+      extraKeys: {
+        Enter: 'newlineAndIndentContinueMarkdownList',
+        'Ctrl-S': () => this.save(),
+        'Cmd-S': () => this.save(),
+      },
+    };
+  }
 
   mounted() {
     const tagElement = <HTMLTextAreaElement>this.$refs.editor;
     this.editor = CodeMirror.fromTextArea(tagElement, this.config);
 
-    this.editor.on('changes', _.throttle(() => {
-      this.$emit('valChanged', this.editor.getValue());
-    }, 500, {trailing: true, leading: false}));
+    this.editor.on(
+      'changes',
+      _.throttle(
+        () => {
+          this.generateTaskList();
+          this.$emit('valChanged', this.editor.getValue());
+        },
+        500,
+        { trailing: true, leading: false }
+      )
+    );
+
+    // Add Cmd+click to open links
+    this.editor.on('mousedown', (cm: CodeMirror.Editor, event: MouseEvent) => {
+      // Check for Cmd (Mac) or Ctrl (Windows/Linux)
+      if (event.metaKey || event.ctrlKey) {
+        const pos = cm.coordsChar({ left: event.clientX, top: event.clientY });
+        const token = cm.getTokenAt(pos);
+
+        // Check if the token is a link
+        if (token.type?.includes('link')) {
+          event.preventDefault();
+          const url = this.extractUrl(cm, pos);
+          if (url) {
+            window.open(url, '_blank');
+          }
+        }
+      }
+    });
+
+    // Add hover effect for links when Cmd/Ctrl is pressed using native DOM events
+    const wrapper = this.editor.getWrapperElement();
+
+    wrapper.addEventListener('mousemove', (event: MouseEvent) => {
+      if (event.metaKey || event.ctrlKey) {
+        const pos = this.editor.coordsChar({ left: event.clientX, top: event.clientY });
+        const token = this.editor.getTokenAt(pos);
+
+        // If hovering over a link, add cursor pointer and highlight
+        if (token.type?.includes('link')) {
+          wrapper.style.cursor = 'pointer';
+          wrapper.classList.add('link-hover');
+        } else {
+          wrapper.style.cursor = '';
+          wrapper.classList.remove('link-hover');
+        }
+      } else {
+        wrapper.style.cursor = '';
+        wrapper.classList.remove('link-hover');
+      }
+    });
+
+    // Clean up cursor when mouse leaves
+    wrapper.addEventListener('mouseout', () => {
+      wrapper.style.cursor = '';
+      wrapper.classList.remove('link-hover');
+    });
 
     this.handleValueUpdate(true);
+  }
+
+  generateTaskList() {
+    // Get task list for today
+    const data = this.editor.getValue();
+    const regex = /- \[( |x)\] (.+)/gm;
+    let m: RegExpExecArray | null;
+    let completed = false;
+    this.global.taskList.splice(0);
+    m = regex.exec(data);
+    while (m !== null) {
+      // This is necessary to avoid infinite loops with zero-width matches
+      if (m.index === regex.lastIndex) {
+        regex.lastIndex++;
+      }
+      completed = m[1] === 'x';
+      this.global.taskList.push({ completed, name: m[2], index: m.index });
+      m = regex.exec(data);
+    }
   }
 
   created() {
@@ -97,7 +181,7 @@ export default class Editor extends Vue {
     eventHub.$off('focusEditor', this.focus);
   }
 
-  prevent($event: any) {
+  prevent($event: Event) {
     $event.stopPropagation();
   }
 
@@ -114,9 +198,60 @@ export default class Editor extends Vue {
     });
   }
 
+  refresh() {
+    _.defer(() => {
+      if (this.editor) {
+        this.editor.refresh();
+      }
+    });
+  }
+
+  extractUrl(cm: CodeMirror.Editor, pos: CodeMirror.Position): string | null {
+    const line = cm.getLine(pos.line);
+
+    // Regex patterns for different link formats
+    // Markdown links: [text](url)
+    const mdLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    // Bare URLs: http(s)://...
+    const urlRegex = /https?:\/\/[^\s)]+/g;
+
+    let match: RegExpExecArray | null;
+
+    // Check for markdown links
+    match = mdLinkRegex.exec(line);
+    while (match !== null) {
+      const start = match.index;
+      const end = match.index + match[0].length;
+      if (pos.ch >= start && pos.ch <= end) {
+        return match[2]; // Return the URL part
+      }
+      match = mdLinkRegex.exec(line);
+    }
+
+    // Check for bare URLs
+    match = urlRegex.exec(line);
+    while (match !== null) {
+      const start = match.index;
+      const end = match.index + match[0].length;
+      if (pos.ch >= start && pos.ch <= end) {
+        return match[0];
+      }
+      match = urlRegex.exec(line);
+    }
+
+    return null;
+  }
+
   @Watch('value')
   onValueChanged() {
     this.handleValueUpdate();
+  }
+
+  @Watch('useVimMode')
+  onVimModeChanged() {
+    if (this.editor) {
+      this.editor.setOption('keyMap', this.useVimMode ? 'vim' : 'default');
+    }
   }
 
   public handleValueUpdate(firstMount?: boolean) {
@@ -126,22 +261,35 @@ export default class Editor extends Vue {
       this.editor.setValue(this.value || '');
 
       if (this.value === newNote) {
-        this.editor.setCursor(1, 7)
+        this.editor.setCursor(1, 7);
         return;
       }
 
       if (this.value === newDay) {
-        this.editor.setCursor(1, 6)
+        this.editor.setCursor(1, 6);
         return;
       }
 
       if (firstMount) {
         this.editor.setCursor(this.editor.lineCount(), 0);
-        return
+        return;
       }
 
       this.editor.setCursor(cursor);
     });
+  }
+
+  @Watch('global.taskList')
+  onTaskListChanged() {
+    const data = this.editor.getValue();
+    let newData = data;
+    this.global.taskList.forEach((task) => {
+      const c = task.completed ? 'x' : ' ';
+      newData = newData.substr(0, task.index + 3) + c + newData.substr(task.index + 4);
+    });
+    if (newData !== data) {
+      this.editor.setValue(newData);
+    }
   }
 }
 </script>
@@ -173,5 +321,22 @@ export default class Editor extends Vue {
 
 .cm-strong, .cm-header-1, .cm-header-2, .cm-header-3, .cm-header-4, .cm-header-5, .cm-header-6 {
   color: #aaa;
+}
+
+/* Link hover effect when Cmd/Ctrl is pressed */
+.CodeMirror.link-hover {
+  cursor: pointer !important;
+}
+
+.CodeMirror.link-hover .cm-link {
+  color: #42a5f5 !important;
+  text-decoration: underline;
+  cursor: pointer !important;
+}
+
+.CodeMirror.link-hover .cm-url {
+  color: #42a5f5 !important;
+  text-decoration: underline;
+  cursor: pointer !important;
 }
 </style>

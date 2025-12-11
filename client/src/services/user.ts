@@ -1,9 +1,9 @@
-import {Requests} from './requests';
+import { Requests } from './requests';
 
 const AUTH_TOKEN = 'dn-token';
 
 export function getToken() {
-  if (typeof(Storage)) {
+  if (typeof Storage !== 'undefined') {
     return localStorage.getItem(AUTH_TOKEN);
   }
 
@@ -11,14 +11,14 @@ export function getToken() {
 }
 
 export async function setToken(token: string) {
-  if (typeof(Storage)) {
+  if (typeof Storage !== 'undefined') {
     localStorage.setItem(AUTH_TOKEN, token);
   }
 }
 
 export function clearToken() {
-  if (typeof(Storage)) {
-    localStorage.removeItem(AUTH_TOKEN)
+  if (typeof Storage !== 'undefined') {
+    localStorage.removeItem(AUTH_TOKEN);
   }
 }
 
@@ -31,5 +31,5 @@ export async function updateJWT() {
     }
 
     setToken(res.data.token);
-  } catch (e) {}
+  } catch (_e) {}
 }

@@ -13,12 +13,12 @@
 </template>
 
 <script>
-  export default {
-    name: 'Auth',
-    metaInfo: {
-      title: ''
-    }
-  }
+export default {
+  name: 'Auth',
+  metaInfo: {
+    title: '',
+  },
+};
 </script>
 
 <style>

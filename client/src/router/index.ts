@@ -1,25 +1,24 @@
-import Vue from "vue";
-import VueRouter from "vue-router";
-
-import Home from "../views/Home.vue";
-
-import PageNotFound from '../views/PageNotFound.vue';
-import UnauthorizedPage from '../views/UnauthorizedPage.vue';
-import ErrorPage from '../views/ErrorPage.vue';
-
-import Day from '../views/Day.vue';
-import Note from '../views/Note.vue';
-import NewNote from '../views/NewNote.vue';
-import Search from '../views/Search.vue';
-import HomeRedirect from '../views/HomeRedirect.vue';
-
-import Auth from '../views/Auth.vue';
-import Login from '../views/Login.vue';
-import Signup from '../views/Signup.vue';
-
-import {getToken} from '../services/user';
+import Vue from 'vue';
+import VueRouter from 'vue-router';
 import SidebarInst from '../services/sidebar';
+import { getToken } from '../services/user';
 
+// Lazy-load route components for better code splitting
+const Home = () => import(/* webpackChunkName: "home" */ '../views/Home.vue');
+const PageNotFound = () => import(/* webpackChunkName: "errors" */ '../views/PageNotFound.vue');
+const UnauthorizedPage = () =>
+  import(/* webpackChunkName: "errors" */ '../views/UnauthorizedPage.vue');
+const ErrorPage = () => import(/* webpackChunkName: "errors" */ '../views/ErrorPage.vue');
+
+const Day = () => import(/* webpackChunkName: "editor" */ '../views/Day.vue');
+const Note = () => import(/* webpackChunkName: "editor" */ '../views/Note.vue');
+const NewNote = () => import(/* webpackChunkName: "editor" */ '../views/NewNote.vue');
+const Search = () => import(/* webpackChunkName: "search" */ '../views/Search.vue');
+const HomeRedirect = () => import(/* webpackChunkName: "home" */ '../views/HomeRedirect.vue');
+
+const Auth = () => import(/* webpackChunkName: "auth" */ '../views/Auth.vue');
+const Login = () => import(/* webpackChunkName: "auth" */ '../views/Login.vue');
+const Signup = () => import(/* webpackChunkName: "auth" */ '../views/Signup.vue');
 
 Vue.use(VueRouter);
 
@@ -33,14 +32,14 @@ const routes = [
         path: '',
         alias: 'login',
         name: 'Login',
-        component: Login
+        component: Login,
       },
       {
         path: 'sign-up',
         name: 'Sign Up',
-        component: Signup
-      }
-    ]
+        component: Signup,
+      },
+    ],
   },
   {
     path: '/',
@@ -50,72 +49,71 @@ const routes = [
       {
         path: '',
         name: 'Home Redirect',
-        component: HomeRedirect
+        component: HomeRedirect,
       },
       {
         path: 'date/:id',
         name: 'day-id',
-        component: Day
+        component: Day,
       },
       {
         path: 'note/:uuid',
         name: 'note-id',
-        component: Note
+        component: Note,
       },
       {
         path: 'new-note',
         name: 'new-note',
-        component: NewNote
+        component: NewNote,
       },
       {
         path: 'search',
         name: 'search',
-        component: Search
-      }
-    ]
+        component: Search,
+      },
+    ],
   },
   {
     path: '/page-not-found',
     name: '404',
-    component: PageNotFound
+    component: PageNotFound,
   },
   {
     path: '/not-authorized',
     name: '401',
-    component: UnauthorizedPage
+    component: UnauthorizedPage,
   },
   {
     path: '/error',
     name: 'Error',
-    component: ErrorPage
+    component: ErrorPage,
   },
   {
     path: '*',
-    redirect: '/page-not-found'
-  }
-
+    redirect: '/page-not-found',
+  },
 ];
 
 const router = new VueRouter({
   mode: 'history',
   linkActiveClass: 'active',
   base: process.env.BASE_URL,
-  routes
+  routes,
 });
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const currentUser = getToken();
-  const requiresAuth = to.matched.some(record => record.meta.auth);
+  const requiresAuth = to.matched.some((record) => record.meta.auth);
 
   if (requiresAuth && !currentUser) {
-    await next({name: 'Login', query: {from: to.path}});
+    await next({ name: 'Login', query: { from: to.path } });
   } else if (!requiresAuth && currentUser) {
-    await next({name: 'Home Redirect'});
+    await next({ name: 'Home Redirect' });
   } else {
     if (requiresAuth && to.name !== 'day-id') {
       SidebarInst.date = null;
     }
-    
+
     if (requiresAuth && to.name !== 'search') {
       SidebarInst.searchString = '';
       SidebarInst.selectedSearch = '';

@@ -1,6 +1,6 @@
 services:
   server:
-    build: .
+    image: xhenxhe/dailynotes:latest
     ports:
       - 8000:8000
     volumes:
@@ -8,9 +8,3 @@ services:
     environment:
       API_SECRET_KEY: CHANGE_THIS_WITH_SECURE_PASSWORD
       DB_ENCRYPTION_KEY: CHANGE_THIS_WITH_SECURE_PASSWORD
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s

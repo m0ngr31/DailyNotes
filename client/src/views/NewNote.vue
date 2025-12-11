@@ -1,44 +1,35 @@
 <template>
   <div>
     <Header :options="headerOptions"></Header>
-    <Editor v-bind:value="text" v-on:valChanged="valChanged" v-on:saveShortcut="saveNote"></Editor>
+    <Editor v-bind:value="text" :useVimMode="sidebar.vimMode" v-on:valChanged="valChanged" v-on:saveShortcut="saveNote"></Editor>
   </div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import { Route } from "vue-router";
-
-import SidebarInst from '../services/sidebar';
-import {NoteService} from '../services/notes';
-import {newNote} from '../services/consts';
-
-import {INote} from '../interfaces';
-
+import type { Route } from 'vue-router/types/router';
 import Editor from '@/components/Editor.vue';
 import Header from '@/components/Header.vue';
 import UnsavedForm from '@/components/UnsavedForm.vue';
+import type { IHeaderOptions, INote } from '../interfaces';
+import { newNote } from '../services/consts';
+import { NoteService } from '../services/notes';
+import SidebarInst from '../services/sidebar';
 
-import {IHeaderOptions} from '../interfaces';
-
-
-Component.registerHooks([
-  'metaInfo',
-  'beforeRouteLeave'
-]);
+Component.registerHooks(['metaInfo', 'beforeRouteLeave']);
 
 @Component({
   components: {
     Editor,
     Header,
-  }
+  },
 })
 export default class NewNote extends Vue {
   public sidebar = SidebarInst;
   public text: string = '';
   public modifiedText: string = '';
-  public unsavedChanges : boolean = false;
+  public unsavedChanges: boolean = false;
   public title: string = 'New Note';
   public note!: INote;
   public headerOptions: IHeaderOptions = {
@@ -47,11 +38,11 @@ export default class NewNote extends Vue {
     saveFn: () => this.saveNote(),
   };
 
-  public metaInfo(): any {
+  public metaInfo(): { title: string } {
     return {
-      title: this.title
+      title: this.title,
     };
-  };
+  }
 
   created() {
     window.addEventListener('beforeunload', this.unsavedAlert);
@@ -62,7 +53,7 @@ export default class NewNote extends Vue {
 
     this.note = {
       data: this.text,
-      uuid: null
+      uuid: null,
     };
   }
 
@@ -71,25 +62,25 @@ export default class NewNote extends Vue {
   }
 
   public async saveNote() {
-    const updatedNote = Object.assign(this.note, {data: this.modifiedText});
+    const updatedNote = Object.assign(this.note, { data: this.modifiedText });
     try {
       const res = await NoteService.createNote(updatedNote);
       this.sidebar.getSidebarInfo();
       this.unsavedChanges = false;
-      this.$router.push({name: 'note-id', params: {uuid: (res as any).uuid}})
-    } catch(e) {
+      this.$router.push({ name: 'note-id', params: { uuid: (res as { uuid: string }).uuid } });
+    } catch (_e) {
       this.$buefy.toast.open({
         duration: 5000,
         message: 'There was an error saving. Please try again.',
         position: 'is-top',
-        type: 'is-danger'
+        type: 'is-danger',
       });
     }
 
     this.headerOptions.showDelete = !!this.note.uuid;
   }
 
-  beforeRouteLeave(to: Route, from: Route, next: Function) {
+  beforeRouteLeave(_to: Route, _from: Route, next: (arg?: boolean) => void) {
     if (this.unsavedChanges) {
       this.$buefy.modal.open({
         parent: this,
@@ -106,8 +97,8 @@ export default class NewNote extends Vue {
           save: () => {
             this.saveNote();
             next();
-          }
-        }
+          },
+        },
       });
     } else {
       next();

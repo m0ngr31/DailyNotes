@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# DailyNotes Docker Development Environment Startup Script
+# This script starts the Docker development environment and opens the app in your browser
+
+set -e
+
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║   DailyNotes Development Environment       ║${NC}"
+echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+echo ""
+
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+  echo -e "${RED}❌ Error: Docker is not running${NC}"
+  echo -e "${YELLOW}Please start Docker Desktop and try again${NC}"
+  exit 1
+fi
+
+# Check if docker-compose is available
+if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null 2>&1; then
+  echo -e "${RED}❌ Error: docker-compose is not installed${NC}"
+  echo -e "${YELLOW}Please install Docker Compose and try again${NC}"
+  exit 1
+fi
+
+# Determine which docker compose command to use
+if docker compose version &> /dev/null 2>&1; then
+  DOCKER_COMPOSE="docker compose"
+else
+  DOCKER_COMPOSE="docker-compose"
+fi
+
+# Build and start the development environment
+echo -e "${GREEN}🔨 Building development Docker image...${NC}"
+$DOCKER_COMPOSE -f docker-compose.dev.yml build
+
+echo ""
+echo -e "${GREEN}🚀 Starting development environment...${NC}"
+$DOCKER_COMPOSE -f docker-compose.dev.yml up -d
+
+# Wait for services to be ready
+echo ""
+echo -e "${BLUE}⏳ Waiting for services to start...${NC}"
+
+# Function to check if a service is ready
+check_service() {
+  local url=$1
+  local max_attempts=30
+  local attempt=1
+
+  while [ $attempt -le $max_attempts ]; do
+    if curl -s "$url" > /dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+    echo -n "."
+  done
+  return 1
+}
+
+# Check if Vue dev server is ready
+if check_service "http://localhost:8080"; then
+  echo ""
+  echo -e "${GREEN}✅ Development environment is ready!${NC}"
+  echo ""
+  echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${GREEN}  Frontend:${NC} http://localhost:8080"
+  echo -e "${GREEN}  Backend:${NC}  http://localhost:5001"
+  echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  echo -e "${YELLOW}📝 Notes:${NC}"
+  echo -e "  • Changes to Python files will auto-reload the Flask server"
+  echo -e "  • Changes to Vue files will hot-reload in the browser"
+  echo -e "  • Database stored in ./config/app.db"
+  echo ""
+  echo -e "${BLUE}🛠️  Useful commands:${NC}"
+  echo -e "  • View logs:    ${YELLOW}$DOCKER_COMPOSE -f docker-compose.dev.yml logs -f${NC}"
+  echo -e "  • Stop:         ${YELLOW}$DOCKER_COMPOSE -f docker-compose.dev.yml down${NC}"
+  echo -e "  • Restart:      ${YELLOW}$DOCKER_COMPOSE -f docker-compose.dev.yml restart${NC}"
+  echo -e "  • Shell access: ${YELLOW}docker exec -it dailynotes-dev bash${NC}"
+  echo ""
+
+  # Open browser (macOS)
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo -e "${GREEN}🌐 Opening browser...${NC}"
+    sleep 2
+    open "http://localhost:8080"
+  else
+    echo -e "${YELLOW}🌐 Open http://localhost:8080 in your browser${NC}"
+  fi
+else
+  echo ""
+  echo -e "${RED}❌ Services failed to start within expected time${NC}"
+  echo -e "${YELLOW}Check logs with: $DOCKER_COMPOSE -f docker-compose.dev.yml logs${NC}"
+  exit 1
+fi

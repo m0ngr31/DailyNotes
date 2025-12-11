@@ -16,4 +16,4 @@ flask db upgrade
 
 ./verify_data_migrations.py
 
-exec gunicorn server:app -b 0.0.0.0:5000
+exec gunicorn server:app -b 0.0.0.0:8000

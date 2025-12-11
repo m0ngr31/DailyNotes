@@ -4,15 +4,17 @@
     v-model="sidebar.date"
     indicators="bars"
     :events="sidebar.events"
+    :nearby-month-days="true"
+    :nearby-selectable-month-days="true"
     @input="changeDate"
   >
   </b-datepicker>
 </template>
 
 <script lang="ts">
+import format from 'date-fns/format';
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import format from 'date-fns/format';
 
 import SidebarInst from '../services/sidebar';
 
@@ -26,7 +28,7 @@ export default class Calendar extends Vue {
     this.sidebar.getSidebarInfo(true);
   }
 
-  public changeDate(value: any) {
+  public changeDate(value: Date | null) {
     if (value) {
       this.$router.push({ name: 'day-id', params: { id: format(value, 'MM-dd-yyyy') } });
     }

@@ -2,7 +2,7 @@ from app import app, db
 from app.model_types import GUID
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from Crypto.Cipher import AES
 import binascii
@@ -13,14 +13,32 @@ import re
 
 key = app.config['DB_ENCRYPTION_KEY']
 
+# Ensure key is bytes
+if isinstance(key, str):
+  key = key.encode('utf-8')
+
+# Pad or truncate key to 32 bytes for AES-256
+key = (key + b'\0' * 32)[:32]
+
+# Derive IV from key - must be exactly 16 bytes
+iv = key[:16]
+
 
 def aes_encrypt(data):
-  cipher = AES.new(key, AES.MODE_CFB, key[::-1])
+  # Ensure data is bytes
+  if isinstance(data, str):
+    data = data.encode('utf-8')
+
+  cipher = AES.new(key, AES.MODE_CFB, iv)
   return cipher.encrypt(data)
 
 def aes_encrypt_old(data):
-  cipher = AES.new(key)
-  data = data + (" " * (16 - (len(data) % 16)))
+  # Ensure data is bytes
+  if isinstance(data, str):
+    data = data.encode('utf-8')
+
+  cipher = AES.new(key, AES.MODE_ECB)
+  data = data + (b" " * (16 - (len(data) % 16)))
   return binascii.hexlify(cipher.encrypt(data))
 
 def aes_decrypt(data):
@@ -28,7 +46,11 @@ def aes_decrypt(data):
   if type(data) is InstrumentedAttribute:
     return ''
 
-  cipher = AES.new(key, AES.MODE_CFB, key[::-1])
+  # Ensure data is bytes
+  if isinstance(data, str):
+    data = data.encode('utf-8')
+
+  cipher = AES.new(key, AES.MODE_CFB, iv)
 
   decrypted = cipher.decrypt(data)
 
@@ -40,10 +62,19 @@ def aes_decrypt(data):
 
 def aes_decrypt_old(data):
   try:
-    cipher = AES.new(key)
+    # Ensure data is bytes for unhexlify
+    if isinstance(data, str):
+      data = data.encode('utf-8')
+
+    cipher = AES.new(key, AES.MODE_ECB)
     return cipher.decrypt(binascii.unhexlify(data)).rstrip().decode('ascii')
   except:
     # If data is not encrypted, just return it
+    if isinstance(data, bytes):
+      try:
+        return data.decode('utf-8')
+      except:
+        pass
     return data
 
 
@@ -52,6 +83,7 @@ class User(db.Model):
   username = db.Column(db.String(64), unique=True, nullable=False)
   password_hash = db.Column(db.String(128), nullable=False)
   auto_save = db.Column(db.Boolean, nullable=True)
+  vim_mode = db.Column(db.Boolean, nullable=True, default=False)
   notes = db.relationship('Note', lazy='dynamic', cascade='all, delete, delete-orphan')
   meta = db.relationship('Meta', lazy='dynamic', cascade='all, delete, delete-orphan')
 
@@ -136,7 +168,28 @@ def before_change_note(mapper, connection, target):
   if isinstance(data.get('title'), str) and len(data.get('title')) > 0:
     title = data.get('title')
 
-  if title and not target.is_date:
+  if not target.is_date:
+    # If no title found in frontmatter, generate a default title
+    if not title:
+      # Try to extract first line of content as title
+      content_lines = data.content.strip().split('\n')
+      first_line = ''
+      for line in content_lines:
+        if line.strip():
+          first_line = line.strip()
+          break
+
+      if first_line:
+        # Remove markdown formatting from first line
+        title = first_line.lstrip('#').strip()
+        # Limit title length
+        if len(title) > 100:
+          title = title[:100] + '...'
+
+      # If still no title, use default
+      if not title:
+        title = 'Untitled Note'
+
     target.name = title
 
 
@@ -178,46 +231,50 @@ def after_change_note(mapper, connection, target):
   for tag in existing_tags:
     if tag.name not in tags:
       connection.execute(
-        'DELETE FROM meta WHERE uuid = ?',
-        '{}'.format(tag.uuid).replace('-', '')
+        text('DELETE FROM meta WHERE uuid = :uuid'),
+        {'uuid': '{}'.format(tag.uuid).replace('-', '')}
       )
     else:
       tags.remove(tag.name)
 
   for tag in tags:
     connection.execute(
-      'INSERT INTO meta (uuid, user_id, note_id, name, kind) VALUES (?, ?, ?, ?, ?)',
-      '{}'.format(uuid.uuid4()).replace('-', ''),
-      '{}'.format(target.user_id).replace('-', ''),
-      '{}'.format(target.uuid).replace('-', ''),
-      aes_encrypt(tag),
-      'tag'
+      text('INSERT INTO meta (uuid, user_id, note_id, name, kind) VALUES (:uuid, :user_id, :note_id, :name, :kind)'),
+      {
+        'uuid': '{}'.format(uuid.uuid4()).replace('-', ''),
+        'user_id': '{}'.format(target.user_id).replace('-', ''),
+        'note_id': '{}'.format(target.uuid).replace('-', ''),
+        'name': aes_encrypt(tag),
+        'kind': 'tag'
+      }
     )
 
   for project in existing_projects:
     if project.name not in projects:
       connection.execute(
-        'DELETE FROM meta WHERE uuid = ?',
-        '{}'.format(project.uuid).replace('-', '')
+        text('DELETE FROM meta WHERE uuid = :uuid'),
+        {'uuid': '{}'.format(project.uuid).replace('-', '')}
       )
     else:
       projects.remove(project.name)
 
   for project in projects:
     connection.execute(
-      'INSERT INTO meta (uuid, user_id, note_id, name, kind) VALUES (?, ?, ?, ?, ?)',
-      '{}'.format(uuid.uuid4()).replace('-', ''),
-      '{}'.format(target.user_id).replace('-', ''),
-      '{}'.format(target.uuid).replace('-', ''),
-      aes_encrypt(project),
-      'project'
+      text('INSERT INTO meta (uuid, user_id, note_id, name, kind) VALUES (:uuid, :user_id, :note_id, :name, :kind)'),
+      {
+        'uuid': '{}'.format(uuid.uuid4()).replace('-', ''),
+        'user_id': '{}'.format(target.user_id).replace('-', ''),
+        'note_id': '{}'.format(target.uuid).replace('-', ''),
+        'name': aes_encrypt(project),
+        'kind': 'project'
+      }
     )
 
   for task in existing_tasks:
     if task.name not in tasks:
       connection.execute(
-        'DELETE FROM meta WHERE uuid = ?',
-        '{}'.format(task.uuid).replace('-', '')
+        text('DELETE FROM meta WHERE uuid = :uuid'),
+        {'uuid': '{}'.format(task.uuid).replace('-', '')}
       )
     else:
       tasks.remove(task.name)
@@ -226,13 +283,15 @@ def after_change_note(mapper, connection, target):
     encrypted_task = aes_encrypt(task)
 
     connection.execute(
-      'INSERT INTO meta (uuid, user_id, note_id, name, name_compare, kind) VALUES (?, ?, ?, ?, ?, ?)',
-      '{}'.format(uuid.uuid4()).replace('-', ''),
-      '{}'.format(target.user_id).replace('-', ''),
-      '{}'.format(target.uuid).replace('-', ''),
-      encrypted_task,
-      encrypted_task,
-      'task'
+      text('INSERT INTO meta (uuid, user_id, note_id, name, name_compare, kind) VALUES (:uuid, :user_id, :note_id, :name, :name_compare, :kind)'),
+      {
+        'uuid': '{}'.format(uuid.uuid4()).replace('-', ''),
+        'user_id': '{}'.format(target.user_id).replace('-', ''),
+        'note_id': '{}'.format(target.uuid).replace('-', ''),
+        'name': encrypted_task,
+        'name_compare': encrypted_task,
+        'kind': 'task'
+      }
     )
 
 def before_update_task(mapper, connection, target):
@@ -250,9 +309,11 @@ def before_update_task(mapper, connection, target):
   note_data = aes_encrypt(note.text.replace(aes_decrypt(target.name_compare), target.name))
 
   connection.execute(
-    'UPDATE note SET data = ? WHERE uuid = ?',
-    note_data,
-    '{}'.format(note.uuid).replace('-', '')
+    text('UPDATE note SET data = :data WHERE uuid = :uuid'),
+    {
+      'data': note_data,
+      'uuid': '{}'.format(note.uuid).replace('-', '')
+    }
   )
 
   target.name_compare = target.name_encrypted

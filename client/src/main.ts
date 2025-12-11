@@ -1,7 +1,7 @@
-import Vue from 'vue';
 import Buefy from 'buefy';
-import VueMeta from 'vue-meta';
+import Vue from 'vue';
 import VueMasonry from 'vue-masonry-css';
+import VueMeta from 'vue-meta';
 
 import App from './App.vue';
 import router from './router';
@@ -16,5 +16,5 @@ Vue.use(VueMasonry);
 
 new Vue({
   router,
-  render: h => h(App)
+  render: (h) => h(App),
 }).$mount('#app');

@@ -23,16 +23,7 @@
             </b-tooltip>
           </div>
         </div>
-        <div class="level-item alt-button" v-if="sidebar.tasks.length">
-          <b-dropdown aria-role="list">
-            <b-tooltip label="Tasks" position="is-bottom" slot="trigger" role="button">
-              <b-icon icon="tasks"></b-icon>
-            </b-tooltip>
-            <b-dropdown-item custom v-for="task of sidebar.tasks" v-bind:key="task.uuid">
-              <SimpleTask :task="task"></SimpleTask>
-            </b-dropdown-item>
-          </b-dropdown>
-        </div>
+        <Tasks></Tasks>
         <div class="level-item alt-button">
           <div @click="goToSearch()">
             <b-tooltip label="Search notes" position="is-bottom">
@@ -55,6 +46,31 @@
           <div class="header-loading">
             <b-loading :is-full-page="false" :active="true"></b-loading>
           </div>
+        </div>
+        <div
+          v-show="options.showPreview"
+          class="level-item alt-button"
+          v-bind:class="{ 'preview-active': options.previewMode !== 'none' }"
+        >
+          <b-dropdown position="is-bottom-left">
+            <b-tooltip slot="trigger" label="Preview" position="is-bottom">
+              <b-icon icon="eye"></b-icon>
+            </b-tooltip>
+            <b-dropdown-item @click="togglePreview('side')">
+              <b-icon icon="columns" size="is-small"></b-icon>
+              <span class="dropdown-text">Preview Side-by-Side</span>
+              <span class="dropdown-shortcut">⌘K V</span>
+            </b-dropdown-item>
+            <b-dropdown-item @click="togglePreview('replace')">
+              <b-icon icon="file-alt" size="is-small"></b-icon>
+              <span class="dropdown-text">Preview Only</span>
+              <span class="dropdown-shortcut">⇧⌘V</span>
+            </b-dropdown-item>
+            <b-dropdown-item v-if="options.previewMode !== 'none'" @click="closePreview()">
+              <b-icon icon="times" size="is-small"></b-icon>
+              <span class="dropdown-text">Close Preview</span>
+            </b-dropdown-item>
+          </b-dropdown>
         </div>
         <div
           v-show="options.saveFn"
@@ -86,8 +102,17 @@
                 {{ sidebar.autoSave ? 'Disable Auto-Save' : 'Enable Auto-Save' }}
               </b-switch>
             </b-dropdown-item>
+            <b-dropdown-item @click="openSettings()">Settings</b-dropdown-item>
             <b-dropdown-item @click="exportNotes()">Export Notes</b-dropdown-item>
+            <b-dropdown-item @click="triggerImport()">Import Notes</b-dropdown-item>
             <b-dropdown-item @click="logout()">Logout</b-dropdown-item>
+            <input
+              ref="importInput"
+              type="file"
+              accept=".zip"
+              style="display: none"
+              @change="importNotes"
+            />
           </b-dropdown>
         </div>
       </div>
@@ -96,31 +121,30 @@
 </template>
 
 <script lang="ts">
+import addDays from 'date-fns/addDays';
+import format from 'date-fns/format';
+import subDays from 'date-fns/subDays';
+import _ from 'lodash';
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import _ from 'lodash';
-import addDays from 'date-fns/addDays';
-import subDays from 'date-fns/subDays'
-import format from 'date-fns/format';
-
+import type { IHeaderOptions } from '../interfaces';
+import { NoteService } from '../services/notes';
 import SidebarInst from '../services/sidebar';
-import {clearToken} from '../services/user';
-import {NoteService} from '../services/notes';
-
-import {IHeaderOptions} from '../interfaces';
-
-import SimpleTask from './SimpleTask.vue';
+import { clearToken } from '../services/user';
+import Settings from './Settings.vue';
+import Tasks from './Tasks.vue';
 
 @Component({
   components: {
-    SimpleTask,
+    Tasks,
+    Settings,
   },
   props: {
     options: {
       type: Object,
-      required: true
-    }
-  }
+      required: true,
+    },
+  },
 })
 export default class Header extends Vue {
   public sidebar = SidebarInst;
@@ -132,24 +156,24 @@ export default class Header extends Vue {
   }
 
   public newNote() {
-    this.$router.push({name: 'new-note'}).catch(err => {});
+    this.$router.push({ name: 'new-note' }).catch((_err) => {});
   }
 
-  public goToSearch(searchType: string, tag: string) {
-    this.$router.push({name: 'search'}).catch(err => {});
+  public goToSearch(_searchType: string, _tag: string) {
+    this.$router.push({ name: 'search' }).catch((_err) => {});
   }
 
-  public prevent($event: any) {
+  public prevent($event: Event) {
     $event.stopPropagation();
   }
 
   public prevDay() {
-    const date = subDays(this.sidebar.date, 1);
+    const date = subDays(this.sidebar.date || new Date(), 1);
     this.$router.push({ name: 'day-id', params: { id: format(date, 'MM-dd-yyyy') } });
   }
 
   public nextDay() {
-    const date = addDays(this.sidebar.date, 1);
+    const date = addDays(this.sidebar.date || new Date(), 1);
     this.$router.push({ name: 'day-id', params: { id: format(date, 'MM-dd-yyyy') } });
   }
 
@@ -167,7 +191,7 @@ export default class Header extends Vue {
 
     try {
       await this.options.saveFn();
-    } catch(e) {}
+    } catch (_e) {}
 
     this.isSaving = false;
   }
@@ -186,7 +210,7 @@ export default class Header extends Vue {
 
     try {
       await this.options.deleteFn();
-    } catch(e) {}
+    } catch (_e) {}
 
     this.isSaving = false;
   }
@@ -195,9 +219,112 @@ export default class Header extends Vue {
     NoteService.exportNotes();
   }
 
+  public triggerImport() {
+    const input = this.$refs.importInput as HTMLInputElement;
+    if (input) {
+      input.click();
+    }
+  }
+
+  public async importNotes(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    this.$buefy.dialog.confirm({
+      title: 'Import Notes',
+      message:
+        'Importing notes will add all notes from the ZIP file. Daily notes that already exist will be skipped. Do you want to continue?',
+      confirmText: 'Import',
+      type: 'is-info',
+      hasIcon: true,
+      onConfirm: async () => {
+        const loading = this.$buefy.loading.open({
+          container: null,
+        });
+
+        try {
+          const result = await NoteService.importNotes(file);
+
+          loading.close();
+
+          this.$buefy.toast.open({
+            message: `Import completed! Imported: ${result.imported}, Skipped: ${result.skipped}, Errors: ${result.errors}`,
+            type: 'is-success',
+            duration: 5000,
+          });
+
+          // Reset file input
+          target.value = '';
+
+          // Refresh sidebar and calendar to show new notes
+          if (this.sidebar) {
+            if (_.isFunction(this.sidebar.getSidebarInfo)) {
+              this.sidebar.getSidebarInfo();
+            }
+            if (_.isFunction(this.sidebar.getEvents)) {
+              this.sidebar.getEvents();
+            }
+          }
+        } catch (e: unknown) {
+          loading.close();
+          let errorMessage =
+            'Failed to import notes. Please make sure the file is a valid ZIP containing markdown files.';
+
+          // Try to extract more specific error message
+          if (e && typeof e === 'object' && 'response' in e) {
+            const response = (e as { response?: { data?: { error?: string } } }).response;
+            if (response?.data?.error) {
+              errorMessage = response.data.error;
+            }
+          } else if (e instanceof Error && e.message) {
+            errorMessage = `Import failed: ${e.message}`;
+          }
+
+          this.$buefy.toast.open({
+            message: errorMessage,
+            type: 'is-danger',
+            duration: 7000,
+          });
+          // Reset file input
+          target.value = '';
+        }
+      },
+      onCancel: () => {
+        // Reset file input
+        target.value = '';
+      },
+    });
+  }
+
+  public togglePreview(mode: 'side' | 'replace' | 'none') {
+    if (this.options.togglePreviewFn && _.isFunction(this.options.togglePreviewFn)) {
+      this.options.togglePreviewFn(mode);
+    }
+  }
+
+  public closePreview() {
+    if (this.options.togglePreviewFn && _.isFunction(this.options.togglePreviewFn)) {
+      this.options.togglePreviewFn('none');
+    }
+  }
+
+  public openSettings() {
+    this.$buefy.modal.open({
+      parent: this,
+      component: Settings,
+      hasModalCard: true,
+      trapFocus: true,
+      canCancel: ['escape', 'x'],
+    });
+  }
+
   public logout() {
     clearToken();
-    this.$router.push({name: 'Login'});
+    this.$router.push({ name: 'Login' });
   }
 }
 </script>
@@ -208,7 +335,7 @@ export default class Header extends Vue {
   padding: 10px 20px 0px 20px;
   border-bottom: 2px solid var(--main-bg-darker);
   position: sticky;
-  z-index: 100;
+  z-index: 30;
   top: 0;
   background-color: var(--main-bg-color);
 }
@@ -228,5 +355,21 @@ export default class Header extends Vue {
 .save-disabled {
   color: #888;
   cursor: unset;
+}
+
+.preview-active {
+  color: #82aaff;
+}
+
+.dropdown-text {
+  margin-left: 8px;
+  margin-right: 12px;
+}
+
+.dropdown-shortcut {
+  opacity: 0.6;
+  font-size: 0.85em;
+  margin-left: auto;
+  float: right;
 }
 </style>

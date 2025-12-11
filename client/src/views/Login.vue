@@ -18,15 +18,15 @@
 import Vue from 'vue';
 import Component from 'vue-class-component';
 
-import {Requests} from '../services/requests';
-import {setToken} from '../services/user';
+import { Requests } from '../services/requests';
+import { setToken } from '../services/user';
 
-declare var process: any;
+declare const process: { env: { VUE_APP_PREVENT_SIGNUPS?: string } };
 
 @Component({
   metaInfo: {
-    title: 'Login'
-  }
+    title: 'Login',
+  },
 })
 export default class Login extends Vue {
   public username: string = '';
@@ -39,10 +39,10 @@ export default class Login extends Vue {
 
   public isLoading: boolean = false;
 
-  public hideSignup = process.env.VUE_APP_PREVENT_SIGNUPS ? true : false;
+  public hideSignup = !!process.env.VUE_APP_PREVENT_SIGNUPS;
 
   public signup() {
-    this.$router.push({name: 'Sign Up'});
+    this.$router.push({ name: 'Sign Up' });
   }
 
   public async login() {
@@ -67,17 +67,20 @@ export default class Login extends Vue {
     this.isLoading = true;
 
     try {
-      const res = await Requests.post('/login', {username: this.username, password: this.password});
-      if (res.data && res.data.access_token) {
+      const res = await Requests.post('/login', {
+        username: this.username,
+        password: this.password,
+      });
+      if (res.data?.access_token) {
         setToken(res.data.access_token);
 
-        if (this.$route.query && this.$route.query.from) {
-          this.$router.push({path: (this.$route.query as any).from});
+        if (this.$route.query?.from) {
+          this.$router.push({ path: String(this.$route.query.from) });
         } else {
-          this.$router.push({name: 'Home Redirect'});
+          this.$router.push({ name: 'Home Redirect' });
         }
       } else {
-        throw Error('Data isn\'t right');
+        throw Error("Data isn't right");
       }
     } catch (e) {
       console.log(e);
@@ -87,7 +90,7 @@ export default class Login extends Vue {
         duration: 5000,
         message: this.errMsg,
         position: 'is-top',
-        type: 'is-danger'
+        type: 'is-danger',
       });
     }
 
