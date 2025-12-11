@@ -1,5 +1,5 @@
 <template>
-  <div class="editor" ref="editorContainer" @click="prevent($event)"></div>
+  <div class="editor" ref="editorContainer"></div>
 </template>
 
 <script setup lang="ts">
@@ -561,10 +561,6 @@ const handleDropEvent = (event: DragEvent, view: EditorView): boolean => {
   const dropPos = view.posAtCoords({ x: event.clientX, y: event.clientY });
   void handleUploads(imageFiles, dropPos === null ? undefined : dropPos);
   return true;
-};
-
-const prevent = ($event: Event) => {
-  $event.stopPropagation();
 };
 
 const save = () => {

@@ -1,5 +1,5 @@
 <template>
-  <div class="header-wrapper light-white" @click="prevent($event)">
+  <div class="header-wrapper light-white">
     <div class="main-header">
       <!-- Left section - sidebar toggle and actions -->
       <div class="header-left">
@@ -179,10 +179,6 @@ const newNote = () => {
 
 const goToSearch = () => {
   router.push({ name: 'search' }).catch((_err) => {});
-};
-
-const prevent = ($event: Event) => {
-  $event.stopPropagation();
 };
 
 const prevDay = () => {
