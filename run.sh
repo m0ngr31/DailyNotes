@@ -16,4 +16,6 @@ flask db upgrade
 
 ./verify_data_migrations.py
 
-exec gunicorn server:app -b 0.0.0.0:8000
+# Use gevent worker for SSE support (long-lived connections)
+# --timeout 0 disables worker timeout for SSE streams
+exec gunicorn server:app -b 0.0.0.0:8000 --worker-class gevent --timeout 0

@@ -41,3 +41,13 @@ export function clearFoldState(noteId: string) {
   if (!noteId || typeof Storage === 'undefined') return;
   localStorage.removeItem(`${FOLD_STATE_PREFIX}${noteId}`);
 }
+
+const EXPANDED_TAGS_KEY = 'dn-expanded-tags';
+
+export function getExpandedTags(): string[] {
+  return getItemOrDefault<string[]>(EXPANDED_TAGS_KEY, []) || [];
+}
+
+export function saveExpandedTags(tags: string[]) {
+  setItem(EXPANDED_TAGS_KEY, tags);
+}

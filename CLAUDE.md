@@ -368,6 +368,34 @@ The search supports the following syntax:
 - **Multiple projects** = OR (note can be in any specified project)
 - **Multiple text terms** = AND (note must contain all words)
 
+### Nested Tags
+
+Tags support hierarchical organization using `/` as a delimiter:
+
+**Syntax:**
+```markdown
+---
+tags: home/family, home/tech, work/meetings, work/projects
+---
+```
+
+**Sidebar Display:**
+- Nested tags appear as a collapsible tree in the sidebar
+- Parent nodes show a chevron toggle (▶/▼) to expand/collapse
+- Clicking any tag (parent or child) triggers a search
+
+**Search Behavior:**
+- Searching for a parent tag matches all children
+- `tag:home` matches notes with `home`, `home/family`, `home/tech`, etc.
+- `tag:home/family` matches only that specific nested tag
+- Existing flat tags (without `/`) work unchanged
+
+**Implementation:**
+- `ITagNode` interface in `interfaces.ts` defines the tree structure
+- `buildTagTree()` in `sidebar.ts` converts flat tags to a nested tree
+- `NestedTags.vue` component renders the collapsible tree UI
+- Backend search uses prefix matching: `tag.startswith(search_tag + "/")`
+
 ### Implementation Details
 
 **Backend (`app/routes.py`):**

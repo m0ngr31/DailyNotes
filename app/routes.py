@@ -1594,12 +1594,18 @@ def search():
     matched_note_ids = set(note.uuid for note in all_notes)
 
     # Filter by tags (AND logic - must have ALL specified tags)
+    # Supports nested tags: searching for "home" matches "home", "home/family", "home/tech", etc.
     if tags_filter:
         all_tags = user.meta.filter_by(kind="tag").all()
         for required_tag in tags_filter:
             tag_note_ids = set()
+            required_tag_lower = required_tag.lower()
             for tag in all_tags:
-                if required_tag.lower() == tag.name.lower():
+                tag_name_lower = tag.name.lower()
+                # Match exact tag or nested children (prefix match with /)
+                if tag_name_lower == required_tag_lower or tag_name_lower.startswith(
+                    required_tag_lower + "/"
+                ):
                     tag_note_ids.add(tag.note_id)
             matched_note_ids &= tag_note_ids
 

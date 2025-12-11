@@ -55,9 +55,17 @@
                       <td>Search note content</td>
                     </tr>
                   </table>
+                  <h4>Nested Tags</h4>
+                  <p class="help-note" style="margin-top: 0;">
+                    Use <code>/</code> for nested tags:<br>
+                    <code>home/family</code>, <code>work/meetings</code><br>
+                    Searching parent finds children:<br>
+                    <code>tag:home</code> matches <code>home/family</code>
+                  </p>
                   <h4>Examples</h4>
                   <ul>
                     <li><code>tag:meeting</code></li>
+                    <li><code>tag:home/tech</code></li>
                     <li><code>project:work budget</code></li>
                     <li><code>tag:1on1 tag:Q4 promotion</code></li>
                   </ul>

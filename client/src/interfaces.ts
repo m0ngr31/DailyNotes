@@ -59,3 +59,10 @@ export interface IExternalEvent {
   location?: string | null;
   url?: string | null;
 }
+
+export interface ITagNode {
+  name: string;        // Display name (e.g., "family" for "home/family")
+  fullPath: string;    // Full tag path (e.g., "home/family")
+  children: ITagNode[];
+  isLeaf: boolean;     // True if this is an actual tag, not just a parent folder
+}

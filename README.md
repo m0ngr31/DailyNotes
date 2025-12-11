@@ -37,7 +37,7 @@ I'd like to try to include at least some of the following features to get to a f
 - ~~HTML preview~~ ✅ Done! Use `Cmd+K V` for side-by-side or `Shift+Cmd+V` for preview-only
 - ~~Light/Dark themes~~ ✅ Done! See [Themes](#themes) section
 - ~~Kanban board for tasks~~ ✅ Done! See [Kanban Board](#kanban-board) section
-- Nested tagging
+- ~~Nested tagging~~ ✅ Done! See [Nested Tags](#nested-tags) section
 
 ## Themes
 
@@ -106,6 +106,64 @@ DailyNotes features a powerful syntax-based search that lets you quickly find no
 - **Keyboard navigation**: Use arrow keys to select, Tab/Enter to confirm
 - **Result highlighting**: Matching text is highlighted in search results with context snippets
 - **Syntax help**: Click the `?` button for a quick reference
+
+## Nested Tags
+
+DailyNotes supports hierarchical tag organization using `/` as a delimiter. This lets you create tag hierarchies like `work/meetings`, `home/family`, or `projects/dailynotes/frontend`.
+
+### Creating Nested Tags
+
+Use the `/` character in your frontmatter to create nested tags:
+
+```markdown
+---
+title: Weekly Team Sync
+tags: work/meetings, work/1on1, home/family
+---
+```
+
+### Sidebar Display
+
+Nested tags appear as a collapsible tree in the sidebar:
+
+| Display      | Description                                  |
+| ------------ | -------------------------------------------- |
+| `▶ work`     | Collapsed parent tag (click arrow to expand) |
+| `▼ work`     | Expanded parent showing children below       |
+| `  meetings` | Child tag indented under parent              |
+| `1on1`       | Flat tag (no `/`) displayed inline at top    |
+
+- **Flat tags** (without `/`) are displayed inline at the top, wrapping as needed
+- **Parent tags** show a collapsible chevron (▶/▼)
+- **Child tags** are displayed inline under their parent when expanded
+- **Expand/collapse state** is saved and persists across page refreshes
+
+### Search Behavior
+
+Nested tags support hierarchical search - searching for a parent tag matches all its children:
+
+| Search Query        | Matches                                         |
+| ------------------- | ----------------------------------------------- |
+| `tag:work`          | Notes with `work`, `work/meetings`, `work/1on1` |
+| `tag:work/meetings` | Only notes with exactly `work/meetings`         |
+| `tag:home`          | Notes with `home`, `home/family`, `home/tech`   |
+
+This makes it easy to search broadly (`tag:work` for all work-related notes) or specifically (`tag:work/meetings` for just meeting notes).
+
+### Examples
+
+| Tags in Frontmatter                  | Sidebar Display                    |
+| ------------------------------------ | ---------------------------------- |
+| `tags: meeting, 1on1, review`        | `meeting` `1on1` `review` (inline) |
+| `tags: work/meetings, work/reviews`  | `▼ work` → `meetings` `reviews`    |
+| `tags: home/tech, home/family, work` | `▼ home` → `family` `tech`, `work` |
+
+### Tips
+
+- **Existing tags are unchanged**: Tags without `/` continue to work exactly as before
+- **Autocomplete works**: Type `tag:work/` to see suggestions for nested tags
+- **Mix and match**: You can use both flat and nested tags in the same note
+- **Deep nesting**: Multiple levels work too: `projects/dailynotes/frontend/components`
 
 ## Kanban Board
 

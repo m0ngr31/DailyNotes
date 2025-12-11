@@ -3,7 +3,7 @@ import { parse } from 'date-fns/parse';
 import _ from 'lodash';
 import { reactive } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import type { IExternalEvent, IMeta, INote } from '../interfaces';
+import type { IExternalEvent, IMeta, INote, ITagNode } from '../interfaces';
 
 import router from '../router';
 import { CalendarService } from './calendars';
@@ -11,6 +11,54 @@ import { Requests } from './requests';
 
 interface CalendarEvent {
   date: Date;
+}
+
+/**
+ * Build a nested tag tree from flat tag strings.
+ * Tags with "/" are nested (e.g., "home/family" becomes home -> family).
+ * Tags without "/" remain flat at the root level.
+ */
+function buildTagTree(tags: string[]): ITagNode[] {
+  const root: ITagNode[] = [];
+  const tagSet = new Set(tags); // Track which full paths are actual tags
+
+  for (const tag of tags) {
+    const parts = tag.split('/');
+    let currentLevel = root;
+
+    for (let i = 0; i < parts.length; i++) {
+      const partName = parts[i];
+      const fullPath = parts.slice(0, i + 1).join('/');
+      const isLastPart = i === parts.length - 1;
+
+      // Find existing node at this level
+      let existingNode = currentLevel.find((n) => n.name === partName && n.fullPath === fullPath);
+
+      if (!existingNode) {
+        existingNode = {
+          name: partName,
+          fullPath: fullPath,
+          children: [],
+          isLeaf: isLastPart && tagSet.has(fullPath),
+        };
+        currentLevel.push(existingNode);
+      } else if (isLastPart && tagSet.has(fullPath)) {
+        // Mark as leaf if this full path is an actual tag
+        existingNode.isLeaf = true;
+      }
+
+      currentLevel = existingNode.children;
+    }
+  }
+
+  // Sort nodes alphabetically at each level
+  const sortNodes = (nodes: ITagNode[]): void => {
+    nodes.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+    nodes.forEach((node) => sortNodes(node.children));
+  };
+  sortNodes(root);
+
+  return root;
 }
 
 class SidebarSerivce {
@@ -35,6 +83,14 @@ class SidebarSerivce {
   public searchString: string = '';
   public searchQuery: string = '';
   public filteredNotes: INote[] = [];
+
+  /**
+   * Returns the tags organized as a nested tree structure.
+   * Tags with "/" delimiters are nested under parent nodes.
+   */
+  public get tagTree(): ITagNode[] {
+    return buildTagTree(this.tags);
+  }
 
   /**
    * Updates the active date on the calendar picker. This is throttled

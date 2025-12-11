@@ -5,11 +5,9 @@
     </div>
     <div v-else>
       <span class="fa-1x" v-if="sidebar.tags.length">Tags</span>
-      <b-taglist class="tag-margin alt-button">
-        <div @click="goToSearch('tag', tag)" v-for="tag of sidebar.tags" v-bind:key="tag" class="tags-margin">
-          <b-tag :ellipsis="true" type="is-info">{{tag}}</b-tag>
-        </div>
-      </b-taglist>
+      <div class="tag-margin alt-button" v-if="sidebar.tags.length">
+        <NestedTags :nodes="sidebar.tagTree" @tag-click="goToSearch('tag', $event)" />
+      </div>
 
       <span class="fa-1x" v-if="sidebar.projects.length">Projects</span>
       <b-taglist class="tag-margin alt-button">
@@ -31,6 +29,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import SidebarInst from '../services/sidebar';
+import NestedTags from './NestedTags.vue';
 
 const router = useRouter();
 const sidebar = SidebarInst;
