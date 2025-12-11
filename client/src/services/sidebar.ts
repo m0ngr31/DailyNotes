@@ -30,6 +30,7 @@ class SidebarSerivce {
   public searchLoading: boolean = false;
   public selectedSearch: string = '';
   public searchString: string = '';
+  public searchQuery: string = '';
   public filteredNotes: INote[] = [];
 
   /**
@@ -151,10 +152,19 @@ class SidebarSerivce {
     this.searchLoading = true;
 
     try {
-      const res = await Requests.post('/search', {
-        selected: this.selectedSearch,
-        search: this.searchString,
-      });
+      let res;
+
+      // Use new query-based search if searchQuery is set, otherwise use legacy
+      if (this.searchQuery) {
+        res = await Requests.post('/search', {
+          query: this.searchQuery,
+        });
+      } else {
+        res = await Requests.post('/search', {
+          selected: this.selectedSearch,
+          search: this.searchString,
+        });
+      }
 
       if (res?.data) {
         this.filteredNotes = res.data.notes || [];
@@ -163,9 +173,14 @@ class SidebarSerivce {
 
     this.searchLoading = false;
 
-    router
-      .push({ name: 'search', query: { [this.selectedSearch]: this.searchString } })
-      .catch((_err) => {});
+    // Update URL - use q param for new syntax, legacy params for old
+    if (this.searchQuery) {
+      router.push({ name: 'search', query: { q: this.searchQuery } }).catch((_err) => {});
+    } else {
+      router
+        .push({ name: 'search', query: { [this.selectedSearch]: this.searchString } })
+        .catch((_err) => {});
+    }
   }
 
   public async saveTaskProgress(name: string, uuid: string) {

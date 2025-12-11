@@ -342,9 +342,72 @@ docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
 6. **Markdown-First** - All content in markdown with frontmatter metadata
 7. **Single Page App** - Vue Router client-side navigation
 8. **Auto-Save** - Optional auto-save toggle per user
-9. **Full-Text Search** - Simple string matching across notes
+9. **Syntax-Based Search** - Query parser with tag/project filters and text search
 10. **Export** - Download all notes as ZIP with markdown files
 11. **HTML Preview** - Real-time markdown preview with VS Code-style hotkeys
+
+## Search Feature
+
+The Search feature provides a unified syntax-based search interface with autocomplete and result highlighting.
+
+### Search Syntax
+
+The search supports the following syntax:
+
+- `tag:value` or `t:value` - Filter by tag
+- `project:value` or `p:value` - Filter by project
+- `tag:"multi word"` - Quoted values for spaces
+- Plain text - Full-text search across note content
+- Combined: `tag:meeting project:work budget` - Multiple filters together
+
+### Search Logic
+
+- **Multiple tags** = AND (note must have all specified tags)
+- **Multiple projects** = OR (note can be in any specified project)
+- **Multiple text terms** = AND (note must contain all words)
+
+### Implementation Details
+
+**Backend (`app/routes.py`):**
+
+- `parse_search_query(query_string)` - Parses search syntax into structured filters
+  - Returns `{tags: [], projects: [], text_terms: []}`
+  - Supports shorthand `t:` and `p:` prefixes
+  - Handles quoted values for multi-word tags/projects
+
+- `get_text_snippet(text, search_terms, context_chars=50)` - Extracts snippet around matches
+  - Returns `{snippet: str, highlights: [matched_terms]}`
+  - Shows context around first match
+
+- `/api/search` endpoint accepts:
+  - New format: `{query: "tag:meeting budget"}`
+  - Legacy format: `{selected: "tag", search: "meeting"}` (backward compatible)
+
+**Frontend (`client/src/views/Search.vue`):**
+
+- Single text input with autocomplete dropdown
+- Autocomplete triggers on `tag:`, `t:`, `project:`, `p:` prefixes
+- Keyboard navigation: Arrow keys, Tab/Enter to select, Escape to close
+- Clear button (X) to reset search and results
+- Syntax help tooltip (?) with quick reference
+- Results persist when navigating away and returning
+
+**State Management (`client/src/services/sidebar.ts`):**
+
+- `searchQuery` - Stores the current query string
+- `filteredNotes` - Stores search results with snippets/highlights
+- Results include `snippet` and `highlights` fields for display
+
+**NoteCard Component (`client/src/components/NoteCard.vue`):**
+
+- Displays search snippets with highlighted matching terms
+- Uses `<mark>` tags for highlighting
+- Escapes HTML to prevent XSS
+
+### URL Parameters
+
+- New: `/search?q=tag:meeting+budget`
+- Legacy: `/search?tag=meeting`, `/search?project=work`, `/search?search=text`
 
 ## HTML Preview Feature
 

@@ -7,9 +7,9 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import {
   foldEffect,
+  foldedRanges,
   foldGutter,
   foldKeymap,
-  foldedRanges,
   HighlightStyle,
   syntaxHighlighting,
 } from '@codemirror/language';

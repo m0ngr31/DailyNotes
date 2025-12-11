@@ -48,6 +48,103 @@ def _is_allowed_file(filename, mimetype):
     return ext in allowed_extensions
 
 
+def parse_search_query(query_string):
+    """
+    Parse a search query string into structured filters.
+
+    Supports syntax like:
+        tag:work tag:meeting project:DN some text to search
+        tag:"multi word tag" project:"my project" search terms
+
+    Returns:
+        dict with keys: tags (list), projects (list), text_terms (list)
+
+    Logic:
+        - Multiple tags = AND (note must have all specified tags)
+        - Multiple projects = OR (note can be in any specified project)
+        - Multiple text terms = AND (note must contain all words)
+    """
+    tags = []
+    projects = []
+    text_terms = []
+
+    # Pattern to match tag:value, tag:"value with spaces", project:value, etc.
+    # Also supports shorthand t: and p:
+    pattern = r'(?:tag|t):"([^"]+)"|(?:tag|t):(\S+)|(?:project|p):"([^"]+)"|(?:project|p):(\S+)'
+
+    # Find all tag/project matches and track their positions
+    matches = list(re.finditer(pattern, query_string, re.IGNORECASE))
+
+    for match in matches:
+        # Groups: 1=tag quoted, 2=tag unquoted, 3=project quoted, 4=project unquoted
+        if match.group(1):  # tag:"quoted value"
+            tags.append(match.group(1))
+        elif match.group(2):  # tag:value
+            tags.append(match.group(2))
+        elif match.group(3):  # project:"quoted value"
+            projects.append(match.group(3))
+        elif match.group(4):  # project:value
+            projects.append(match.group(4))
+
+    # Remove all matched patterns to get remaining text
+    remaining = re.sub(pattern, "", query_string, flags=re.IGNORECASE)
+
+    # Split remaining text into terms (handling multiple spaces)
+    text_terms = [term.strip() for term in remaining.split() if term.strip()]
+
+    return {"tags": tags, "projects": projects, "text_terms": text_terms}
+
+
+def get_text_snippet(text, search_terms, context_chars=50):
+    """
+    Extract a snippet of text around the first matching search term.
+
+    Args:
+        text: The full text to search in
+        search_terms: List of terms to find
+        context_chars: Number of characters to show before/after match
+
+    Returns:
+        dict with 'snippet' (str) and 'highlights' (list of matched terms)
+    """
+    if not text or not search_terms:
+        return {"snippet": "", "highlights": []}
+
+    text_lower = text.lower()
+    highlights = []
+    first_match_pos = -1
+
+    # Find all matching terms and the position of the first match
+    for term in search_terms:
+        term_lower = term.lower()
+        pos = text_lower.find(term_lower)
+        if pos != -1:
+            highlights.append(term)
+            if first_match_pos == -1 or pos < first_match_pos:
+                first_match_pos = pos
+
+    if first_match_pos == -1:
+        # No match found, return beginning of text
+        snippet = text[: context_chars * 2]
+        if len(text) > context_chars * 2:
+            snippet += "..."
+        return {"snippet": snippet, "highlights": []}
+
+    # Calculate snippet boundaries
+    start = max(0, first_match_pos - context_chars)
+    end = min(len(text), first_match_pos + context_chars + len(search_terms[0]))
+
+    snippet = text[start:end]
+
+    # Add ellipsis if we're not at the boundaries
+    if start > 0:
+        snippet = "..." + snippet
+    if end < len(text):
+        snippet = snippet + "..."
+
+    return {"snippet": snippet, "highlights": highlights}
+
+
 def _ensure_upload_table():
     try:
         Upload.__table__.create(db.engine, checkfirst=True)
@@ -1107,14 +1204,11 @@ def toggle_vim_mode():
 @jwt_required()
 def search():
     req = request.get_json()
+
+    # Support both old format (selected + search) and new format (query)
+    query_string = req.get("query", "")
     selected_search = req.get("selected", "")
     search_string = req.get("search", "")
-
-    if not selected_search or not search_string or not len(search_string) > 0:
-        abort(400)
-
-    if selected_search not in ["project", "tag", "search"]:
-        abort(400)
 
     username = get_jwt_identity()
 
@@ -1126,30 +1220,61 @@ def search():
     if not user:
         abort(400)
 
-    matched_notes = []
+    # Determine if using new syntax-based search or legacy dropdown search
+    if query_string:
+        # New syntax-based search
+        parsed = parse_search_query(query_string)
+        tags_filter = parsed["tags"]
+        projects_filter = parsed["projects"]
+        text_terms = parsed["text_terms"]
+    elif selected_search and search_string:
+        # Legacy dropdown-based search (backward compatibility)
+        if selected_search not in ["project", "tag", "search"]:
+            abort(400)
 
-    if selected_search == "project":
-        all_projects = user.meta.filter_by(kind="project").all()
+        tags_filter = [search_string] if selected_search == "tag" else []
+        projects_filter = [search_string] if selected_search == "project" else []
+        text_terms = [search_string] if selected_search == "search" else []
+    else:
+        abort(400)
 
-        for project in all_projects:
-            if search_string.lower() in project.name.lower():
-                matched_notes.append(project.note_id)
+    # Start with all notes
+    all_notes = user.notes.all()
+    matched_note_ids = set(note.uuid for note in all_notes)
 
-    elif selected_search == "tag":
+    # Filter by tags (AND logic - must have ALL specified tags)
+    if tags_filter:
         all_tags = user.meta.filter_by(kind="tag").all()
+        for required_tag in tags_filter:
+            tag_note_ids = set()
+            for tag in all_tags:
+                if required_tag.lower() == tag.name.lower():
+                    tag_note_ids.add(tag.note_id)
+            matched_note_ids &= tag_note_ids
 
-        for tag in all_tags:
-            if search_string.lower() in tag.name.lower():
-                matched_notes.append(tag.note_id)
+    # Filter by projects (OR logic - can be in ANY specified project)
+    if projects_filter:
+        all_projects = user.meta.filter_by(kind="project").all()
+        project_note_ids = set()
+        for project in all_projects:
+            for proj_filter in projects_filter:
+                if proj_filter.lower() == project.name.lower():
+                    project_note_ids.add(project.note_id)
+        matched_note_ids &= project_note_ids
 
-    elif selected_search == "search":
-        all_notes = user.notes.all()
-
+    # Filter by text terms (AND logic - must contain ALL terms)
+    if text_terms:
+        text_matched_ids = set()
         for note in all_notes:
-            if search_string.lower() in note.text.lower():
-                matched_notes.append(note.uuid)
+            if note.uuid not in matched_note_ids:
+                continue
+            note_text_lower = note.text.lower()
+            if all(term.lower() in note_text_lower for term in text_terms):
+                text_matched_ids.add(note.uuid)
+        matched_note_ids &= text_matched_ids
 
-    filtered_notes = Note.query.filter(Note.uuid.in_(matched_notes)).all()
+    # Fetch and serialize matched notes
+    filtered_notes = Note.query.filter(Note.uuid.in_(matched_note_ids)).all()
     notes = []
 
     for note in filtered_notes:
@@ -1162,6 +1287,13 @@ def search():
             set([x.name for x in note.meta.filter_by(kind="project").all()]),
             key=lambda s: s.lower(),
         )
+
+        # Add snippet with highlights if text search was performed
+        if text_terms:
+            snippet_data = get_text_snippet(note.text, text_terms)
+            cleaned_note["snippet"] = snippet_data["snippet"]
+            cleaned_note["highlights"] = snippet_data["highlights"]
+
         notes.append(cleaned_note)
 
     sorted_nodes = sorted(notes, key=lambda s: s["title"].lower())

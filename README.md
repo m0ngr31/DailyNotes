@@ -11,13 +11,13 @@
 
 ### In Loving Memory of [Joe Ipson](https://github.com/m0ngr31)
 
-*This project is dedicated to [Joe Ipson](https://github.com/m0ngr31), the original creator of DailyNotes, who passed away in the summer of 2025 after a courageous battle with cancer.*
+_This project is dedicated to [Joe Ipson](https://github.com/m0ngr31), the original creator of DailyNotes, who passed away in the summer of 2025 after a courageous battle with cancer._
 
 Joe was a kindred spirit who believed in the simple power of writing things down. He built DailyNotes to bring the mindful experience of a physical planner into the digital world. His vision was to create something personal, self-hosted, and beautifully simple.
 
 This project continues in his memory. Every commit, every feature, every bug fix is a small tribute to a dear friend whose spirit lives on in the code he wrote and the ideas he shared.
 
-*Rest easy, Joe. We'll take it from here.*
+_Rest easy, Joe. We'll take it from here._
 
 ---
 
@@ -45,6 +45,45 @@ I'd like to try to include at least some of the following features to get to a f
 - Each daily note becomes an all-day event; the feed updates when notes change (Google polls periodically).
 - Rotate the token to immediately revoke previous subscriptions or disable sharing with `DELETE /api/calendar_token`.
 - You can now subscribe to external ICS feeds (e.g., Google private links) in Settings; DailyNotes shows those events on the matching day.
+
+## Search
+
+DailyNotes features a powerful syntax-based search that lets you quickly find notes using text queries.
+
+### Search Syntax
+
+| Syntax             | Description              | Example             |
+| ------------------ | ------------------------ | ------------------- |
+| `tag:value`        | Filter by tag            | `tag:meeting`       |
+| `project:value`    | Filter by project        | `project:work`      |
+| `t:value`          | Shorthand for tag        | `t:1on1`            |
+| `p:value`          | Shorthand for project    | `p:DN`              |
+| `tag:"multi word"` | Quoted values for spaces | `tag:"code review"` |
+| Plain text         | Search note content      | `budget report`     |
+
+### Example Searches
+
+| Query                         | What it finds                                    |
+| ----------------------------- | ------------------------------------------------ |
+| `budget`                      | All notes containing "budget"                    |
+| `tag:meeting`                 | All notes tagged "meeting"                       |
+| `project:work tag:Q4`         | Notes in "work" project with "Q4" tag            |
+| `tag:1on1 tag:feedback`       | Notes with both tags (AND)                       |
+| `project:DN project:personal` | Notes in either project (OR)                     |
+| `tag:meeting notes agenda`    | Tagged "meeting" containing "notes" AND "agenda" |
+
+### Search Logic
+
+- **Multiple tags** = AND (note must have all specified tags)
+- **Multiple projects** = OR (note can be in any specified project)
+- **Multiple text terms** = AND (note must contain all words)
+
+### Features
+
+- **Autocomplete**: Type `tag:` or `project:` to see suggestions from your existing tags/projects
+- **Keyboard navigation**: Use arrow keys to select, Tab/Enter to confirm
+- **Result highlighting**: Matching text is highlighted in search results with context snippets
+- **Syntax help**: Click the `?` button for a quick reference
 
 ## In Action
 

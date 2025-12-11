@@ -2,6 +2,9 @@
   <div class="note-card" @click="goToNote">
     <h1>{{ parsedTitle }}</h1>
 
+    <!-- Search snippet with highlights -->
+    <div v-if="snippet" class="search-snippet" v-html="highlightedSnippet"></div>
+
     <br />
     <span class="fa-1x" v-if="note.tags.length">Tags</span>
     <b-taglist class="tag-margin">
@@ -24,6 +27,8 @@ import type { INote } from '../interfaces';
 
 interface Props {
   note: INote;
+  snippet?: string;
+  highlights?: string[];
 }
 
 const props = defineProps<Props>();
@@ -49,6 +54,32 @@ const parsedTitle = computed(() => {
 
   return props.note.title;
 });
+
+const highlightedSnippet = computed(() => {
+  if (!props.snippet) return '';
+
+  let result = escapeHtml(props.snippet);
+
+  if (props.highlights && props.highlights.length > 0) {
+    for (const term of props.highlights) {
+      const escapedTerm = escapeHtml(term);
+      const regex = new RegExp(`(${escapeRegex(escapedTerm)})`, 'gi');
+      result = result.replace(regex, '<mark>$1</mark>');
+    }
+  }
+
+  return result;
+});
+
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 </script>
 
 <style scoped>
@@ -72,5 +103,24 @@ const parsedTitle = computed(() => {
 
 .tag-margin {
   margin-top: 10px;
+}
+
+.search-snippet {
+  margin-top: 0.75em;
+  padding: 0.5em 0.75em;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  font-size: 0.9em;
+  line-height: 1.4;
+  color: #bbb;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.search-snippet :deep(mark) {
+  background-color: #f1c40f;
+  color: #333;
+  padding: 0 2px;
+  border-radius: 2px;
 }
 </style>

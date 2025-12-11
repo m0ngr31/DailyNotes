@@ -20,6 +20,8 @@ export interface INote {
   is_date?: boolean;
   tags?: string;
   projects?: string;
+  snippet?: string;
+  highlights?: string[];
 }
 
 export interface IMeta {
