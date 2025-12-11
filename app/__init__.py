@@ -6,10 +6,11 @@ from flask_jwt_extended import JWTManager
 from flask_argon2 import Argon2
 
 
-app = Flask(__name__,
-  static_url_path='/static',
-  static_folder = "../dist/static",
-  template_folder = "../dist"
+app = Flask(
+    __name__,
+    static_url_path="/static",
+    static_folder="../dist/static",
+    template_folder="../dist",
 )
 
 app.config.from_object(Config)

@@ -8,3 +8,5 @@ python-frontmatter
 pycryptodome
 requests
 python-dateutil
+black
+pre-commit

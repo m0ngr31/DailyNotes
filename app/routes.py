@@ -10,8 +10,25 @@ from dateutil import rrule, tz
 from urllib.parse import urlparse, parse_qs, quote
 
 from app import app, db, argon2
-from app.models import User, Note, Meta, Upload, ExternalCalendar, aes_encrypt, aes_encrypt_old
-from flask import render_template, request, jsonify, abort, send_file, send_from_directory, Response, url_for
+from app.models import (
+    User,
+    Note,
+    Meta,
+    Upload,
+    ExternalCalendar,
+    aes_encrypt,
+    aes_encrypt_old,
+)
+from flask import (
+    render_template,
+    request,
+    jsonify,
+    abort,
+    send_file,
+    send_from_directory,
+    Response,
+    url_for,
+)
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
@@ -47,7 +64,7 @@ def _extract_upload_paths_from_text(text, username):
 
     paths = set()
     # Markdown image or link pattern
-    md_link_regex = re.compile(r'\[.*?\]\((.*?)\)')
+    md_link_regex = re.compile(r"\[.*?\]\((.*?)\)")
     upload_prefix = f"/uploads/{username.lower()}/"
 
     for match in md_link_regex.finditer(text):
@@ -56,7 +73,7 @@ def _extract_upload_paths_from_text(text, username):
             # Normalize to just the /uploads/... portion
             idx = url.find(upload_prefix)
             if idx != -1:
-                paths.add(url[idx:].split(')', 1)[0])
+                paths.add(url[idx:].split(")", 1)[0])
 
     # Bare URLs
     bare_regex = re.compile(rf"{re.escape(upload_prefix)}[^\s)]+")
@@ -74,11 +91,15 @@ def _collect_referenced_uploads_for_user(user):
     referenced_paths = set()
     notes = Note.query.filter_by(user_id=user.uuid).all()
     for note in notes:
-        referenced_paths.update(_extract_upload_paths_from_text(note.text, user.username))
+        referenced_paths.update(
+            _extract_upload_paths_from_text(note.text, user.username)
+        )
 
     if referenced_paths:
         now = datetime.datetime.utcnow()
-        Upload.query.filter(Upload.user_id == user.uuid, Upload.path.in_(referenced_paths)).update(
+        Upload.query.filter(
+            Upload.user_id == user.uuid, Upload.path.in_(referenced_paths)
+        ).update(
             {"last_seen_at": now},
             synchronize_session=False,
         )
@@ -100,7 +121,9 @@ def _normalize_calendar_url(raw_url):
         return raw_url
 
     parsed = urlparse(raw_url)
-    if "google.com" in parsed.netloc and ("/calendar/embed" in parsed.path or "/calendar/r" in parsed.path):
+    if "google.com" in parsed.netloc and (
+        "/calendar/embed" in parsed.path or "/calendar/r" in parsed.path
+    ):
         qs = parse_qs(parsed.query)
         src = qs.get("src", [None])[0]
         if src:
@@ -121,13 +144,32 @@ def _fetch_ics(url):
         if hostname:
             hostname_lower = hostname.lower()
             # Block localhost variants
-            if hostname_lower in ('localhost', '127.0.0.1', '0.0.0.0', '::1'):
+            if hostname_lower in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
                 return None
             # Block private IP ranges (basic check)
-            if hostname_lower.startswith(('10.', '172.16.', '172.17.', '172.18.', '172.19.',
-                                          '172.20.', '172.21.', '172.22.', '172.23.', '172.24.',
-                                          '172.25.', '172.26.', '172.27.', '172.28.', '172.29.',
-                                          '172.30.', '172.31.', '192.168.', '169.254.')):
+            if hostname_lower.startswith(
+                (
+                    "10.",
+                    "172.16.",
+                    "172.17.",
+                    "172.18.",
+                    "172.19.",
+                    "172.20.",
+                    "172.21.",
+                    "172.22.",
+                    "172.23.",
+                    "172.24.",
+                    "172.25.",
+                    "172.26.",
+                    "172.27.",
+                    "172.28.",
+                    "172.29.",
+                    "172.30.",
+                    "172.31.",
+                    "192.168.",
+                    "169.254.",
+                )
+            ):
                 return None
 
         resp = requests.get(url, timeout=12, stream=True)
@@ -136,15 +178,15 @@ def _fetch_ics(url):
 
         # Limit response size to 5MB to prevent memory exhaustion
         max_size = 5 * 1024 * 1024
-        content_length = resp.headers.get('content-length')
+        content_length = resp.headers.get("content-length")
         if content_length and int(content_length) > max_size:
             return None
 
         # Read response with size limit
-        body = ''
+        body = ""
         size = 0
         for chunk in resp.iter_content(chunk_size=8192, decode_unicode=True):
-            size += len(chunk.encode('utf-8'))
+            size += len(chunk.encode("utf-8"))
             if size > max_size:
                 return None
             body += chunk
@@ -152,7 +194,9 @@ def _fetch_ics(url):
         # Evict old entries if cache is too large
         if len(_ICS_CACHE) >= _ICS_CACHE_MAX_SIZE:
             # Remove oldest entries (simple FIFO)
-            oldest_keys = sorted(_ICS_CACHE.keys(), key=lambda k: _ICS_CACHE[k]["ts"])[:10]
+            oldest_keys = sorted(_ICS_CACHE.keys(), key=lambda k: _ICS_CACHE[k]["ts"])[
+                :10
+            ]
             for key in oldest_keys:
                 _ICS_CACHE.pop(key, None)
 
@@ -264,15 +308,25 @@ def _filter_events_for_date(events, target_date):
             try:
                 rule = rrule.rrulestr(rrule_str, dtstart=start_dt)
                 # widen the window slightly to catch events starting just before the day and spanning into it
-                occurrences = rule.between(target_start - datetime.timedelta(days=1), target_end, inc=True)
+                occurrences = rule.between(
+                    target_start - datetime.timedelta(days=1), target_end, inc=True
+                )
             except Exception:
                 occurrences = []
 
             for occ in occurrences:
                 occ_start = occ
                 occ_end = occ_start + duration
-                range_start = datetime.datetime.combine(occ_start.date(), datetime.time.min) if all_day else occ_start
-                range_end = datetime.datetime.combine(occ_end.date(), datetime.time.min) if all_day else occ_end
+                range_start = (
+                    datetime.datetime.combine(occ_start.date(), datetime.time.min)
+                    if all_day
+                    else occ_start
+                )
+                range_end = (
+                    datetime.datetime.combine(occ_end.date(), datetime.time.min)
+                    if all_day
+                    else occ_end
+                )
                 overlaps = range_start < target_end and range_end > target_start
                 if overlaps:
                     matched.append(
@@ -288,8 +342,16 @@ def _filter_events_for_date(events, target_date):
                     )
             continue
 
-        range_start = datetime.datetime.combine(start_dt.date(), datetime.time.min) if all_day else start_dt
-        range_end = datetime.datetime.combine(end_dt.date(), datetime.time.min) if all_day else end_dt
+        range_start = (
+            datetime.datetime.combine(start_dt.date(), datetime.time.min)
+            if all_day
+            else start_dt
+        )
+        range_end = (
+            datetime.datetime.combine(end_dt.date(), datetime.time.min)
+            if all_day
+            else end_dt
+        )
 
         overlaps = range_start < target_end and range_end > target_start
         if overlaps:
@@ -965,7 +1027,12 @@ def sidebar_data():
 
     return (
         jsonify(
-            tags=tags, projects=projects, notes=notes, tasks=tasks, auto_save=auto_save, vim_mode=vim_mode
+            tags=tags,
+            projects=projects,
+            notes=notes,
+            tasks=tasks,
+            auto_save=auto_save,
+            vim_mode=vim_mode,
         ),
         200,
     )
@@ -1339,7 +1406,9 @@ def list_orphan_uploads():
     orphans = []
     for upload in uploads:
         if upload.path not in referenced:
-            file_path = os.path.join(app.config["UPLOAD_FOLDER"], upload.path.replace("/uploads/", ""))
+            file_path = os.path.join(
+                app.config["UPLOAD_FOLDER"], upload.path.replace("/uploads/", "")
+            )
             size = upload.size
             if size is None and os.path.exists(file_path):
                 size = os.path.getsize(file_path)
@@ -1375,7 +1444,9 @@ def cleanup_orphan_uploads():
         if upload.path in referenced:
             continue
 
-        file_path = os.path.join(app.config["UPLOAD_FOLDER"], upload.path.replace("/uploads/", ""))
+        file_path = os.path.join(
+            app.config["UPLOAD_FOLDER"], upload.path.replace("/uploads/", "")
+        )
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
