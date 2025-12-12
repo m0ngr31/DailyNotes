@@ -1,5 +1,9 @@
 # DailyNotes Architecture Guide
 
+## Important Rules
+
+- **Never commit unless explicitly told to.** Wait for the user to ask you to commit changes.
+
 ## Project Overview
 
 DailyNotes is a self-hosted daily task and note-taking application that combines the experience of a physical planner with modern web technology. It supports markdown with GitHub Flavored Markdown (GFM) task lists, making it ideal for daily journaling, task tracking, and note management.
