@@ -1,4 +1,4 @@
-from app import app, db, Base, db_session
+from app import app, Base
 from app.model_types import GUID
 from sqlalchemy import (
     Column,

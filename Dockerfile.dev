@@ -13,7 +13,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install watchdog for uvicorn auto-reloading
+# Install watchdog for file change detection (optional for uvicorn --reload)
+# Uvicorn uses watchfiles by default, but falls back to watchdog if unavailable
 RUN pip install watchdog
 
 # Copy package files for frontend

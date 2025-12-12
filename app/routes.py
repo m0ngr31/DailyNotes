@@ -12,6 +12,8 @@ from urllib.parse import urlparse, parse_qs, quote
 
 import json
 
+# Custom JWT utilities (PyJWT-based) are used instead of flask-jwt-extended
+# because flask-jwt-extended doesn't support Quart's async architecture
 from app import (
     app,
     db,
@@ -227,12 +229,20 @@ _ICS_CACHE_MAX_SIZE = 100  # Limit cache size to prevent memory exhaustion
 
 # SSE (Server-Sent Events) infrastructure for real-time sync
 _SSE_CLIENTS = {}  # user_id -> list of asyncio.Queue
-_SSE_CLIENTS_LOCK = asyncio.Lock()
+_SSE_CLIENTS_LOCK = None  # Lazy-initialized to avoid issues with module-level asyncio.Lock() in Python 3.8-3.9
+
+
+def _get_sse_lock():
+    """Get or create the SSE clients lock (lazy initialization)."""
+    global _SSE_CLIENTS_LOCK
+    if _SSE_CLIENTS_LOCK is None:
+        _SSE_CLIENTS_LOCK = asyncio.Lock()
+    return _SSE_CLIENTS_LOCK
 
 
 async def _sse_add_client(user_id, client_queue):
     """Register a new SSE client for a user."""
-    async with _SSE_CLIENTS_LOCK:
+    async with _get_sse_lock():
         if user_id not in _SSE_CLIENTS:
             _SSE_CLIENTS[user_id] = []
         _SSE_CLIENTS[user_id].append(client_queue)
@@ -240,7 +250,7 @@ async def _sse_add_client(user_id, client_queue):
 
 async def _sse_remove_client(user_id, client_queue):
     """Unregister an SSE client."""
-    async with _SSE_CLIENTS_LOCK:
+    async with _get_sse_lock():
         if user_id in _SSE_CLIENTS:
             try:
                 _SSE_CLIENTS[user_id].remove(client_queue)
@@ -252,7 +262,7 @@ async def _sse_remove_client(user_id, client_queue):
 
 async def _sse_broadcast(user_id, event_type, data):
     """Broadcast an event to all connected clients for a user."""
-    async with _SSE_CLIENTS_LOCK:
+    async with _get_sse_lock():
         clients = _SSE_CLIENTS.get(user_id, [])
         for client_queue in clients:
             try:

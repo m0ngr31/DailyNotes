@@ -16,6 +16,6 @@ alembic -c migrations/alembic.ini upgrade head
 ./verify_data_migrations.py
 
 # Use uvicorn ASGI server for async support
-# --timeout-keep-alive 0 keeps SSE connections alive indefinitely
-# --loop asyncio for compatibility with quart-flask-patch
-exec uvicorn server:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 0 --loop asyncio
+# --timeout-keep-alive 0 disables keep-alive timeout for idle HTTP connections
+# Note: SSE streams remain open as long as the server yields data
+exec uvicorn server:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 0

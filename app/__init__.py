@@ -41,7 +41,7 @@ Base.query = db_session.query_property()
 
 
 class DatabaseWrapper:
-    """Wrapper providing Flask-SQLAlchemy-like interface"""
+    """Wrapper providing Flask-SQLAlchemy-like interface for Quart"""
 
     def __init__(self, engine, session, base):
         self.engine = engine
@@ -68,7 +68,7 @@ password_hasher = PasswordHasher()
 
 
 class Argon2Wrapper:
-    """Wrapper to provide flask-argon2 compatible interface"""
+    """Wrapper providing flask-argon2 compatible interface using argon2-cffi for Quart"""
 
     def __init__(self, hasher):
         self._hasher = hasher
@@ -99,6 +99,8 @@ class JWTManager:
 
     def init_app(self, app):
         self.secret_key = app.config.get("JWT_SECRET_KEY")
+        if not self.secret_key:
+            raise ValueError("JWT_SECRET_KEY must be set in app configuration")
         expires = app.config.get("JWT_ACCESS_TOKEN_EXPIRES")
         if expires:
             self.token_expires = expires
