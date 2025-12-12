@@ -127,12 +127,14 @@ const saveNote = async (isAutoSave: boolean = false) => {
   isSaving.value = true;
   const updatedNote = Object.assign(note.value, { data: modifiedText.value });
 
+  // Mark as locally updated BEFORE the API call to prevent SSE race condition
+  // (SSE event can arrive before the await returns)
+  if (note.value.uuid) {
+    markNoteUpdatedLocally(note.value.uuid);
+  }
+
   try {
     note.value = await NoteService.saveNote(updatedNote);
-    // Mark as locally updated to prevent SSE duplicate processing
-    if (note.value.uuid) {
-      markNoteUpdatedLocally(note.value.uuid);
-    }
     text.value = modifiedText.value;
     // Don't reset modifiedText - it's already correct and resetting causes editor glitches
     headerOptions.title = note.value.title || '';

@@ -172,10 +172,16 @@ const saveDay = async (isAutoSave: boolean = false) => {
   isSaving.value = true;
   const updatedDay = Object.assign(day.value, { data: modifiedText.value });
 
+  // Mark as locally updated BEFORE the API call to prevent SSE race condition
+  // (SSE event can arrive before the await returns)
+  if (day.value.uuid) {
+    markNoteUpdatedLocally(day.value.uuid);
+  }
+
   try {
     const res = await NoteService.saveDay(updatedDay);
-    // Mark as locally updated to prevent SSE duplicate processing
-    if (res.uuid) {
+    // Also mark after save in case it's a new note that just got a uuid
+    if (res.uuid && res.uuid !== day.value.uuid) {
       markNoteUpdatedLocally(res.uuid);
     }
     text.value = modifiedText.value;
