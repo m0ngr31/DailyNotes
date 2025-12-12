@@ -122,8 +122,7 @@ onBeforeUnmount(() => {
 }
 
 .center-columns {
-  margin-left: auto;
-  margin-right: auto;
+  margin-inline: auto;
 }
 
 .sidebar {

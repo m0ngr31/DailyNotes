@@ -373,7 +373,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   color: var(--syntax-keyword);
   font-weight: 600;
   min-width: 100px;
-  margin-right: 12px;
+  margin-inline-end: 12px;
   font-size: 0.9em;
 }
 
@@ -460,14 +460,14 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 
 /* Lists */
 .preview-content :deep(ul) {
-  padding-left: 2em;
+  padding-inline-start: 2em;
   margin-top: 0;
   margin-bottom: 16px;
   list-style-type: disc;
 }
 
 .preview-content :deep(ol) {
-  padding-left: 2em;
+  padding-inline-start: 2em;
   margin-top: 0;
   margin-bottom: 16px;
   list-style-type: decimal;
@@ -490,11 +490,11 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 /* Task lists */
 .preview-content :deep(.task-list-item) {
   list-style-type: none;
-  margin-left: -1.5em;
+  margin-inline-start: -1.5em;
 }
 
 .preview-content :deep(.task-list-item input[type="checkbox"]) {
-  margin-right: 0.5em;
+  margin-inline-end: 0.5em;
   vertical-align: middle;
   cursor: pointer;
   accent-color: var(--accent-primary);
@@ -531,9 +531,9 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 
 /* Blockquotes */
 .preview-content :deep(blockquote) {
-  border-left: 4px solid var(--text-link);
-  padding-left: 16px;
-  margin-left: 0;
+  border-inline-start: 4px solid var(--text-link);
+  padding-inline-start: 16px;
+  margin-inline-start: 0;
   margin-bottom: 16px;
   color: var(--text-muted);
 }
@@ -549,7 +549,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 .preview-content :deep(table td) {
   border: 1px solid var(--border-color);
   padding: 8px 12px;
-  text-align: left;
+  text-align: start;
 }
 
 .preview-content :deep(table th) {
@@ -614,7 +614,7 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
 
   .frontmatter-key {
     min-width: 80px;
-    margin-right: 8px;
+    margin-inline-end: 8px;
   }
 
   .preview-content :deep(pre) {

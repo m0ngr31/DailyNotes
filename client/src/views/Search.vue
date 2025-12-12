@@ -404,8 +404,8 @@ onMounted(() => {
 .autocomplete-dropdown {
   position: absolute;
   top: 100%;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   background: var(--dropdown-bg);
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -475,7 +475,7 @@ onMounted(() => {
 }
 
 .syntax-help table td:first-child {
-  padding-right: 12px;
+  padding-inline-end: 12px;
 }
 
 .syntax-help code {

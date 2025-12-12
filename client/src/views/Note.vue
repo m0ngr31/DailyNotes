@@ -502,7 +502,7 @@ onBeforeUnmount(() => {
 }
 
 .editor-split {
-  border-right: 1px solid #404854;
+  border-inline-end: 1px solid #404854;
 }
 
 /* Full-width preview when editor is hidden (replace mode) */
@@ -533,8 +533,8 @@ onBeforeUnmount(() => {
   }
 
   .editor-split {
-    border-right: none;
-    border-bottom: 1px solid #404854;
+    border-inline-end: none;
+    border-block-end: 1px solid #404854;
   }
 }
 </style>
