@@ -68,12 +68,12 @@ class SSEService {
     this.isConnecting = true;
 
     // For SSE, we need to bypass the webpack-dev-server proxy which buffers responses.
-    // In development, connect directly to Flask on port 5001.
+    // In development, connect directly to the backend on port 8000.
     // In production, use the normal API path.
     let baseUrl: string;
     if (process.env.NODE_ENV === 'development' && window.location.port === '8080') {
-      // Development mode with Vue dev server - connect directly to Flask
-      baseUrl = 'http://localhost:5001/api';
+      // Development mode with Vue dev server - connect directly to backend
+      baseUrl = 'http://localhost:8000/api';
     } else if (process.env.VUE_APP_BASE_URL) {
       baseUrl = `${process.env.VUE_APP_BASE_URL}/api`;
     } else {

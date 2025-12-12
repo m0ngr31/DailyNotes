@@ -14,16 +14,17 @@ DailyNotes is a self-hosted daily task and note-taking application that combines
 
 ### Backend
 
-- **Framework:** Flask (Python microframework)
-- **Database ORM:** SQLAlchemy with Flask-SQLAlchemy
-- **Authentication:** JWT (JSON Web Tokens) via flask-jwt-extended
-- **Password Hashing:** Argon2 via flask-argon2
-- **Database Migrations:** Flask-Migrate (Alembic)
-- **Production Server:** Gunicorn
-- **Data Encryption:** PyCrypto (AES encryption for sensitive data at rest)
+- **Framework:** Quart (async Python microframework, Flask-compatible)
+- **Database ORM:** SQLAlchemy (raw, without Flask-SQLAlchemy)
+- **Authentication:** JWT (JSON Web Tokens) via PyJWT with custom decorators
+- **Password Hashing:** Argon2 via argon2-cffi
+- **Database Migrations:** Alembic
+- **Production Server:** Uvicorn (ASGI)
+- **HTTP Client:** httpx (async HTTP requests)
+- **Data Encryption:** PyCryptodome (AES encryption for sensitive data at rest)
 - **Markdown Processing:** python-frontmatter (for parsing YAML frontmatter)
 
-**Python Version:** Python 3.8+ (also supports Python 2)
+**Python Version:** Python 3.8+
 
 ### Frontend
 
@@ -46,7 +47,7 @@ DailyNotes is a self-hosted daily task and note-taking application that combines
 ```
 DailyNotes/
 ├── app/                          # Backend Python application
-│   ├── __init__.py              # Flask app initialization
+│   ├── __init__.py              # Quart app initialization
 │   ├── routes.py                # API endpoints
 │   ├── models.py                # Database models (User, Note, Meta)
 │   └── model_types.py           # Custom SQLAlchemy types (GUID)
@@ -95,8 +96,8 @@ DailyNotes/
 │   ├── .env                     # Environment variables (generated)
 │   └── export.zip               # Export storage location
 ├── migrations/                   # Database migration files (Alembic)
-├── config.py                    # Flask configuration
-├── server.py                    # Flask app entry point
+├── config.py                    # Quart configuration
+├── server.py                    # Quart app entry point (for uvicorn)
 ├── requirements.txt             # Python dependencies
 ├── run.sh                       # Production startup script
 ├── Dockerfile                   # Docker image definition
@@ -122,7 +123,7 @@ DailyNotes/
    - Handles 401/403/422 responses by logging user out and redirecting to login
    - Provides wrapper methods: `post()`, `get()`, `put()`, `delete()`, `download()`
 
-3. **Backend (Flask)**
+3. **Backend (Quart)**
 
    - Routes receive requests at `/api/*` endpoints
    - `@jwt_required()` decorator validates JWT token
@@ -245,15 +246,15 @@ npm run lint         # Run ESLint
 ```bash
 ./verify_env.py              # Generate/verify environment variables
 ./verify_data_migrations.py  # Migrate encryption keys if needed
-flask db upgrade             # Run pending migrations
-gunicorn server:app -b 0.0.0.0:5000  # Start production server
+alembic -c migrations/alembic.ini upgrade head  # Run pending migrations
+uvicorn server:app --host 0.0.0.0 --port 8000   # Start production server
 ```
 
 ### Development
 
 ```bash
 # Terminal 1: Start backend
-./run.sh  # Runs Flask development server
+./run.sh  # Runs uvicorn ASGI server
 
 # Terminal 2: Start frontend
 cd client && npm run serve
@@ -266,7 +267,7 @@ cd client && npm run serve
 docker-compose up
 
 # Or with Docker run
-docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
+docker run -p 8000:8000 -v /config_dir:/app/config m0ngr31/dailynotes
 ```
 
 ## Configuration
@@ -285,11 +286,11 @@ docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
 
 ### Key Files
 
-- **config.py** - Flask configuration management
+- **config.py** - Quart configuration management
 - **requirements.txt** - Python package versions
 - **client/package.json** - Node package versions and scripts
 - **client/tsconfig.json** - TypeScript compiler settings
-- **Dockerfile** - Multi-stage: Python + Node build → Gunicorn
+- **Dockerfile** - Multi-stage: Python + Node build → Uvicorn
 - **.env** - Generated at runtime with encryption keys (DO NOT commit)
 
 ## Development Workflow
@@ -311,14 +312,14 @@ docker run -p 5000:5000 -v /config_dir:/app/config m0ngr31/dailynotes
    ```
 
 3. **Run both servers:**
-   - Terminal 1: `./run.sh` (Flask on http://localhost:5000)
+   - Terminal 1: `./run.sh` (Uvicorn on http://localhost:8000)
    - Terminal 2: `cd client && npm run serve` (Webpack on http://localhost:8080)
 
 ### Database Migrations
 
 - Migrations stored in `/migrations/` directory
-- Add schema change with: `flask db migrate -m "description"`
-- Apply migration with: `flask db upgrade`
+- Add schema change with: `alembic -c migrations/alembic.ini revision --autogenerate -m "description"`
+- Apply migration with: `alembic -c migrations/alembic.ini upgrade head`
 - Uses SQLAlchemy declarative ORM
 
 ### Authentication Flow
@@ -748,11 +749,11 @@ The Kanban board uses CSS variables for theme compatibility:
 
 ## Notes for Contributors
 
-- **Python version:** Works with Python 2.7+ and Python 3.3+ (though dated)
+- **Python version:** Requires Python 3.8+ (async/await support)
 - **Node version:** Requires Node 12+, TypeScript strict mode enabled
 - **Database:** Default SQLite but supports PostgreSQL/MySQL via DATABASE_URI
 - **Encryption:** Critical - do not change DB_ENCRYPTION_KEY without migration
-- **Frontend Build:** Built with Vue CLI 4, outputs to `/dist/` served by Flask
+- **Frontend Build:** Built with Vue CLI 4, outputs to `/dist/` served by Quart
 - **Linting:** Pre-commit hooks run ESLint on Vue/TypeScript files
 - **Tests:** Jest unit tests available in client (minimal coverage currently)
 - **Docker:** Multi-stage build, final image ~400MB

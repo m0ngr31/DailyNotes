@@ -10,12 +10,12 @@ if test -f "./config/.env"; then
   . ./config/.env
 fi
 
-export FLASK_APP=server.py
-
-flask db upgrade
+# Run database migrations using Alembic
+alembic -c migrations/alembic.ini upgrade head
 
 ./verify_data_migrations.py
 
-# Use gevent worker for SSE support (long-lived connections)
-# --timeout 0 disables worker timeout for SSE streams
-exec gunicorn server:app -b 0.0.0.0:8000 --worker-class gevent --timeout 0
+# Use uvicorn ASGI server for async support
+# --timeout-keep-alive 0 disables keep-alive timeout for idle HTTP connections
+# Note: SSE streams remain open as long as the server yields data
+exec uvicorn server:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 0

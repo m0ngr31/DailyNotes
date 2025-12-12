@@ -1,18 +1,33 @@
-flask==3.1.2
-flask_sqlalchemy==3.1.1
-flask-migrate==4.1.0
-gunicorn==23.0.0
-gevent==24.11.1
-flask-jwt-extended==4.7.1
-flask-argon2==0.3.0.0
+# Quart - async Flask-compatible framework
+quart==0.20.0
+quart-cors==0.7.0
+
+# Database
+alembic==1.14.0  # Database migrations
+sqlalchemy[asyncio]==2.0.36
+aiosqlite==0.20.0  # Async SQLite driver
+
+# ASGI Server
+uvicorn[standard]==0.34.0
+
+# Authentication
+pyjwt==2.10.1
+argon2-cffi==23.1.0
+
+# Utilities
 python-frontmatter==1.1.0
 pycryptodome==3.23.0
-requests==2.32.5
+httpx==0.28.1  # Async HTTP client (replaces requests for async operations)
+requests==2.32.5  # Keep for sync operations if needed
 python-dateutil==2.9.0.post0
+
+# Development
 black==25.12.0
 pre-commit==4.5.0
 
 # Database drivers (optional - install based on your database choice)
 psycopg2-binary==2.9.10  # PostgreSQL driver
+asyncpg==0.30.0  # Async PostgreSQL driver
 pymysql==1.1.1           # MySQL driver (pure Python)
+aiomysql==0.2.0  # Async MySQL driver
 cryptography>=44.0.1    # Required for MySQL 8 caching_sha2_password auth (>=44.0.1 fixes OpenSSL CVE)
