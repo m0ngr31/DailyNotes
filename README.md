@@ -29,15 +29,42 @@ To check your current version, open **Settings** in the app and look in the **Ab
 
 Since I had the need for keeping track of to-dos throughout the day, regular Markdown didn't work for me since it doesn't natively support tasks. So as an alternative I'm using Github Flavored Markdown (GFM). I really wanted it to feel like an actual text editor and not just a textbox, so I decided to use CodeMirror to handle all the input. Fira Code is used to provide font ligatures. Some other nice features include code highlighting, text/code folding, and a task list where you can toggle the status of any task from any date or note.
 
-## Roadmap
+## Features
 
-I'd like to try to include at least some of the following features to get to a final v1.0 release:
+Joe had a vision for what DailyNotes could become before calling it a 1.0 release. I've done my best to interpret and implement those features, along with feature requests from GitHub issues that Joe was considering. Here's what makes DailyNotes a powerful daily planning tool:
 
-- ~~iCal support~~ ✅ Done! See [Calendar feed](#calendar-feed-ics) section
-- ~~HTML preview~~ ✅ Done! Use `Cmd+K V` for side-by-side or `Shift+Cmd+V` for preview-only
-- ~~Light/Dark themes~~ ✅ Done! See [Themes](#themes) section
-- ~~Kanban board for tasks~~ ✅ Done! See [Kanban Board](#kanban-board) section
-- ~~Nested tagging~~ ✅ Done! See [Nested Tags](#nested-tags) section
+### Core Experience
+
+- **GitHub Flavored Markdown** — Full GFM support with task lists (`- [ ]` / `- [x]`), tables, code blocks, and more
+- **CodeMirror Editor** — A real text editor experience with syntax highlighting, code folding, and keyboard shortcuts
+- **Fira Code Font** — Beautiful font ligatures for a polished writing experience
+- **Auto-save** — Never lose your work with optional automatic saving
+- **Data Encryption** — All notes encrypted at rest with AES encryption
+
+### Organization & Search
+
+- **[Powerful Search](#search)** — Syntax-based search with `tag:`, `project:`, and full-text queries
+- **[Nested Tags](#nested-tags)** — Hierarchical tag organization (e.g., `work/meetings`, `home/family`)
+- **[Kanban Board](#kanban-board)** — Visual task management with drag-and-drop columns
+- **Task List** — View and toggle tasks within each note with one-click status updates
+
+### Preview & Visualization
+
+- **[HTML Preview](#mermaid-diagrams)** — Live markdown preview with `Cmd+K V` (side-by-side) or `Shift+Cmd+V` (full screen)
+- **[Mermaid Diagrams](#mermaid-diagrams)** — Create flowcharts, sequence diagrams, ERDs, and more directly in your notes
+- **[Themes](#themes)** — Light, Dark, and System themes to match your environment
+
+### Calendar Integration
+
+- **[Calendar Feed (ICS)](#calendar-feed-ics)** — Subscribe to your notes in Google Calendar, Apple Calendar, or any ICS-compatible app
+- **External Calendar Support** — Display events from external ICS feeds alongside your daily notes
+
+### Self-Hosted & Private
+
+- **Self-hosted** — Your data stays on your server, under your control
+- **Docker Ready** — Easy deployment with Docker and Docker Compose
+- **Multi-user Support** — Multiple users with separate, encrypted data
+- **No Vendor Lock-in** — Export all your notes as markdown files anytime
 
 ## Themes
 
@@ -59,6 +86,63 @@ DailyNotes supports **Light**, **Dark**, and **System** themes to match your pre
 4. The theme changes instantly and is saved for future sessions
 
 The **System** option automatically switches between light and dark themes based on your OS settings (e.g., macOS Dark Mode, Windows Dark Theme). This is perfect if you prefer dark mode at night and light mode during the day.
+
+## Mermaid Diagrams
+
+DailyNotes supports [Mermaid](https://mermaid.js.org/) diagrams in the markdown preview, allowing you to create flowcharts, sequence diagrams, class diagrams, and more directly in your notes.
+
+### Creating Diagrams
+
+Use a fenced code block with `mermaid` as the language:
+
+````markdown
+```mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Do something]
+    B -->|No| D[Do something else]
+    C --> E[End]
+    D --> E
+```
+````
+
+### Viewing Diagrams
+
+Diagrams are rendered in the HTML preview:
+
+- **Side-by-side**: Press `Cmd+K V` (Mac) or `Ctrl+K V` (Windows/Linux)
+- **Preview only**: Press `Shift+Cmd+V` (Mac) or `Shift+Ctrl+V` (Windows/Linux)
+
+### Supported Diagram Types
+
+Mermaid supports many diagram types. Here are some examples:
+
+| Diagram Type        | Use Case                 | Example Syntax           |
+| ------------------- | ------------------------ | ------------------------ |
+| Flowchart           | Process flows, decisions | `graph TD` or `graph LR` |
+| Sequence            | API calls, interactions  | `sequenceDiagram`        |
+| Class               | Object relationships     | `classDiagram`           |
+| State               | State machines           | `stateDiagram-v2`        |
+| Entity Relationship | Database schemas         | `erDiagram`              |
+| Gantt               | Project timelines        | `gantt`                  |
+| Pie                 | Data distribution        | `pie`                    |
+| Git Graph           | Branch visualization     | `gitGraph`               |
+
+### Theme Support
+
+Diagrams automatically adapt to your app theme:
+
+- **Dark theme**: Diagrams render with dark-friendly colors
+- **Light theme**: Diagrams render with light-friendly colors
+- Switching themes re-renders diagrams with the appropriate color scheme
+
+### Error Handling
+
+If a diagram has syntax errors, DailyNotes displays a helpful error message instead of breaking the preview. This makes it easy to debug and fix diagram issues.
+
+### Learn More
+
+For full syntax documentation and examples, visit the [Mermaid documentation](https://mermaid.js.org/intro/).
 
 ## Calendar feed (ICS)
 
