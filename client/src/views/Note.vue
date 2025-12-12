@@ -15,7 +15,7 @@
         v-if="previewMode !== 'none'"
         v-bind:value="modifiedText || text"
         v-on:checkbox-toggled="handleCheckboxToggled"
-        :class="{ 'preview-split': previewMode === 'side' }"
+        :class="{ 'preview-split': previewMode === 'side', 'preview-full': previewMode === 'replace' }"
       ></MarkdownPreview>
     </div>
     <div v-else class="loading-wrapper">
@@ -501,6 +501,14 @@ onBeforeUnmount(() => {
 
 .editor-split {
   border-right: 1px solid #404854;
+}
+
+/* Full-width preview when editor is hidden (replace mode) */
+.preview-full {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
 }
 
 /* Mobile styles */
