@@ -125,6 +125,22 @@ jobs:
           echo "version=skipped" >> $GITHUB_OUTPUT
         shell: bash
 
+      - name: Create GitHub Release
+        if: steps.tag.outputs.version != 'skipped'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.version }}
+          name: Release ${{ steps.tag.outputs.version }}
+          body: |
+            ## What's Changed
+
+            Docker image available at:
+            - `xhenxhe/dailynotes:${{ steps.tag.outputs.version }}`
+            - `xhenxhe/dailynotes:latest`
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update repo description
         uses: peter-evans/dockerhub-description@v4
         with:
