@@ -29,5 +29,5 @@ pre-commit==4.5.0
 psycopg2-binary==2.9.10  # PostgreSQL driver
 asyncpg==0.30.0  # Async PostgreSQL driver
 pymysql==1.1.1           # MySQL driver (pure Python)
-aiomysql==0.2.0  # Async MySQL driver
+aiomysql==0.3.0  # Async MySQL driver
 cryptography>=44.0.1    # Required for MySQL 8 caching_sha2_password auth (>=44.0.1 fixes OpenSSL CVE)

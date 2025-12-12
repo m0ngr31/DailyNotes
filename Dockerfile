@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 # ================================
 # Stage 1: Frontend Builder
 # ================================
@@ -7,11 +8,13 @@ ARG APP_VERSION=dev
 
 WORKDIR /app/client
 
-# Copy package.json and postinstall script for better layer caching
-COPY client/package.json client/patch-buefy.sh ./
+# Copy package files for better layer caching
+COPY client/package.json client/package-lock.json* client/patch-buefy.sh ./
 
-# Install dependencies (postinstall runs patch-buefy.sh)
-RUN npm install --prefer-offline --no-audit --legacy-peer-deps
+# Install dependencies with BuildKit cache mount for npm
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline --no-audit --legacy-peer-deps 2>/dev/null || \
+    npm install --prefer-offline --no-audit --legacy-peer-deps
 
 # Copy client source and build
 COPY client/ ./
@@ -24,10 +27,13 @@ FROM python:3.12-alpine
 
 WORKDIR /app
 
-# Install build dependencies, Python packages, then clean up in one layer
-# Note: postgresql-libs and mariadb-connector-c are runtime deps for database drivers
+# Copy requirements first for better layer caching
 COPY requirements.txt ./
-RUN apk add --no-cache \
+
+# Install build dependencies, Python packages, then clean up in one layer
+# Using BuildKit cache mount for pip to speed up rebuilds
+RUN --mount=type=cache,target=/root/.cache/pip \
+    apk add --no-cache \
         postgresql-libs \
         mariadb-connector-c \
     && apk add --no-cache --virtual .build-deps \
@@ -36,25 +42,9 @@ RUN apk add --no-cache \
         libffi-dev \
         postgresql-dev \
         mariadb-dev \
-    && pip install --no-cache-dir \
-        quart==0.20.0 \
-        quart-cors==0.7.0 \
-        alembic==1.14.0 \
-        sqlalchemy[asyncio]==2.0.36 \
-        aiosqlite==0.20.0 \
-        uvicorn[standard]==0.34.0 \
-        pyjwt==2.10.1 \
-        argon2-cffi==23.1.0 \
-        python-frontmatter==1.1.0 \
-        pycryptodome==3.23.0 \
-        httpx==0.28.1 \
-        requests==2.32.5 \
-        python-dateutil==2.9.0.post0 \
-        psycopg2-binary==2.9.10 \
-        asyncpg==0.30.0 \
-        pymysql==1.1.1 \
-        aiomysql==0.2.0 \
-        cryptography>=44.0.1 \
+    && pip install --no-cache-dir -r requirements.txt \
+        --only-binary :all: 2>/dev/null || \
+       pip install --no-cache-dir -r requirements.txt \
     && apk del .build-deps
 
 # Copy application files
