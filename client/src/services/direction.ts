@@ -88,11 +88,14 @@ class DirectionService {
    */
   public updateAutoDirection(content: string): void {
     const detected = this.detectDirection(content);
-    this.state.autoDetectedDirection = detected;
 
-    if (this.state.preference === 'auto') {
-      this.state.resolved = detected;
-      this.applyDirection();
+    if (this.state.autoDetectedDirection !== detected) {
+      this.state.autoDetectedDirection = detected;
+
+      if (this.state.preference === 'auto') {
+        this.state.resolved = detected;
+        this.applyDirection();
+      }
     }
   }
 
@@ -129,7 +132,7 @@ class DirectionService {
    * Strip YAML frontmatter from text
    */
   private stripFrontmatter(text: string): string {
-    const frontmatterRegex = /^---\s*\n[\s\S]*?\n---\s*\n/;
+    const frontmatterRegex = /^---\s*\n[\s\S]*?\n---\s*\n?/;
     return text.replace(frontmatterRegex, '');
   }
 

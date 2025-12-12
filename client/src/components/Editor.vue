@@ -869,7 +869,7 @@ const debouncedDirectionUpdate = _.debounce(
   (value: string) => {
     directionService.updateAutoDirection(value);
   },
-  300,
+  500,
   { trailing: true, leading: false }
 );
 

@@ -225,20 +225,6 @@ code, pre {
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
 }
 
-/* ========================================
-   Direction CSS (RTL/LTR Support)
-   ======================================== */
-
-/* LTR is default - no special styling needed */
-:root, .dir-ltr {
-  --text-direction: ltr;
-}
-
-/* RTL mode */
-.dir-rtl {
-  --text-direction: rtl;
-}
-
 .fade-enter-active, .fade-leave-active {
   transition: opacity .5s;
 }
