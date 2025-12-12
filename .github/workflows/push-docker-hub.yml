@@ -5,43 +5,48 @@ on:
     branches:
       - 'master'
 
+env:
+  REGISTRY_IMAGE: xhenxhe/dailynotes
+
 jobs:
-  build-and-push:
+  # ============================================
+  # Calculate version once, share across jobs
+  # ============================================
+  version:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history and tags
+          fetch-depth: 0
 
       - name: Calculate version
         id: version
         run: |
-          # Get today's date in YYYY.MM.DD format
           TODAY=$(date -u +%Y.%m.%d)
-          echo "Today's date: $TODAY"
-
-          # Fetch all tags
           git fetch --tags
-
-          # Find the highest build number for today
           LATEST_BUILD=$(git tag --list "${TODAY}-*" | sed "s/${TODAY}-//" | sort -n | tail -1)
-
           if [ -z "$LATEST_BUILD" ]; then
-            # No builds today, start at 00
             BUILD_NUM="00"
           else
-            # Increment the build number
             NEXT_NUM=$((10#$LATEST_BUILD + 1))
             BUILD_NUM=$(printf "%02d" $NEXT_NUM)
           fi
-
           VERSION="${TODAY}-${BUILD_NUM}"
           echo "Version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+  # ============================================
+  # Build AMD64 natively (fast)
+  # ============================================
+  build-amd64:
+    runs-on: ubuntu-latest
+    needs: version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -52,37 +57,137 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          cache-from: type=gha,scope=amd64
+          cache-to: type=gha,mode=max,scope=amd64
           build-args: |
-            APP_VERSION=${{ steps.version.outputs.version }}
-          tags: |
-            xhenxhe/dailynotes:latest
-            xhenxhe/dailynotes:${{ steps.version.outputs.version }}
+            APP_VERSION=${{ needs.version.outputs.version }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
-      - name: Create and push unique git tag (recompute & retry)
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-amd64
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # ============================================
+  # Build ARM64 natively (fast - no QEMU!)
+  # ============================================
+  build-arm64:
+    runs-on: ubuntu-24.04-arm
+    needs: version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=arm64
+          build-args: |
+            APP_VERSION=${{ needs.version.outputs.version }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-arm64
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # ============================================
+  # Merge manifests into multi-arch image
+  # ============================================
+  merge:
+    runs-on: ubuntu-latest
+    needs: [version, build-amd64, build-arm64]
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.REGISTRY_IMAGE }}:${{ needs.version.outputs.version }} \
+            -t ${{ env.REGISTRY_IMAGE }}:latest \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ needs.version.outputs.version }}
+
+  # ============================================
+  # Create release and update metadata
+  # ============================================
+  release:
+    runs-on: ubuntu-latest
+    needs: [version, merge]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create and push git tag
         id: tag
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Try a few times in case of concurrent runners creating tags at the same time
           MAX_ATTEMPTS=5
           attempt=1
           while [ $attempt -le $MAX_ATTEMPTS ]; do
             echo "Attempt $attempt/$MAX_ATTEMPTS to create a unique tag..."
-
-            # Ensure we have up-to-date remote tags
             git fetch --tags --prune origin
 
-            # Compute today's base and next available build number from the current tags
             TODAY=$(date -u +%Y.%m.%d)
             LATEST_BUILD=$(git tag --list "${TODAY}-*" | sed "s/${TODAY}-//" | sort -n | tail -1 || true)
 
@@ -96,34 +201,29 @@ jobs:
             VERSION="${TODAY}-${BUILD_NUM}"
             echo "Computed version: $VERSION"
 
-            # Check remote and local for existence
             if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null 2>&1 || \
                git ls-remote --exit-code --tags origin "refs/tags/${VERSION}" >/dev/null 2>&1; then
-              echo "Tag $VERSION already exists, will try again to compute a new one."
+              echo "Tag $VERSION already exists, will try again."
               attempt=$((attempt+1))
-              # Small backoff to reduce contention
               sleep $((attempt * 2))
               continue
             fi
 
-            # Create and push tag (do NOT force)
             git tag -a "$VERSION" -m "Release $VERSION"
             if git push origin "$VERSION"; then
               echo "Successfully pushed tag $VERSION"
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               exit 0
             else
-              echo "Push failed for $VERSION (maybe tag created concurrently). Removing local tag and retrying."
+              echo "Push failed for $VERSION. Retrying."
               git tag -d "$VERSION" || true
               attempt=$((attempt+1))
               sleep $((attempt * 2))
             fi
           done
 
-          echo "Failed to create a unique tag after $MAX_ATTEMPTS attempts; skipping tag creation to avoid failing the workflow."
-          # Write output so downstream steps know tagging was skipped
+          echo "Failed to create tag after $MAX_ATTEMPTS attempts; skipping."
           echo "version=skipped" >> $GITHUB_OUTPUT
-        shell: bash
 
       - name: Create GitHub Release
         if: steps.tag.outputs.version != 'skipped'
