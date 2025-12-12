@@ -35,6 +35,7 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { IGlobal } from '../interfaces';
 
 import { newDay, newNote } from '../services/consts';
+import directionService from '../services/direction';
 import eventHub from '../services/eventHub';
 import { SharedBuefy } from '../services/sharedBuefy';
 import themeService from '../services/theme';
@@ -813,6 +814,10 @@ const getExtensions = (): Extension[] => {
         const newValue = update.state.doc.toString();
         generateTaskList(newValue);
         throttledEmit(newValue);
+        // Update auto-direction if in auto mode
+        if (directionService.preference === 'auto') {
+          debouncedDirectionUpdate(newValue);
+        }
       }
     }),
     EditorView.domEventHandlers({
@@ -859,6 +864,15 @@ const throttledEmit = _.throttle(
   { trailing: true, leading: false }
 );
 
+// Debounced direction update for auto-detection
+const debouncedDirectionUpdate = _.debounce(
+  (value: string) => {
+    directionService.updateAutoDirection(value);
+  },
+  500,
+  { trailing: true, leading: false }
+);
+
 onMounted(() => {
   if (!editorContainer.value) return;
 
@@ -873,6 +887,10 @@ onMounted(() => {
   handleValueUpdate(true);
   // Generate task list on initial mount
   generateTaskList(props.value || '');
+  // Trigger auto-direction on initial content
+  if (directionService.preference === 'auto') {
+    directionService.updateAutoDirection(props.value || '');
+  }
   eventHub.on('focusEditor', focus);
 });
 
@@ -977,7 +995,7 @@ defineExpose({
   }
 
   .editor :deep(.cm-gutters) {
-    padding-left: 4px;
+    padding-inline-start: 4px;
   }
 }
 </style>

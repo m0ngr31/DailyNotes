@@ -409,15 +409,14 @@ const logout = () => {
 }
 
 .dropdown-text {
-  margin-left: 8px;
-  margin-right: 12px;
+  margin-inline-start: 8px;
+  margin-inline-end: 12px;
 }
 
 .dropdown-shortcut {
   opacity: 0.6;
   font-size: 0.85em;
-  margin-left: auto;
-  float: right;
+  margin-inline-start: auto;
 }
 
 /* Mobile-only items in dropdown - hidden by default */
@@ -456,8 +455,8 @@ const logout = () => {
   }
 
   .header-title {
-    margin-left: 0.5em;
-    margin-right: 0.5em;
+    margin-inline-start: 0.5em;
+    margin-inline-end: 0.5em;
   }
 
   .header-left,

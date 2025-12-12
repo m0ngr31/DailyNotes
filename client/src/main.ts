@@ -5,6 +5,9 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 
+// Initialize direction service (self-initializes on import)
+import './services/direction';
+
 const app = createApp(App);
 const head = createHead();
 

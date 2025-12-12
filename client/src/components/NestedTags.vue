@@ -169,7 +169,7 @@ function onChildExpandedChange(childExpanded: string[]) {
 }
 
 .children-inline {
-  padding-left: 20px;
+  padding-inline-start: 20px;
 }
 
 /* Nested level: inline layout */
@@ -188,7 +188,7 @@ function onChildExpandedChange(childExpanded: string[]) {
 
 .sub-children {
   display: inline-flex;
-  margin-left: 0.25em;
+  margin-inline-start: 0.25em;
 }
 
 /* Toggle icons */
@@ -201,7 +201,7 @@ function onChildExpandedChange(childExpanded: string[]) {
   cursor: pointer;
   color: var(--text-muted);
   font-size: 0.7em;
-  margin-right: 4px;
+  margin-inline-end: 4px;
   flex-shrink: 0;
 }
 
@@ -216,7 +216,7 @@ function onChildExpandedChange(childExpanded: string[]) {
   cursor: pointer;
   color: var(--text-muted);
   font-size: 0.7em;
-  margin-right: 2px;
+  margin-inline-end: 2px;
   width: 12px;
 }
 
