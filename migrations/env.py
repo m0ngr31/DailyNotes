@@ -1,12 +1,17 @@
 from __future__ import with_statement
 
 import logging
+import sys
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+
+# Add parent directory to path so we can import app module
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -17,22 +22,18 @@ config = context.config
 fileConfig(config.config_file_name)
 logger = logging.getLogger("alembic.env")
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-from flask import current_app
+# Import app and db directly (works with both Flask and Quart)
+from app import app, db
+from config import Config
 
+# Set the database URL from config
 config.set_main_option(
     "sqlalchemy.url",
-    current_app.config.get("SQLALCHEMY_DATABASE_URI").replace("%", "%%"),
+    Config.SQLALCHEMY_DATABASE_URI.replace("%", "%%"),
 )
-target_metadata = current_app.extensions["migrate"].db.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# Get metadata from SQLAlchemy
+target_metadata = db.metadata
 
 
 def run_migrations_offline():
@@ -82,10 +83,8 @@ def run_migrations_online():
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            # render_as_batch=True,
             process_revision_directives=process_revision_directives,
             user_module_prefix="app.model_types.",
-            **current_app.extensions["migrate"].configure_args
         )
 
         with context.begin_transaction():

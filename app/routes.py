@@ -2,18 +2,25 @@ import os
 import zipfile
 import re
 import time
-import queue
-import threading
+import asyncio
 from uuid import uuid4
 import frontmatter
 import datetime
-import requests
+import httpx
 from dateutil import rrule, tz
 from urllib.parse import urlparse, parse_qs, quote
 
 import json
 
-from app import app, db, argon2
+from app import (
+    app,
+    db,
+    argon2,
+    jwt_required,
+    create_access_token,
+    get_jwt_identity,
+    verify_jwt_in_request,
+)
 from app.models import (
     User,
     Note,
@@ -26,7 +33,7 @@ from app.models import (
     parse_tasks_with_columns,
     get_task_column,
 )
-from flask import (
+from quart import (
     render_template,
     request,
     jsonify,
@@ -35,9 +42,8 @@ from flask import (
     send_from_directory,
     Response,
     url_for,
-    stream_with_context,
+    make_response,
 )
-from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
@@ -220,21 +226,21 @@ _ICS_CACHE_TTL_SECONDS = 300
 _ICS_CACHE_MAX_SIZE = 100  # Limit cache size to prevent memory exhaustion
 
 # SSE (Server-Sent Events) infrastructure for real-time sync
-_SSE_CLIENTS = {}  # user_id -> list of queue.Queue
-_SSE_CLIENTS_LOCK = threading.Lock()
+_SSE_CLIENTS = {}  # user_id -> list of asyncio.Queue
+_SSE_CLIENTS_LOCK = asyncio.Lock()
 
 
-def _sse_add_client(user_id, client_queue):
+async def _sse_add_client(user_id, client_queue):
     """Register a new SSE client for a user."""
-    with _SSE_CLIENTS_LOCK:
+    async with _SSE_CLIENTS_LOCK:
         if user_id not in _SSE_CLIENTS:
             _SSE_CLIENTS[user_id] = []
         _SSE_CLIENTS[user_id].append(client_queue)
 
 
-def _sse_remove_client(user_id, client_queue):
+async def _sse_remove_client(user_id, client_queue):
     """Unregister an SSE client."""
-    with _SSE_CLIENTS_LOCK:
+    async with _SSE_CLIENTS_LOCK:
         if user_id in _SSE_CLIENTS:
             try:
                 _SSE_CLIENTS[user_id].remove(client_queue)
@@ -244,14 +250,14 @@ def _sse_remove_client(user_id, client_queue):
                 pass
 
 
-def _sse_broadcast(user_id, event_type, data):
+async def _sse_broadcast(user_id, event_type, data):
     """Broadcast an event to all connected clients for a user."""
-    with _SSE_CLIENTS_LOCK:
+    async with _SSE_CLIENTS_LOCK:
         clients = _SSE_CLIENTS.get(user_id, [])
         for client_queue in clients:
             try:
                 client_queue.put_nowait({"event": event_type, "data": data})
-            except queue.Full:
+            except asyncio.QueueFull:
                 # Client queue is full, skip this message
                 pass
 
@@ -274,7 +280,7 @@ def _normalize_calendar_url(raw_url):
     return raw_url
 
 
-def _fetch_ics(url):
+async def _fetch_ics(url):
     now = time.time()
     cached = _ICS_CACHE.get(url)
     if cached and now - cached["ts"] < _ICS_CACHE_TTL_SECONDS:
@@ -315,37 +321,33 @@ def _fetch_ics(url):
             ):
                 return None
 
-        resp = requests.get(url, timeout=12, stream=True)
-        if resp.status_code != 200:
-            return None
-
-        # Limit response size to 5MB to prevent memory exhaustion
-        max_size = 5 * 1024 * 1024
-        content_length = resp.headers.get("content-length")
-        if content_length and int(content_length) > max_size:
-            return None
-
-        # Read response with size limit
-        body = ""
-        size = 0
-        for chunk in resp.iter_content(chunk_size=8192, decode_unicode=True):
-            size += len(chunk.encode("utf-8"))
-            if size > max_size:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            resp = await client.get(url)
+            if resp.status_code != 200:
                 return None
-            body += chunk
 
-        # Evict old entries if cache is too large
-        if len(_ICS_CACHE) >= _ICS_CACHE_MAX_SIZE:
-            # Remove oldest entries (simple FIFO)
-            oldest_keys = sorted(_ICS_CACHE.keys(), key=lambda k: _ICS_CACHE[k]["ts"])[
-                :10
-            ]
-            for key in oldest_keys:
-                _ICS_CACHE.pop(key, None)
+            # Limit response size to 5MB to prevent memory exhaustion
+            max_size = 5 * 1024 * 1024
+            content_length = resp.headers.get("content-length")
+            if content_length and int(content_length) > max_size:
+                return None
 
-        _ICS_CACHE[url] = {"ts": now, "body": body}
-        return body
-    except (requests.RequestException, ValueError, OSError) as e:
+            body = resp.text
+            if len(body.encode("utf-8")) > max_size:
+                return None
+
+            # Evict old entries if cache is too large
+            if len(_ICS_CACHE) >= _ICS_CACHE_MAX_SIZE:
+                # Remove oldest entries (simple FIFO)
+                oldest_keys = sorted(
+                    _ICS_CACHE.keys(), key=lambda k: _ICS_CACHE[k]["ts"]
+                )[:10]
+                for key in oldest_keys:
+                    _ICS_CACHE.pop(key, None)
+
+            _ICS_CACHE[url] = {"ts": now, "body": body}
+            return body
+    except (httpx.RequestError, ValueError, OSError) as e:
         import logging
 
         logging.getLogger(__name__).debug(f"Failed to fetch ICS from {url}: {e}")
@@ -662,7 +664,7 @@ def _note_to_ics_event(note, base_url=None):
 
 
 @app.route("/health", methods=["GET"])
-def health_check():
+async def health_check():
     """Simple health check endpoint for Docker healthcheck"""
     try:
         # Test database connection
@@ -673,11 +675,11 @@ def health_check():
 
 
 @app.route("/api/sign-up", methods=["POST"])
-def sign_up():
+async def sign_up():
     if app.config["PREVENT_SIGNUPS"]:
         abort(400)
 
-    req = request.get_json()
+    req = await request.get_json()
     username = req.get("username")
     password = req.get("password")
 
@@ -695,8 +697,8 @@ def sign_up():
 
 
 @app.route("/api/login", methods=["POST"])
-def login():
-    req = request.get_json()
+async def login():
+    req = await request.get_json()
     username = req.get("username")
     password = req.get("password")
 
@@ -717,8 +719,8 @@ def login():
 
 @app.route("/api/save_day", methods=["PUT"])
 @jwt_required()
-def save_day():
-    req = request.get_json()
+async def save_day():
+    req = await request.get_json()
     title = req.get("title")
     data = req.get("data", "")
 
@@ -758,7 +760,7 @@ def save_day():
     _collect_referenced_uploads_for_user(user)
 
     # Broadcast SSE event for real-time sync
-    _sse_broadcast(
+    await _sse_broadcast(
         str(user.uuid),
         "note_updated",
         {
@@ -773,8 +775,8 @@ def save_day():
 
 @app.route("/api/create_note", methods=["POST"])
 @jwt_required()
-def create_note():
-    req = request.get_json()
+async def create_note():
+    req = await request.get_json()
     data = req.get("data", "")
 
     if not data:
@@ -800,7 +802,7 @@ def create_note():
     _collect_referenced_uploads_for_user(user)
 
     # Broadcast SSE event for real-time sync
-    _sse_broadcast(
+    await _sse_broadcast(
         str(user.uuid),
         "note_updated",
         {
@@ -815,7 +817,7 @@ def create_note():
 
 @app.route("/api/save_task", methods=["PUT"])
 @jwt_required()
-def save_task():
+async def save_task():
     """
     Update a task's checkbox status by rewriting the markdown.
 
@@ -825,7 +827,7 @@ def save_task():
 
     This will update the task in the note markdown.
     """
-    req = request.get_json()
+    req = await request.get_json()
     uuid = req.get("uuid")
     name = req.get("name")
 
@@ -880,7 +882,7 @@ def save_task():
     db.session.commit()
 
     # Broadcast SSE event for real-time sync
-    _sse_broadcast(
+    await _sse_broadcast(
         user_uuid,
         "task_updated",
         {
@@ -895,8 +897,8 @@ def save_task():
 
 @app.route("/api/save_note", methods=["PUT"])
 @jwt_required()
-def save_note():
-    req = request.get_json()
+async def save_note():
+    req = await request.get_json()
     uuid = req.get("uuid")
     data = req.get("data", "")
 
@@ -925,7 +927,7 @@ def save_note():
     db.session.commit()
 
     # Broadcast SSE event for real-time sync
-    _sse_broadcast(
+    await _sse_broadcast(
         str(user.uuid),
         "note_updated",
         {
@@ -940,7 +942,7 @@ def save_note():
 
 @app.route("/api/delete_note/<uuid>", methods=["DELETE"])
 @jwt_required()
-def delete_note(uuid):
+async def delete_note(uuid):
     if not uuid:
         abort(400)
 
@@ -967,7 +969,7 @@ def delete_note(uuid):
 
 @app.route("/api/refresh_jwt", methods=["GET"])
 @jwt_required()
-def refresh_jwt():
+async def refresh_jwt():
     username = get_jwt_identity()
 
     if not username:
@@ -979,7 +981,7 @@ def refresh_jwt():
 
 @app.route("/api/calendar_token", methods=["GET", "POST", "DELETE"])
 @jwt_required()
-def calendar_token():
+async def calendar_token():
     """
     Return, generate, rotate, or disable the per-user ICS feed token and URL.
     """
@@ -1011,7 +1013,7 @@ def calendar_token():
 
 @app.route("/api/external_calendars", methods=["GET", "POST"])
 @jwt_required()
-def external_calendars():
+async def external_calendars():
     """
     List or add external ICS calendars for the user.
     """
@@ -1025,7 +1027,7 @@ def external_calendars():
         calendars = [c.serialize for c in user.external_calendars.all()]
         return jsonify({"calendars": calendars}), 200
 
-    req = request.get_json() or {}
+    req = await request.get_json() or {}
     name = (req.get("name") or "").strip()
     url = (req.get("url") or "").strip()
     color = (req.get("color") or "").strip() or None
@@ -1045,7 +1047,7 @@ def external_calendars():
 
 @app.route("/api/external_calendars/<uuid>", methods=["DELETE"])
 @jwt_required()
-def delete_external_calendar(uuid):
+async def delete_external_calendar(uuid):
     username = get_jwt_identity()
     user = User.query.filter_by(username=username.lower()).first()
 
@@ -1063,7 +1065,7 @@ def delete_external_calendar(uuid):
 
 @app.route("/api/external_events", methods=["GET"])
 @jwt_required()
-def external_events():
+async def external_events():
     """
     Return events from all connected external calendars for a given date (MM-dd-yyyy).
     """
@@ -1086,7 +1088,7 @@ def external_events():
     statuses = []
     for cal in user.external_calendars.all():
         normalized_url = _normalize_calendar_url(cal.url)
-        ics_body = _fetch_ics(normalized_url)
+        ics_body = await _fetch_ics(normalized_url)
         if not ics_body:
             statuses.append({"name": cal.name, "url": cal.url, "error": "fetch_failed"})
             continue
@@ -1118,7 +1120,7 @@ def external_events():
 
 
 @app.route("/api/calendar.ics", methods=["GET"])
-def calendar_feed():
+async def calendar_feed():
     """
     Public ICS feed for a user's daily notes. Access is gated by a token query param.
     """
@@ -1160,7 +1162,7 @@ def calendar_feed():
 
 @app.route("/api/note", methods=["GET"])
 @jwt_required()
-def get_note():
+async def get_note():
     uuid = request.args.get("uuid")
 
     if not uuid:
@@ -1182,7 +1184,7 @@ def get_note():
 
 @app.route("/api/date", methods=["GET"])
 @jwt_required()
-def get_date():
+async def get_date():
     date = request.args.get("date")
 
     if not date:
@@ -1218,7 +1220,7 @@ def get_date():
 
 @app.route("/api/events", methods=["GET"])
 @jwt_required()
-def cal_events():
+async def cal_events():
     username = get_jwt_identity()
     user = User.query.filter_by(username=username.lower()).first()
 
@@ -1233,7 +1235,7 @@ def cal_events():
 
 @app.route("/api/sidebar", methods=["GET"])
 @jwt_required()
-def sidebar_data():
+async def sidebar_data():
     username = get_jwt_identity()
     user = User.query.filter_by(username=username.lower()).first()
 
@@ -1285,8 +1287,8 @@ def sidebar_data():
 
 @app.route("/api/toggle_auto_save", methods=["POST"])
 @jwt_required()
-def toggle_auto_save():
-    req = request.get_json()
+async def toggle_auto_save():
+    req = await request.get_json()
     auto_save = req.get("auto_save", False)
 
     username = get_jwt_identity()
@@ -1310,8 +1312,8 @@ def toggle_auto_save():
 
 @app.route("/api/toggle_vim_mode", methods=["POST"])
 @jwt_required()
-def toggle_vim_mode():
-    req = request.get_json()
+async def toggle_vim_mode():
+    req = await request.get_json()
     vim_mode = req.get("vim_mode", False)
 
     username = get_jwt_identity()
@@ -1335,7 +1337,7 @@ def toggle_vim_mode():
 
 @app.route("/api/settings", methods=["GET"])
 @jwt_required()
-def get_settings():
+async def get_settings():
     """Get all user settings including kanban configuration."""
     username = get_jwt_identity()
 
@@ -1368,9 +1370,9 @@ def get_settings():
 
 @app.route("/api/settings", methods=["PUT"])
 @jwt_required()
-def update_settings():
+async def update_settings():
     """Update user settings. Only updates fields that are provided."""
-    req = request.get_json()
+    req = await request.get_json()
 
     username = get_jwt_identity()
 
@@ -1427,7 +1429,7 @@ def update_settings():
 
 @app.route("/api/task_column", methods=["PUT"])
 @jwt_required()
-def update_task_column():
+async def update_task_column():
     """
     Update a task's kanban column by rewriting the markdown.
 
@@ -1437,7 +1439,7 @@ def update_task_column():
 
     This will update the task's :column: syntax in the note markdown.
     """
-    req = request.get_json()
+    req = await request.get_json()
     task_uuid = req.get("uuid")
     new_column = req.get("column")
 
@@ -1529,7 +1531,7 @@ def update_task_column():
     db.session.commit()
 
     # Broadcast SSE event for real-time sync
-    _sse_broadcast(
+    await _sse_broadcast(
         user_uuid,
         "task_column_updated",
         {
@@ -1553,8 +1555,8 @@ def update_task_column():
 
 @app.route("/api/search", methods=["POST"])
 @jwt_required()
-def search():
-    req = request.get_json()
+async def search():
+    req = await request.get_json()
 
     # Support both old format (selected + search) and new format (query)
     query_string = req.get("query", "")
@@ -1660,7 +1662,7 @@ def search():
 
 @app.route("/api/export")
 @jwt_required()
-def export():
+async def export():
     username = get_jwt_identity()
     user = User.query.filter_by(username=username.lower()).first()
 
@@ -1676,14 +1678,14 @@ def export():
         zf.writestr(ret_note["title"] + ".md", ret_note["data"], zipfile.ZIP_DEFLATED)
     zf.close()
 
-    rval = send_file(zip_location, as_attachment=True)
+    rval = await send_file(zip_location, as_attachment=True)
     os.remove(zip_location)
     return rval
 
 
 @app.route("/api/import", methods=["POST"])
 @jwt_required()
-def import_notes():
+async def import_notes():
     import re
     import os
     from app.models import aes_encrypt
@@ -1694,10 +1696,11 @@ def import_notes():
     if not user:
         abort(400)
 
-    if "file" not in request.files:
+    files = await request.files
+    if "file" not in files:
         return jsonify({"error": "No file provided"}), 400
 
-    file = request.files["file"]
+    file = files["file"]
 
     if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
@@ -1710,7 +1713,7 @@ def import_notes():
     try:
         # Save uploaded file temporarily
         import_location = app.config["EXPORT_FILE"].replace("export.zip", "import.zip")
-        file.save(import_location)
+        await file.save(import_location)
 
         # Open and process the ZIP file
         imported_count = 0
@@ -1821,7 +1824,7 @@ def import_notes():
 
 @app.route("/api/upload", methods=["POST"])
 @jwt_required()
-def upload_file():
+async def upload_file():
     username = get_jwt_identity()
     user = User.query.filter_by(username=username.lower()).first()
 
@@ -1830,10 +1833,11 @@ def upload_file():
 
     _ensure_upload_table()
 
-    if "file" not in request.files:
+    files = await request.files
+    if "file" not in files:
         return jsonify({"error": "No file provided"}), 400
 
-    file = request.files["file"]
+    file = files["file"]
 
     if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
@@ -1843,15 +1847,9 @@ def upload_file():
         return jsonify({"error": "Unsupported file type"}), 400
 
     max_size = app.config.get("MAX_UPLOAD_SIZE")
-    try:
-        file.stream.seek(0, os.SEEK_END)
-        file_size = file.stream.tell()
-        file.stream.seek(0)
-    except (OSError, IOError) as e:
-        import logging
-
-        logging.getLogger(__name__).debug(f"Could not determine file size: {e}")
-        file_size = 0
+    # Read the file content to determine size
+    file_content = await file.read()
+    file_size = len(file_content)
 
     if max_size and file_size and file_size > max_size:
         return jsonify({"error": "File too large"}), 413
@@ -1863,7 +1861,9 @@ def upload_file():
     saved_name = f"{uuid4().hex}{ext}"
     file_path = os.path.join(user_dir, saved_name)
 
-    file.save(file_path)
+    # Write file content to disk
+    with open(file_path, "wb") as f:
+        f.write(file_content)
 
     relative_path = f"/uploads/{username.lower()}/{saved_name}"
     url_prefix = request.script_root or ""
@@ -1893,13 +1893,13 @@ def upload_file():
 
 
 @app.route("/uploads/<path:filename>")
-def uploaded_file(filename):
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+async def uploaded_file(filename):
+    return await send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
 @app.route("/api/uploads/orphans", methods=["GET"])
 @jwt_required()
-def list_orphan_uploads():
+async def list_orphan_uploads():
     username = get_jwt_identity()
     user = User.query.filter_by(username=username.lower()).first()
 
@@ -1935,7 +1935,7 @@ def list_orphan_uploads():
 
 @app.route("/api/uploads/orphans/cleanup", methods=["POST"])
 @jwt_required()
-def cleanup_orphan_uploads():
+async def cleanup_orphan_uploads():
     username = get_jwt_identity()
     user = User.query.filter_by(username=username.lower()).first()
 
@@ -1973,10 +1973,10 @@ def cleanup_orphan_uploads():
 
 
 @app.route("/api/events/stream", methods=["GET", "OPTIONS"])
-def sse_stream():
+async def sse_stream():
     # Handle CORS preflight request
     if request.method == "OPTIONS":
-        response = Response()
+        response = await make_response("")
         response.headers["Access-Control-Allow-Origin"] = request.headers.get(
             "Origin", "*"
         )
@@ -1989,8 +1989,6 @@ def sse_stream():
         return response
 
     # JWT validation for actual SSE request
-    from flask_jwt_extended import verify_jwt_in_request
-
     try:
         verify_jwt_in_request()
     except Exception:
@@ -2008,10 +2006,10 @@ def sse_stream():
 
     user_id = str(user.uuid)
 
-    def generate():
+    async def generate():
         # Create a queue for this client
-        client_queue = queue.Queue(maxsize=50)
-        _sse_add_client(user_id, client_queue)
+        client_queue = asyncio.Queue(maxsize=50)
+        await _sse_add_client(user_id, client_queue)
 
         try:
             # Send initial connection event
@@ -2020,20 +2018,20 @@ def sse_stream():
             while True:
                 try:
                     # Wait for messages with timeout to allow checking connection
-                    message = client_queue.get(timeout=30)
+                    message = await asyncio.wait_for(client_queue.get(), timeout=30)
                     event_type = message.get("event", "message")
                     data = message.get("data", {})
                     yield f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
-                except queue.Empty:
+                except asyncio.TimeoutError:
                     # Send heartbeat to keep connection alive
-                    yield f": heartbeat\n\n"
-        except GeneratorExit:
+                    yield ": heartbeat\n\n"
+        except asyncio.CancelledError:
             pass
         finally:
-            _sse_remove_client(user_id, client_queue)
+            await _sse_remove_client(user_id, client_queue)
 
     return Response(
-        stream_with_context(generate()),
+        generate(),
         mimetype="text/event-stream",
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -2050,5 +2048,5 @@ def sse_stream():
 
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
-def catch_all(path):
-    return render_template("index.html")
+async def catch_all(path):
+    return await render_template("index.html")

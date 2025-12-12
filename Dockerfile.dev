@@ -13,7 +13,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install watchdog for Flask auto-reloading
+# Install watchdog for uvicorn auto-reloading
 RUN pip install watchdog
 
 # Copy package files for frontend
@@ -41,7 +41,7 @@ RUN which curl || (apt-get update --allow-releaseinfo-change 2>/dev/null || \
     rm -rf /var/lib/apt/lists/*) || true
 
 # Expose ports
-EXPOSE 5001 8080
+EXPOSE 8000 8080
 
 # Use a dev-specific entrypoint that starts both services
 COPY docker-entrypoint-dev.sh /docker-entrypoint-dev.sh

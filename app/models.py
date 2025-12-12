@@ -1,8 +1,19 @@
-from app import app, db
+from app import app, db, Base, db_session
 from app.model_types import GUID
+from sqlalchemy import (
+    Column,
+    String,
+    Boolean,
+    Integer,
+    DateTime,
+    LargeBinary,
+    ForeignKey,
+    event,
+    text,
+)
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy import event, text
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
@@ -196,24 +207,22 @@ def aes_decrypt_old(data):
         return data
 
 
-class User(db.Model):
-    uuid = db.Column(
+class User(Base):
+    __tablename__ = "user"
+
+    uuid = Column(
         GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4()
     )
-    username = db.Column(db.String(64), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    auto_save = db.Column(db.Boolean, nullable=True)
-    vim_mode = db.Column(db.Boolean, nullable=True, default=False)
-    calendar_token = db.Column(db.String(64), unique=True, nullable=True)
-    kanban_enabled = db.Column(db.Boolean, nullable=True, default=False)
-    kanban_columns = db.Column(
-        db.String(512), nullable=True, default='["todo", "done"]'
-    )
-    notes = db.relationship(
-        "Note", lazy="dynamic", cascade="all, delete, delete-orphan"
-    )
-    meta = db.relationship("Meta", lazy="dynamic", cascade="all, delete, delete-orphan")
-    external_calendars = db.relationship(
+    username = Column(String(64), unique=True, nullable=False)
+    password_hash = Column(String(128), nullable=False)
+    auto_save = Column(Boolean, nullable=True)
+    vim_mode = Column(Boolean, nullable=True, default=False)
+    calendar_token = Column(String(64), unique=True, nullable=True)
+    kanban_enabled = Column(Boolean, nullable=True, default=False)
+    kanban_columns = Column(String(512), nullable=True, default='["todo", "done"]')
+    notes = relationship("Note", lazy="dynamic", cascade="all, delete, delete-orphan")
+    meta = relationship("Meta", lazy="dynamic", cascade="all, delete, delete-orphan")
+    external_calendars = relationship(
         "ExternalCalendar", lazy="dynamic", cascade="all, delete, delete-orphan"
     )
 
@@ -221,16 +230,18 @@ class User(db.Model):
         return "<User {}>".format(self.uuid)
 
 
-class Meta(db.Model):
-    uuid = db.Column(
+class Meta(Base):
+    __tablename__ = "meta"
+
+    uuid = Column(
         GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4()
     )
-    user_id = db.Column(GUID, db.ForeignKey("user.uuid"), nullable=False)
-    note_id = db.Column(GUID, db.ForeignKey("note.uuid"), nullable=False)
-    name_encrypted = db.Column("name", db.LargeBinary)
-    name_compare = db.Column(db.LargeBinary)
-    kind = db.Column(db.String)
-    task_column = db.Column(db.String(64), nullable=True)  # Kanban column for tasks
+    user_id = Column(GUID, ForeignKey("user.uuid"), nullable=False)
+    note_id = Column(GUID, ForeignKey("note.uuid"), nullable=False)
+    name_encrypted = Column("name", LargeBinary)
+    name_compare = Column(LargeBinary)
+    kind = Column(String)
+    task_column = Column(String(64), nullable=True)  # Kanban column for tasks
 
     @hybrid_property
     def name(self):
@@ -256,16 +267,18 @@ class Meta(db.Model):
         return result
 
 
-class Upload(db.Model):
-    uuid = db.Column(
+class Upload(Base):
+    __tablename__ = "upload"
+
+    uuid = Column(
         GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4()
     )
-    user_id = db.Column(GUID, db.ForeignKey("user.uuid"), nullable=False)
-    filename = db.Column(db.String(255), nullable=False)
-    path = db.Column(db.String(512), nullable=False, unique=True)
-    size = db.Column(db.Integer, nullable=True)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    last_seen_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    user_id = Column(GUID, ForeignKey("user.uuid"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    path = Column(String(512), nullable=False, unique=True)
+    size = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_seen_at = Column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self):
         return "<Upload {}>".format(self.uuid)
@@ -282,16 +295,18 @@ class Upload(db.Model):
         }
 
 
-class Note(db.Model):
-    uuid = db.Column(
+class Note(Base):
+    __tablename__ = "note"
+
+    uuid = Column(
         GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4()
     )
-    user_id = db.Column(GUID, db.ForeignKey("user.uuid"), nullable=False)
-    data = db.Column(db.LargeBinary)
-    title = db.Column(db.LargeBinary, nullable=False)
-    date = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    is_date = db.Column(db.Boolean, default=False)
-    meta = db.relationship("Meta", lazy="dynamic", cascade="all, delete, delete-orphan")
+    user_id = Column(GUID, ForeignKey("user.uuid"), nullable=False)
+    data = Column(LargeBinary)
+    title = Column(LargeBinary, nullable=False)
+    date = Column(DateTime(timezone=True), server_default=func.now())
+    is_date = Column(Boolean, default=False)
+    meta = relationship("Meta", lazy="dynamic", cascade="all, delete, delete-orphan")
 
     @hybrid_property
     def text(self):
@@ -597,15 +612,17 @@ event.listen(Note, "after_update", after_change_note)
 event.listen(Meta, "before_update", before_update_task)
 
 
-class ExternalCalendar(db.Model):
-    uuid = db.Column(
+class ExternalCalendar(Base):
+    __tablename__ = "external_calendar"
+
+    uuid = Column(
         GUID, primary_key=True, index=True, unique=True, default=lambda: uuid.uuid4()
     )
-    user_id = db.Column(GUID, db.ForeignKey("user.uuid"), nullable=False)
-    name = db.Column(db.String(128), nullable=False)
-    url = db.Column(db.String(512), nullable=False)
-    color = db.Column(db.String(16), nullable=True)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    user_id = Column(GUID, ForeignKey("user.uuid"), nullable=False)
+    name = Column(String(128), nullable=False)
+    url = Column(String(512), nullable=False)
+    color = Column(String(16), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):
         return "<ExternalCalendar {}>".format(self.uuid)

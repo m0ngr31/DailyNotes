@@ -12,7 +12,7 @@ module.exports = {
   devServer: {
     proxy: {
       '^/api/events/stream': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         // SSE-specific settings to prevent buffering
         headers: {
@@ -29,11 +29,11 @@ module.exports = {
         },
       },
       '^/api': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '^/uploads': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },

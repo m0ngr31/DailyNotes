@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: dailynotes-dev
     ports:
-      # Flask backend
-      - "5001:5001"
+      # Quart backend (uvicorn)
+      - "8000:8000"
       # Vue dev server with hot reload
       - "8080:8080"
     volumes:
@@ -16,6 +16,9 @@ services:
       - ./server.py:/app/server.py
       - ./config.py:/app/config.py
       - ./migrations:/app/migrations
+      - ./verify_data_migrations.py:/app/verify_data_migrations.py
+      - ./verify_env.py:/app/verify_env.py
+      - ./run.sh:/app/run.sh
 
       # Frontend source files
       - ./client/src:/app/client/src
@@ -38,8 +41,6 @@ services:
       # DB_ENCRYPTION_KEY: "dev-encryption-key-must-be-multiple-of-16-chars"
 
       # Development mode flags
-      FLASK_ENV: development
-      FLASK_DEBUG: "1"
       NODE_ENV: development
 
       # Optional: Prevent signups in dev
@@ -47,7 +48,7 @@ services:
 
     # Development doesn't need aggressive health checks
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health", "||", "curl", "-f", "http://localhost:8080"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health", "||", "curl", "-f", "http://localhost:8080"]
       interval: 60s
       timeout: 10s
       retries: 3

@@ -596,7 +596,7 @@ The easiest way to get started with development is using Docker. This approach p
 That's it! The script will:
 
 1. Build the development Docker image
-2. Start both Flask (port 5001) and Vue.js (port 8080) servers
+2. Start both Quart backend (port 8000) and Vue.js (port 8080) servers
 3. Set up the database and run migrations
 4. Open your browser to http://localhost:8080
 
@@ -604,7 +604,7 @@ That's it! The script will:
 
 All your code changes will be automatically detected:
 
-- **Python/Flask changes**: Flask server auto-reloads
+- **Python/Quart changes**: Uvicorn server auto-reloads
 - **Vue.js changes**: Hot module replacement (HMR) updates the browser instantly
 - **Database**: Persisted in `./config/app.db` on your host machine
 

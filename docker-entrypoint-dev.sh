@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Development entrypoint script
-# Starts both Flask backend and Vue frontend dev servers
+# Starts both Quart backend and Vue frontend dev servers
 
 set -e
 
@@ -26,14 +26,9 @@ if [ -f "./config/.env" ]; then
   set +a
 fi
 
-# Set Flask environment variables for development
-export FLASK_APP=server.py
-export FLASK_ENV=development
-export FLASK_DEBUG=1
-
-# Run database migrations
+# Run database migrations using Alembic
 echo "🗄️  Running database migrations..."
-flask db upgrade
+alembic -c migrations/alembic.ini upgrade head
 
 # Run data migrations
 echo "🔄 Running data migrations..."
@@ -49,12 +44,13 @@ cleanup() {
 
 trap cleanup SIGTERM SIGINT
 
-# Start Flask backend with auto-reload and threading (needed for SSE)
-echo "🐍 Starting Flask backend on port 5001 (with auto-reload)..."
-flask run --host=0.0.0.0 --port=5001 --reload --with-threads &
-FLASK_PID=$!
+# Start Quart backend with uvicorn (with auto-reload)
+# Use --loop asyncio for compatibility with quart-flask-patch
+echo "🐍 Starting Quart backend on port 8000 (with auto-reload)..."
+uvicorn server:app --host 0.0.0.0 --port 8000 --reload --loop asyncio &
+BACKEND_PID=$!
 
-# Wait a moment for Flask to start
+# Wait a moment for backend to start
 sleep 3
 
 # Start Vue frontend dev server
@@ -67,7 +63,7 @@ cd ..
 
 echo ""
 echo "✅ Development environment is ready!"
-echo "   - Backend:  http://localhost:5001"
+echo "   - Backend:  http://localhost:8000"
 echo "   - Frontend: http://localhost:8080"
 echo "   - API proxy configured in Vue dev server"
 echo ""

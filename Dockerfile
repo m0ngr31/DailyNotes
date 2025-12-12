@@ -37,19 +37,23 @@ RUN apk add --no-cache \
         postgresql-dev \
         mariadb-dev \
     && pip install --no-cache-dir \
-        flask==3.1.2 \
-        flask_sqlalchemy==3.1.1 \
-        flask-migrate==4.1.0 \
-        gunicorn==23.0.0 \
-        gevent==24.11.1 \
-        flask-jwt-extended==4.7.1 \
-        flask-argon2==0.3.0.0 \
+        quart==0.20.0 \
+        quart-cors==0.7.0 \
+        alembic==1.14.0 \
+        sqlalchemy[asyncio]==2.0.36 \
+        aiosqlite==0.20.0 \
+        uvicorn[standard]==0.34.0 \
+        pyjwt==2.10.1 \
+        argon2-cffi==23.1.0 \
         python-frontmatter==1.1.0 \
         pycryptodome==3.23.0 \
+        httpx==0.28.1 \
         requests==2.32.5 \
         python-dateutil==2.9.0.post0 \
         psycopg2-binary==2.9.10 \
+        asyncpg==0.30.0 \
         pymysql==1.1.1 \
+        aiomysql==0.2.0 \
         cryptography>=44.0.1 \
     && apk del .build-deps
 
