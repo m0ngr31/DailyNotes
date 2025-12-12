@@ -15,7 +15,8 @@
 
 <script setup lang="ts">
 import { marked } from 'marked';
-import { onMounted, ref, watch } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import themeService from '@/services/theme';
 
 interface CheckboxInfo {
   lineIndex: number;
@@ -39,6 +40,88 @@ const frontmatter = ref<Record<string, string> | null>(null);
 const contentLines = ref<string[]>([]);
 const frontmatterLineCount = ref(0);
 
+// Mermaid lazy loading
+let mermaidInstance: typeof import('mermaid').default | null = null;
+let mermaidLoadPromise: Promise<typeof import('mermaid').default> | null = null;
+let mermaidIdCounter = 0;
+
+const loadMermaid = async () => {
+  if (mermaidInstance) return mermaidInstance;
+  if (mermaidLoadPromise) return mermaidLoadPromise;
+
+  mermaidLoadPromise = import('mermaid').then((m) => {
+    mermaidInstance = m.default;
+    // Initialize with theme based on current app theme
+    mermaidInstance.initialize({
+      startOnLoad: false,
+      theme: themeService.isDark ? 'dark' : 'default',
+      securityLevel: 'strict',
+      fontFamily: 'Fira Code, monospace',
+    });
+    return mermaidInstance;
+  });
+
+  return mermaidLoadPromise;
+};
+
+const renderMermaidDiagrams = async () => {
+  // Find all mermaid code blocks in the rendered content
+  const container = document.querySelector('.preview-content');
+  if (!container) return;
+
+  const mermaidBlocks = container.querySelectorAll('pre > code.language-mermaid');
+  if (mermaidBlocks.length === 0) return;
+
+  // Lazy load mermaid
+  const mermaid = await loadMermaid();
+
+  // Update mermaid theme based on current app theme
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: themeService.isDark ? 'dark' : 'default',
+    securityLevel: 'strict',
+    fontFamily: 'Fira Code, monospace',
+  });
+
+  for (const block of mermaidBlocks) {
+    const code = block.textContent || '';
+    const preElement = block.parentElement;
+
+    if (!preElement) continue;
+
+    try {
+      // Generate unique ID for this diagram
+      const id = `mermaid-diagram-${mermaidIdCounter++}`;
+
+      // Render the diagram
+      const { svg } = await mermaid.render(id, code);
+
+      // Create a wrapper div with the rendered SVG
+      const wrapper = document.createElement('div');
+      wrapper.className = 'mermaid-diagram';
+      wrapper.innerHTML = svg;
+
+      // Replace the pre element with the rendered diagram
+      preElement.replaceWith(wrapper);
+    } catch (error) {
+      // Show error message in place of the diagram
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'mermaid-error';
+      errorDiv.innerHTML = `<strong>Mermaid Error:</strong> ${error instanceof Error ? error.message : 'Failed to render diagram'}`;
+      preElement.replaceWith(errorDiv);
+    }
+  }
+};
+
+// Watch for theme changes to re-render mermaid diagrams
+const themeWatcherCleanup = watch(
+  () => themeService.resolved,
+  () => {
+    // Re-render to pick up new theme
+    updatePreview();
+  }
+);
+
 onMounted(() => {
   // Configure marked for GitHub Flavored Markdown
   marked.setOptions({
@@ -47,6 +130,11 @@ onMounted(() => {
   });
 
   updatePreview();
+});
+
+onUnmounted(() => {
+  // Clean up theme watcher
+  themeWatcherCleanup();
 });
 
 watch(
@@ -125,6 +213,11 @@ const updatePreview = () => {
     html = html.replace(/<a href=/gi, '<a target="_blank" rel="noopener noreferrer" href=');
 
     renderedMarkdown.value = html;
+
+    // Render mermaid diagrams after DOM update
+    nextTick(() => {
+      renderMermaidDiagrams();
+    });
   } catch (e) {
     console.error('Error rendering markdown:', e);
     renderedMarkdown.value = '<p>Error rendering markdown preview</p>';
@@ -533,5 +626,37 @@ const toggleCheckboxInMarkdown = (checkboxInfo: CheckboxInfo): string => {
   .preview-content :deep(table td) {
     padding: 6px 8px;
   }
+}
+
+/* Mermaid diagrams */
+.preview-content :deep(.mermaid-diagram) {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+  padding: 16px;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.preview-content :deep(.mermaid-diagram svg) {
+  max-width: 100%;
+  height: auto;
+}
+
+.preview-content :deep(.mermaid-error) {
+  margin: 16px 0;
+  padding: 16px;
+  background-color: rgba(255, 82, 82, 0.1);
+  border: 1px solid #ff5252;
+  border-radius: 4px;
+  color: #ff5252;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+.preview-content :deep(.mermaid-error strong) {
+  color: #ff5252;
 }
 </style>
